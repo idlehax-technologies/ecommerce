@@ -29,15 +29,6 @@ export default function Navbar() {
                     >
                         Home
                     </Button>
-
-                    {/* <Button
-                        color='inherit'
-                        component={Link}
-                        href="/cart"
-                    >
-                        Cart
-                    </Button> */}
-
                     <Button
                         color="inherit"
                         component={Link}
