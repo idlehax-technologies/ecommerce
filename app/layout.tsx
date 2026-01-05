@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-// import "./globals.css";
 import CustomStyles from "./theme";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { CartProvider } from "@/context/CartContext";
 
 export const metadata: Metadata = {
@@ -16,11 +16,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
+      <body
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
         <CustomStyles>
           <CartProvider>
             <Navbar />
-            {children}
+            <main style={{ flex: 1 }}>
+              {children}
+            </main>
+            <Footer />
           </CartProvider>
         </CustomStyles>
       </body>
