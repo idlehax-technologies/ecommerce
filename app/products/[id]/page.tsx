@@ -26,10 +26,6 @@ export default function ProductPage() {
                 ₹{product.price}
             </Typography>
 
-            {/* <Button variant="contained" sx={{ mt: 3 }}>
-                Add to Cart
-            </Button> */}
-
             <Button
                 variant="contained"
                 sx={{ mt: 3 }}
