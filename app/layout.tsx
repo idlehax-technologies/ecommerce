@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-// import "./globals.css";
 import CustomStyles from "./theme";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { CartProvider } from "@/context/CartContext";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -16,17 +16,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body style={{
-        minHeight: '100vh',
-        display: "flex",
-        flexDirection: "column"
-      }}>
+      <body
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
         <CustomStyles>
-          <Navbar />
-          <main style={{flex:1}}>
-          {children}
-          </main>
-          <Footer />
+          <CartProvider>
+            <Navbar />
+            <main style={{ flex: 1 }}>
+              {children}
+            </main>
+            <Footer />
+          </CartProvider>
         </CustomStyles>
       </body>
     </html>
