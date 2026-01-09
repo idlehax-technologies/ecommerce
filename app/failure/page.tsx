@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useCart } from "@/context/CartContext";
 import {
   Box,
   Typography,
@@ -8,9 +11,17 @@ import {
   CardContent,
 } from "@mui/material";
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
-import Link from "next/link";
 
-export default function SuccessPage() {
+export default function FailurePage() {
+  const { orderAttempted, orderPlaced, resetOrderState } = useCart();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!orderAttempted || orderPlaced) {
+      router.replace("/cart");
+    }
+  }, [orderAttempted, orderPlaced, router]);
+
   return (
     <Box
       minHeight="100vh"
@@ -30,13 +41,13 @@ export default function SuccessPage() {
         }}
       >
         <CardContent sx={{ p: 4 }}>
-          <CancelRoundedIcon 
+          <CancelRoundedIcon
             color="error"
             sx={{ fontSize: 50, mb: 2 }}
           />
 
           <Typography variant="h5" gutterBottom>
-            Order  cannot be placed
+            Transaction Failed
           </Typography>
 
           <Typography
@@ -48,12 +59,14 @@ export default function SuccessPage() {
 
           <Button
             variant="contained"
-            component={Link}
-            href="/"
             size="large"
             sx={{ borderRadius: '8px' }}
+            onClick={() => {
+              resetOrderState();
+              router.push("/cart");
+            }}
           >
-            Go back to Home
+            Try Again
           </Button>
         </CardContent>
       </Card>
