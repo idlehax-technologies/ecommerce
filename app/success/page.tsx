@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useCart } from "@/context/CartContext";
 import {
   Box,
   Typography,
@@ -8,9 +11,17 @@ import {
   CardContent,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import Link from "next/link";
 
 export default function SuccessPage() {
+  const { orderAttempted, orderPlaced, resetOrderState } = useCart();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!orderAttempted || !orderPlaced) {
+      router.replace("/");
+    }
+  }, [orderAttempted, orderPlaced, router]);
+
   return (
     <Box
       minHeight="100vh"
@@ -36,25 +47,27 @@ export default function SuccessPage() {
           />
 
           <Typography variant="h5" gutterBottom>
-            Order placed successfully
+            Order Successful
           </Typography>
 
           <Typography
             color="text.secondary"
             sx={{ mb: 3 }}
           >
-            Thank you for your purchase!  
+            Thank you for your purchase!
             Your order has been placed and will be processed shortly.
           </Typography>
 
           <Button
             variant="contained"
-            component={Link}
-            href="/"
             size="large"
             sx={{ borderRadius: '8px' }}
+            onClick={() => {
+              resetOrderState();
+              router.push("/");
+            }}
           >
-            Go back to Home
+            Continue Shopping
           </Button>
         </CardContent>
       </Card>
