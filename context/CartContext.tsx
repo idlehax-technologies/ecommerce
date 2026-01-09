@@ -14,6 +14,13 @@ type CartContextType = {
     addToCart: (product: { id: number; name: string; price: number }) => void;
     removeFromCart: (id: number) => void;
     clearCart: () => void;
+
+    placeOrder: () => void;
+    failOrder: () => void;
+    resetOrderState: () => void;
+
+    orderAttempted: boolean;
+    orderPlaced: boolean;
 };
 
 const CartContext = createContext<CartContextType | null>(null);
@@ -24,6 +31,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const storedCart = localStorage.getItem("cart");
         return storedCart ? JSON.parse(storedCart) : [];
     });
+
+    const [orderAttempted, setOrderAttempted] = useState(false);
+    const [orderPlaced, setOrderPlaced] = useState(false);
 
     function addToCart(product: { id: number; name: string; price: number }) {
         setItems((items) => {
@@ -49,12 +59,30 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setItems([]);
     }
 
+    function placeOrder() {
+        setOrderAttempted(true);
+        setOrderPlaced(true);
+        setItems([]);
+    }
+
+    function failOrder() {
+        setOrderAttempted(true);
+        setOrderPlaced(false);
+    }
+
+    function resetOrderState() {
+        setOrderAttempted(false);
+        setOrderPlaced(false)
+    }
+
     useEffect(() => {
         localStorage.setItem("cart", JSON.stringify(items));
     }, [items]);
 
     return (
-        <CartContext.Provider value={{ items, addToCart, removeFromCart, clearCart }}>
+        <CartContext.Provider value={{
+            items, addToCart, removeFromCart, clearCart, placeOrder, failOrder, resetOrderState, orderAttempted, orderPlaced,
+        }}>
             {children}
         </CartContext.Provider>
     );

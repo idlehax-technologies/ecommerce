@@ -8,8 +8,8 @@ import {
   Button,
   Divider,
 } from "@mui/material";
-
 import { useCart } from "@/context/CartContext";
+import Link from "next/link";
 
 export default function CartPage() {
   const { items, removeFromCart, clearCart } = useCart();
@@ -111,6 +111,9 @@ export default function CartPage() {
         <Button
           variant="contained"
           fullWidth
+          disabled={items.length === 0}
+          component={Link}
+          href="/checkout"
         >
           Checkout
         </Button>
