@@ -12,7 +12,7 @@ export default function Home() {
       </Typography>
       <Grid container spacing={2}>
         {products.map((product) => (
-          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={product.id}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={product.productId}>
             <ProductCard product={product} />
           </Grid>
         ))}

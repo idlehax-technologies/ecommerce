@@ -53,7 +53,7 @@ export default function CartPage() {
         </Box>
 
         {items.map((item) => (
-          <Card sx={{ mb: 2 }} key={item.id}>
+          <Card sx={{ mb: 2 }} key={item.productId}>
             <CardContent>
               <Box
                 display="flex"
@@ -73,7 +73,7 @@ export default function CartPage() {
                 variant="outlined"
                 size="small"
                 sx={{ mt: 1, borderRadius: 2 }}
-                onClick={() => removeFromCart(item.id)}
+                onClick={() => removeFromCart(item.productId)}
               >
                 🗑️ Remove
               </Button>
