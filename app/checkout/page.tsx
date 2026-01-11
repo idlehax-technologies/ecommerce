@@ -1,5 +1,6 @@
 "use client";
 
+import type { CheckoutRequest, CheckoutResponse } from "@/types/checkout";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
@@ -13,7 +14,6 @@ import {
   Divider,
   Button,
 } from "@mui/material";
-import { NextResponse } from "next/server";
 
 export default function CheckoutPage() {
   const { items, placeOrder, failOrder, orderAttempted } = useCart();
@@ -34,23 +34,24 @@ export default function CheckoutPage() {
   async function handleCheckout() {
     setIsProcessing(true);
 
+    const payload: CheckoutRequest = {
+      items: items.map((item) => ({
+        productId: item.productId,
+        vendorId: item.vendorId,
+        quantity: item.quantity,
+      })),
+      total,
+      currency: "INR",
+    };
+
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          items: items.map((item) => ({
-            productId: item.id,
-            quantity: item.quantity,
-          })),
-          total,
-          currency: "INR",
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as CheckoutResponse;
 
       if (data.success) {
         placeOrder();
@@ -99,7 +100,7 @@ export default function CheckoutPage() {
         {/* Cart Items */}
         <Stack spacing={2}>
           {items.map((item) => (
-            <Box key={item.id} display="flex" justifyContent="space-between">
+            <Box key={item.productId} display="flex" justifyContent="space-between">
               <Typography>{item.name} (x{item.quantity})</Typography>
               <Typography>₹{item.price * item.quantity}</Typography>
             </Box>

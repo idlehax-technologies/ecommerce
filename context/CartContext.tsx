@@ -1,29 +1,7 @@
 "use client";
 
 import { useState, createContext, useContext, useEffect } from "react";
-
-type CartItem = {
-  id: number;
-  name: string;
-  price: number;
-  quantity: number;
-};
-
-type CartContextType = {
-  items: CartItem[];
-  addToCart: (product: { id: number; name: string; price: number }) => void;
-  removeFromCart: (id: number) => void;
-  increaseQuantity: (id: number) => void;
-  decreaseQuantity: (id: number) => void;
-  clearCart: () => void;
-
-  placeOrder: () => void;
-  failOrder: () => void;
-  resetOrderState: () => void;
-
-  orderAttempted: boolean;
-  orderPlaced: boolean;
-};
+import type { CartItem, CartContextType, AddToCartInput } from "@/types/cart";
 
 const CartContext = createContext<CartContextType | null>(null);
 
@@ -35,25 +13,27 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   });
 
   const [orderAttempted, setOrderAttempted] = useState(false);
-  const [orderPlaced, setOrderPlaced] = useState(false);
+    const [orderPlaced, setOrderPlaced] = useState(false);
 
-  function addToCart(product: { id: number; name: string; price: number }) {
-    setItems((items) => {
-      const item = items.find((i) => i.id === product.id);
+    function addToCart(product: AddToCartInput) {
+        setItems((items) => {
+            const item = items.find((i) => i.productId === product.productId);
 
-      if (item) {
-        return items.map((i) =>
-          i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
-        );
-      }
+            if (item) {
+                return items.map((i) =>
+                    i.productId === product.productId
+                        ? { ...i, quantity: i.quantity + 1 }
+                        : i
+                );
+            }
 
-      return [...items, { ...product, quantity: 1 }];
-    });
-  }
+            return [...items, { ...product, quantity: 1 }];
+        });
+    }
 
-  function removeFromCart(id: number) {
-    setItems((items) => items.filter((i) => i.id !== id));
-  }
+    function removeFromCart(productId: number) {
+        setItems((items) => items.filter((i) => i.productId !== productId));
+    }
 
   function increaseQuantity(id: number) {
     setItems((items) =>
