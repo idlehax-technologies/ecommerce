@@ -4,10 +4,10 @@ import CardContent from '@mui/material/CardContent';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import Link from 'next/link';
+import { Product } from '@/types/product';
 
-export default function ProductCard({ product }: { product: any }) {
+export default function ProductCard({ product }: { product: Product }) {
     return (
-
         <Card>
             <CardContent>
                 <Typography variant="h6">
@@ -21,11 +21,10 @@ export default function ProductCard({ product }: { product: any }) {
                 </Typography>
             </CardContent>
             <CardActions>
-                <Button size="small" component={Link} href={`products/${product.id}`}>
+                <Button size="small" component={Link} href={`products/${product.productId}`}>
                     View Item
                 </Button>
             </CardActions>
         </Card>
-
     );
 }

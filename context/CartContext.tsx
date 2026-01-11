@@ -1,32 +1,12 @@
 "use client";
 
 import { useState, createContext, useContext, useEffect } from "react";
-
-type CartItem = {
-    id: number;
-    name: string;
-    price: number;
-    quantity: number;
-};
-
-type CartContextType = {
-    items: CartItem[];
-    addToCart: (product: { id: number; name: string; price: number }) => void;
-    removeFromCart: (id: number) => void;
-    clearCart: () => void;
-
-    placeOrder: () => void;
-    failOrder: () => void;
-    resetOrderState: () => void;
-
-    orderAttempted: boolean;
-    orderPlaced: boolean;
-};
+import type { CartItemType, CartContextType, AddToCartInput } from "@/types/cart";
 
 const CartContext = createContext<CartContextType | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-    const [items, setItems] = useState<CartItem[]>(() => {
+    const [items, setItems] = useState<CartItemType[]>(() => {
         if (typeof window === "undefined") return [];
         const storedCart = localStorage.getItem("cart");
         return storedCart ? JSON.parse(storedCart) : [];
@@ -35,13 +15,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const [orderAttempted, setOrderAttempted] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
 
-    function addToCart(product: { id: number; name: string; price: number }) {
+    const [pendingRemove, setPendingRemove] = useState<{
+        productId: number;
+        timeoutId: NodeJS.Timeout;
+    } | null>(null);
+
+    function addToCart(product: AddToCartInput) {
         setItems((items) => {
-            const item = items.find((i) => i.id === product.id);
+            const item = items.find((i) => i.productId === product.productId);
 
             if (item) {
                 return items.map((i) =>
-                    i.id === product.id
+                    i.productId === product.productId
                         ? { ...i, quantity: i.quantity + 1 }
                         : i
                 );
@@ -51,8 +36,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         });
     }
 
-    function removeFromCart(id: number) {
-        setItems((items) => items.filter((i) => i.id !== id));
+    function removeFromCart(productId: number) {
+        setItems((items) => items.filter((i) => i.productId !== productId));
+    }
+
+    function increaseQuantity(productId: number) {
+        setItems((items) =>
+            items.map((item) =>
+                item.productId === productId ? { ...item, quantity: item.quantity + 1 } : item
+            )
+        );
+    }
+
+    function decreaseQuantity(productId: number) {
+        setItems((items) =>
+            items
+                .map((item) =>
+                    item.productId === productId ? { ...item, quantity: item.quantity - 1 } : item
+                )
+                .filter((item) => item.quantity > 0)
+        );
     }
 
     function clearCart() {
@@ -72,7 +75,27 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     function resetOrderState() {
         setOrderAttempted(false);
-        setOrderPlaced(false)
+        setOrderPlaced(false);
+    }
+
+    function startPendingRemove(productId: number) {
+        if (pendingRemove) {
+            clearTimeout(pendingRemove.timeoutId);
+        }
+
+        const timeoutId = setTimeout(() => {
+            removeFromCart(productId);
+            setPendingRemove(null);
+        }, 3000);
+
+        setPendingRemove({ productId, timeoutId });
+    }
+
+    function stopPendingRemove() {
+        if (pendingRemove) {
+            clearTimeout(pendingRemove.timeoutId);
+        }
+        setPendingRemove(null);
     }
 
     useEffect(() => {
@@ -80,9 +103,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }, [items]);
 
     return (
-        <CartContext.Provider value={{
-            items, addToCart, removeFromCart, clearCart, placeOrder, failOrder, resetOrderState, orderAttempted, orderPlaced,
-        }}>
+        <CartContext.Provider
+            value={{
+                items,
+                addToCart,
+                removeFromCart,
+                increaseQuantity,
+                decreaseQuantity,
+                clearCart,
+                placeOrder,
+                failOrder,
+                resetOrderState,
+                orderAttempted,
+                orderPlaced,
+                startPendingRemove,
+                stopPendingRemove,
+                pendingRemove,
+            }}
+        >
             {children}
         </CartContext.Provider>
     );

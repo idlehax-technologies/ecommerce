@@ -8,7 +8,7 @@ import { useCart } from "@/context/CartContext";
 export default function ProductPage() {
     const params = useParams()
     const { id } = params;
-    const product = products.find(p => p.id === Number(id))
+    const product = products.find(p => p.productId === Number(id))
 
     const { addToCart } = useCart();
 
@@ -31,7 +31,8 @@ export default function ProductPage() {
                 sx={{ mt: 3 }}
                 onClick={() =>
                     addToCart({
-                        id: product.id,
+                        productId: product.productId,
+                        vendorId: product.vendorId,
                         name: product.name,
                         price: product.price,
                     })
