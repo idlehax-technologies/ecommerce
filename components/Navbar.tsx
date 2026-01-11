@@ -36,6 +36,13 @@ export default function Navbar() {
                     >
                         Cart ({totalItems})
                     </Button>
+                    <Button 
+                        color="inherit"
+                        component={Link}
+                        href="/orders"
+                    >
+                        Orders
+                    </Button>
                 </Box>
             </Toolbar>
         </AppBar>
