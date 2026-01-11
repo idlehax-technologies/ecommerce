@@ -21,7 +21,7 @@ export async function POST(request: Request) {
         await new Promise((resolve) => setTimeout(resolve, 1500));
 
         // 🔧 TEMP: simulate success / failure
-        const isSuccess = Math.random() > 0;
+        const isSuccess = Math.random() > 0.5;
 
         if (!isSuccess) {
             const response: CheckoutResponse = {
