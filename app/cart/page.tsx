@@ -3,121 +3,153 @@
 import {
   Box,
   Typography,
-  Card,
-  CardContent,
   Button,
   Divider,
+  Stack,
+  Container,
+  Snackbar,
+  Paper,
+  Collapse,
 } from "@mui/material";
 import { useCart } from "@/context/CartContext";
 import Link from "next/link";
+import CartItem from "@/components/CartItem";
+import { useState } from "react";
+import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
+import AddIcon from "@mui/icons-material/Add";
 
 export default function CartPage() {
-  const { items, removeFromCart, clearCart } = useCart();
+  const { items, removeFromCart, clearCart,addToCart } = useCart();
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [lastRemovedItem, setLastRemovedItem] = useState<any>(null);
+
+  const [pendingRemove, setPendingRemove] = useState<{
+    id: number;
+    timeoutId: NodeJS.Timeout;
+  } | null>(null);
 
   const subtotal = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
 
+  if (items.length === 0) {
+    return (
+      <Container maxWidth="sm" sx={{ mt: 6, mb: 6 }}>
+        <Paper elevation={3} sx={{ p: 4, textAlign: "center" }}>
+          <ShoppingCartOutlinedIcon
+            sx={{ fontSize: 64, color: "text.disabled", mb: 2 }}
+          />
+
+          <Typography variant="h5" gutterBottom>
+            Your cart is empty
+          </Typography>
+
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Looks like you haven’t added anything yet.
+          </Typography>
+
+          <Button variant="contained" size="large" component={Link} href="/">
+            Browse Products
+          </Button>
+        </Paper>
+      </Container>
+    );
+  }
+
   return (
-    // OUTER PAGE (grey like Amazon)
-    <Box
-      sx={{
-        minHeight: "100vh",
-        bgcolor: "grey.200",
-        py: 4,
-      }}
-    >
-      {/* INNER CONTENT (white box) */}
-      <Box
-        p={3}
-        maxWidth="800px"
-        mx="auto"
-        bgcolor="background.paper"
-        borderRadius={2}
-      >
+    <Container maxWidth="sm" sx={{ mt: 6, mb: 6 }}>
+      <Paper elevation={3} sx={{ p: 3 }}>
         <Typography variant="h4" gutterBottom>
           My Cart
         </Typography>
 
-        {items.length === 0 && (
-          <Typography sx={{ mt: 4 }} color="text.secondary">
-            Your cart is empty.
-          </Typography>
-        )}
+        <Divider sx={{ my: 2 }} />
 
-        <Box display="flex" justifyContent="flex-end">
-          <Typography variant="subtitle1" sx={{ mr: 2 }}>
+        <Box display="flex" justifyContent="space-between" sx={{ mb: 1 }}>
+          <Typography variant="subtitle2" color="text.secondary">
+            Item
+          </Typography>
+          <Typography variant="subtitle2" color="text.secondary">
             Price
           </Typography>
         </Box>
 
-        {items.map((item) => (
-          <Card sx={{ mb: 2 }} key={item.productId}>
-            <CardContent>
-              <Box
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-              >
-                <Typography variant="h6">
-                  {item.name}
-                </Typography>
+        <Stack spacing={2}>
+          {items.map((item) => {
+            const isBeingRemoved = pendingRemove?.id === item.id;
 
-                <Typography variant="body1">
-                  ₹{item.price} × {item.quantity}
-                </Typography>
-              </Box>
+            return (
+              <Collapse key={item.id} in={!isBeingRemoved} timeout={200}>
+                <CartItem
+                  key={item.id}
+                  item={item}
+                  onRemove={(removedItem) => {
+                    removeFromCart(removedItem.id); // remove immediately
+                    setLastRemovedItem(removedItem); // store for undo
+                    setSnackbarOpen(true);
+                  }}
+                />
+              </Collapse>
+            );
+          })}
+        </Stack>
 
-              <Button
-                variant="outlined"
-                size="small"
-                sx={{ mt: 1, borderRadius: 2 }}
-                onClick={() => removeFromCart(item.productId)}
-              >
-                🗑️ Remove
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+        <Button
+          startIcon={<AddIcon />}
+          component={Link}
+          href="/"
+          variant="text"
+          color="primary"
+          sx={{ textTransform: "none", fontSize: 14 }}
+        >
+          Add more products
+        </Button>
 
         <Divider sx={{ my: 2 }} />
 
-        {items.length > 0 && (
-          <Card sx={{ mb: 2 }}>
-            <CardContent>
-              <Box display="flex" justifyContent="flex-end">
-                <Typography variant="h6">
-                  Subtotal: ₹{subtotal}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        )}
-
-        {items.length > 0 && (
-          <Button
-            variant="outlined"
-            color="error"
-            fullWidth
-            sx={{ mb: 2 }}
-            onClick={clearCart}
-          >
-            Clear Cart
-          </Button>
-        )}
-
+        <Box display="flex" justifyContent="flex-end">
+          <Typography variant="h6">Subtotal: ₹{subtotal}</Typography>
+        </Box>
 
         <Button
-          variant="contained"
+          variant="outlined"
+          color="error"
           fullWidth
-          disabled={items.length === 0}
-          component={Link}
-          href="/checkout"
+          sx={{ my: 2 }}
+          onClick={clearCart}
         >
+          Clear Cart
+        </Button>
+
+        <Button variant="contained" fullWidth component={Link} href="/checkout">
           Checkout
         </Button>
-      </Box>
-    </Box>
+
+        <Snackbar
+          open={snackbarOpen}
+          autoHideDuration={5000}
+          message="Item removed from cart"
+          action={
+            <Button
+              size="small"
+              onClick={() => {
+                if (lastRemovedItem) {
+                  addToCart({
+                    id: lastRemovedItem.id,
+                    name: lastRemovedItem.name,
+                    price: lastRemovedItem.price,
+                  });
+                  setLastRemovedItem(null);
+                }
+                setSnackbarOpen(false);
+              }}
+            >
+              UNDO
+            </Button>
+          }
+        />
+      </Paper>
+    </Container>
   );
 }
