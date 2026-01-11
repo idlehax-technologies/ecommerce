@@ -1,19 +1,24 @@
 "use client";
 
 import { useState, createContext, useContext, useEffect } from "react";
-import type { CartItem, CartContextType, AddToCartInput } from "@/types/cart";
+import type { CartItemType, CartContextType, AddToCartInput } from "@/types/cart";
 
 const CartContext = createContext<CartContextType | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>(() => {
-    if (typeof window === "undefined") return [];
-    const storedCart = localStorage.getItem("cart");
-    return storedCart ? JSON.parse(storedCart) : [];
-  });
+    const [items, setItems] = useState<CartItemType[]>(() => {
+        if (typeof window === "undefined") return [];
+        const storedCart = localStorage.getItem("cart");
+        return storedCart ? JSON.parse(storedCart) : [];
+    });
 
-  const [orderAttempted, setOrderAttempted] = useState(false);
+    const [orderAttempted, setOrderAttempted] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
+
+    const [pendingRemove, setPendingRemove] = useState<{
+        productId: number;
+        timeoutId: NodeJS.Timeout;
+    } | null>(null);
 
     function addToCart(product: AddToCartInput) {
         setItems((items) => {
@@ -35,73 +40,96 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setItems((items) => items.filter((i) => i.productId !== productId));
     }
 
-  function increaseQuantity(id: number) {
-    setItems((items) =>
-      items.map((item) =>
-        item.id === id ? { ...item, quantity: item.quantity + 1 } : item
-      )
+    function increaseQuantity(productId: number) {
+        setItems((items) =>
+            items.map((item) =>
+                item.productId === productId ? { ...item, quantity: item.quantity + 1 } : item
+            )
+        );
+    }
+
+    function decreaseQuantity(productId: number) {
+        setItems((items) =>
+            items
+                .map((item) =>
+                    item.productId === productId ? { ...item, quantity: item.quantity - 1 } : item
+                )
+                .filter((item) => item.quantity > 0)
+        );
+    }
+
+    function clearCart() {
+        setItems([]);
+    }
+
+    function placeOrder() {
+        setOrderAttempted(true);
+        setOrderPlaced(true);
+        setItems([]);
+    }
+
+    function failOrder() {
+        setOrderAttempted(true);
+        setOrderPlaced(false);
+    }
+
+    function resetOrderState() {
+        setOrderAttempted(false);
+        setOrderPlaced(false);
+    }
+
+    function startPendingRemove(productId: number) {
+        if (pendingRemove) {
+            clearTimeout(pendingRemove.timeoutId);
+        }
+
+        const timeoutId = setTimeout(() => {
+            removeFromCart(productId);
+            setPendingRemove(null);
+        }, 3000);
+
+        setPendingRemove({ productId, timeoutId });
+    }
+
+    function stopPendingRemove() {
+        if (pendingRemove) {
+            clearTimeout(pendingRemove.timeoutId);
+        }
+        setPendingRemove(null);
+    }
+
+    useEffect(() => {
+        localStorage.setItem("cart", JSON.stringify(items));
+    }, [items]);
+
+    return (
+        <CartContext.Provider
+            value={{
+                items,
+                addToCart,
+                removeFromCart,
+                increaseQuantity,
+                decreaseQuantity,
+                clearCart,
+                placeOrder,
+                failOrder,
+                resetOrderState,
+                orderAttempted,
+                orderPlaced,
+                startPendingRemove,
+                stopPendingRemove,
+                pendingRemove,
+            }}
+        >
+            {children}
+        </CartContext.Provider>
     );
-  }
-
-  function decreaseQuantity(id: number) {
-    setItems((items) =>
-      items
-        .map((item) =>
-          item.id === id ? { ...item, quantity: item.quantity - 1 } : item
-        )
-        .filter((item) => item.quantity > 0)
-    );
-  }
-
-  function clearCart() {
-    setItems([]);
-  }
-
-  function placeOrder() {
-    setOrderAttempted(true);
-    setOrderPlaced(true);
-    setItems([]);
-  }
-
-  function failOrder() {
-    setOrderAttempted(true);
-    setOrderPlaced(false);
-  }
-
-  function resetOrderState() {
-    setOrderAttempted(false);
-    setOrderPlaced(false);
-  }
-
-  useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(items));
-  }, [items]);
-
-  return (
-    <CartContext.Provider
-      value={{
-        items,
-        addToCart,
-        removeFromCart,
-        increaseQuantity,
-        decreaseQuantity,
-        clearCart,
-        placeOrder,
-        failOrder,
-        resetOrderState,
-        orderAttempted,
-        orderPlaced,
-      }}
-    >
-      {children}
-    </CartContext.Provider>
-  );
 }
 
 export function useCart() {
-  const context = useContext(CartContext);
-  if (!context) {
-    throw new Error("useCart must be used inside CartProvider");
-  }
-  return context;
+    const context = useContext(CartContext);
+    if (!context) {
+        throw new Error("useCart must be used inside CartProvider");
+    }
+    return context;
 }

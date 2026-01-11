@@ -10,13 +10,13 @@ import {
 } from "@mui/material";
 import { orders } from "@/lib/orders";
 
-export default function order() {
+export default function OrdersPage() {
     return (
         <Box p={3} maxWidth='800px' mx="auto">
             <Typography variant="h4" gutterBottom sx={{ mt: 2 }}>
                 My Orders
             </Typography>
-            {orders.length == 0 && (
+            {orders.length === 0 && (
                 <Typography color="text.secondary">
                     No Orders Yet.
                 </Typography>
@@ -36,7 +36,7 @@ export default function order() {
                             <Typography>
                                 Order: {order.orderId}
                             </Typography>
-                            <Typography>
+                            <Box>
                                 <Chip
                                     label={order.status}
                                     color={
@@ -49,7 +49,7 @@ export default function order() {
                                     size="small"
                                     sx={{ minWidth: 90, justifyContent: "center" }}
                                 />
-                            </Typography>
+                            </Box>
                         </Box>
                         <Divider sx={{ my: 1 }} />
                         <Typography variant="body2" color="text.secondary">

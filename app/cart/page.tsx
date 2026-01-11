@@ -14,19 +14,11 @@ import {
 import { useCart } from "@/context/CartContext";
 import Link from "next/link";
 import CartItem from "@/components/CartItem";
-import { useState } from "react";
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
 import AddIcon from "@mui/icons-material/Add";
 
 export default function CartPage() {
-  const { items, removeFromCart, clearCart,addToCart } = useCart();
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [lastRemovedItem, setLastRemovedItem] = useState<any>(null);
-
-  const [pendingRemove, setPendingRemove] = useState<{
-    id: number;
-    timeoutId: NodeJS.Timeout;
-  } | null>(null);
+  const { items, clearCart, pendingRemove, stopPendingRemove } = useCart();
 
   const subtotal = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -40,13 +32,12 @@ export default function CartPage() {
           <ShoppingCartOutlinedIcon
             sx={{ fontSize: 64, color: "text.disabled", mb: 2 }}
           />
-
           <Typography variant="h5" gutterBottom>
             Your cart is empty
           </Typography>
 
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Looks like you haven’t added anything yet.
+            Looks like you haven't added anything yet.
           </Typography>
 
           <Button variant="contained" size="large" component={Link} href="/">
@@ -60,7 +51,7 @@ export default function CartPage() {
   return (
     <Container maxWidth="sm" sx={{ mt: 6, mb: 6 }}>
       <Paper elevation={3} sx={{ p: 3 }}>
-        <Typography variant="h4" gutterBottom>
+        <Typography variant="h4">
           My Cart
         </Typography>
 
@@ -77,19 +68,12 @@ export default function CartPage() {
 
         <Stack spacing={2}>
           {items.map((item) => {
-            const isBeingRemoved = pendingRemove?.id === item.id;
+            const isBeingRemoved =
+              pendingRemove?.productId === item.productId;
 
             return (
-              <Collapse key={item.id} in={!isBeingRemoved} timeout={200}>
-                <CartItem
-                  key={item.id}
-                  item={item}
-                  onRemove={(removedItem) => {
-                    removeFromCart(removedItem.id); // remove immediately
-                    setLastRemovedItem(removedItem); // store for undo
-                    setSnackbarOpen(true);
-                  }}
-                />
+              <Collapse key={item.productId} in={!isBeingRemoved} timeout={200}>
+                <CartItem item={item} />
               </Collapse>
             );
           })}
@@ -127,24 +111,12 @@ export default function CartPage() {
         </Button>
 
         <Snackbar
-          open={snackbarOpen}
-          autoHideDuration={5000}
+          open={!!pendingRemove} // pendingRemove (null -> falsy) => !pendingRemove (true) => !!pendingRemove (false)
+          autoHideDuration={3000}
           message="Item removed from cart"
+          onClose={stopPendingRemove}
           action={
-            <Button
-              size="small"
-              onClick={() => {
-                if (lastRemovedItem) {
-                  addToCart({
-                    id: lastRemovedItem.id,
-                    name: lastRemovedItem.name,
-                    price: lastRemovedItem.price,
-                  });
-                  setLastRemovedItem(null);
-                }
-                setSnackbarOpen(false);
-              }}
-            >
+            <Button size="small" onClick={stopPendingRemove}>
               UNDO
             </Button>
           }
