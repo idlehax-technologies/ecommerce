@@ -1,7 +1,13 @@
-export type UserRole = "customer" | "vendor";
+export type Role = "CUSTOMER" | "VENDOR";
 
 export type User = {
-    id: string;
+    userId: string;
     name: string;
-    role: UserRole;
+    email: string;
+    role: Role;
+};
+
+export type Vendor = User & {
+    role: "VENDOR";
+    shopName: string;
 };
