@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import CustomStyles from "./theme";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { AuthProvider } from "../context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 
 export const metadata: Metadata = {
@@ -24,13 +25,15 @@ export default function RootLayout({
         }}
       >
         <CustomStyles>
-          <CartProvider>
-            <Navbar />
-            <main style={{ flex: 1 }}>
-              {children}
-            </main>
-            <Footer />
-          </CartProvider>
+          <AuthProvider>
+            <CartProvider>
+              <Navbar />
+              <main style={{ flex: 1 }}>
+                {children}
+              </main>
+              <Footer />
+            </CartProvider>
+          </AuthProvider>
         </CustomStyles>
       </body>
     </html>
