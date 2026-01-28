@@ -1,13 +1,13 @@
-export type Role = "CUSTOMER" | "VENDOR";
+import { UserRole } from "./auth";
 
 export type User = {
     userId: string;
     name: string;
     email: string;
-    role: Role;
+    role: UserRole;
 };
 
 export type Vendor = User & {
-    role: "VENDOR";
+    role: "vendor";
     shopName: string;
 };
