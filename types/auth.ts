@@ -1,9 +1,16 @@
-import type { User } from "./user";
+export type UserRole = "customer" | "vendor";
 
-export type Session = {
-    token: string;
-    user: User;
-};
+export type AuthUser = {
+  id: string;
+  email: string;
+  role: UserRole;
+}
+
+export type AuthState = {
+  user: AuthUser | null;
+  loading: boolean;
+  error: string | null;
+}
 
 export type LoginRequest = {
     email: string;
@@ -11,16 +18,19 @@ export type LoginRequest = {
 };
 
 export type SignupRequest = {
-    name: string;
     email: string;
     password: string;
-    role: "CUSTOMER" | "VENDOR";
+    role: UserRole;
     shopName?: string;
 };
 
-export type AuthResponse = {
-    success: boolean;
-    user?: User;
-    token?: string;
-    error?: string;
-};
+export type AuthResponse =
+  | {
+      success: true;
+      user: AuthUser;
+    }
+  | {
+      success: false;
+      error: string;
+    };
+
