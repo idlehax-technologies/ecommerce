@@ -1,22 +1,30 @@
 "use client";
 
+// import { useEffect, useState } from "react";
 import { Container, Grid, Typography } from "@mui/material";
-import { products } from "@/lib/products";
-import ProductCard from "@/components/ProductCard";
+// import type { Product } from "@/types/product";
 
 export default function Home() {
+  // const [products, setProducts] = useState<Product[]>([]);
+
+  // useEffect(() => {
+  //   async function loadProducts() {
+  //     const res = await fetch("/api/vendor/products");
+  //     if (!res.ok) return;
+
+  //     const data = await res.json();
+  //     setProducts(data.products);
+  //   }
+
+  //   loadProducts();
+  // }, []);
+
   return (
     <Container sx={{ mt: 4 }}>
       <Typography variant="h4" gutterBottom sx={{ textAlign: "center" }}>
         Products
       </Typography>
-      <Grid container spacing={2}>
-        {products.map((product) => (
-          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={product.productId}>
-            <ProductCard product={product} />
-          </Grid>
-        ))}
-      </Grid>
+
     </Container>
   );
 }
