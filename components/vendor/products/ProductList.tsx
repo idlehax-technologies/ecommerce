@@ -1,54 +1,20 @@
 "use client";
 
-import {
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  Typography,
-} from "@mui/material";
-import Link from "next/link";
+import { Grid, Typography } from "@mui/material";
 import type { Product } from "@/types/product";
+import ProductCard from "./ProductCard";
 
-export default function ProductList({
-  products,
-  loading,
-}: {
-  products: Product[];
-  loading: boolean;
-}) {
-  if (loading) {
-    return <Typography>Loading products...</Typography>;
-  }
-
-  if (products.length === 0) {
+export default function ProductList({ products }: { products: Product[] }) {
+  if (products.length === 0)
     return <Typography>No products yet.</Typography>;
-  }
 
   return (
-    <Table>
-      <TableHead>
-        <TableRow>
-          <TableCell>Title</TableCell>
-          <TableCell>Price</TableCell>
-          <TableCell>Stock</TableCell>
-        </TableRow>
-      </TableHead>
-
-      <TableBody>
-        {products.map((p) => (
-          <TableRow key={p.productId}>
-            <TableCell>
-              <Link href={`/vendor/products/${p.productId}`}>
-                {p.title}
-              </Link>
-            </TableCell>
-            <TableCell>₹{p.price}</TableCell>
-            <TableCell>{p.stock}</TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <Grid container spacing={2}>
+      {products.map((product) => (
+        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={product.productId}>
+          <ProductCard product={product} />
+        </Grid>
+      ))}
+    </Grid>
   );
 }

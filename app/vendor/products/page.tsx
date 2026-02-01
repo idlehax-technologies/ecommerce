@@ -1,37 +1,56 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Box, Typography, Button } from "@mui/material";
 import Link from "next/link";
-import ProductList from "@/components/vendor/products/ProductList";
+import {
+  Container,
+  Typography,
+  Button,
+  Stack,
+  CircularProgress,
+  Alert,
+} from "@mui/material";
+
 import { listVendorProducts } from "@/lib/api/vendorProducts";
 import type { Product } from "@/types/product";
+import ProductList from "@/components/vendor/products/ProductList";
 
 export default function VendorProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    listVendorProducts()
-      .then(setProducts)
-      .finally(() => setLoading(false));
+    async function load() {
+      try {
+        setLoading(true);
+        setProducts(await listVendorProducts());
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : "Unexpected error";
+        setError(message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
   }, []);
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" mb={2}>
-        <Typography variant="h4">My Products</Typography>
-
-        <Button
-          component={Link}
-          href="/vendor/products/new"
-          variant="contained"
-        >
-          Add Product
+    <Container sx={{ py: 4 }}>
+      <Stack direction="row" justifyContent="space-between" mb={3}>
+        <Typography variant="h5">Your Products</Typography>
+        <Button component={Link} href="/vendor/products/new" variant="contained">
+          New Product
         </Button>
-      </Box>
+      </Stack>
 
-      <ProductList products={products} loading={loading} />
-    </Box>
+      {loading && <CircularProgress />}
+      {error && <Alert severity="error">{error}</Alert>}
+
+      {!loading && !error && (
+        <ProductList products={products} />
+      )}
+    </Container>
   );
 }
