@@ -1,50 +1,91 @@
 // lib/errors/productErrors.ts
 
-export type ProductErrorCode =
-  | "UNAUTHENTICATED"
-  | "FORBIDDEN"
-  | "NOT_FOUND"
-  | "DELETED"
-  | "INVALID_PATCH";
+/*
+  Product Domain Errors
 
-export class ProductDomainError extends Error {
-  public code: ProductErrorCode;
-  public status: number;
+  Philosophy:
+  - Domain must express *meaning*, not HTTP codes.
+  - Routes translate these → 404 / 403 / 400 / 409 etc.
+  - No side effects.
+  - No business logic.
+  - Just typed failure signals.
 
-  constructor(code: ProductErrorCode, message: string, status = 400) {
+  Domain language example:
+    throw new ProductNotFoundError()
+
+  Route layer decides:
+    ProductNotFoundError → 404
+*/
+
+/* ================================================== */
+/* Base                                               */
+/* ================================================== */
+
+export abstract class ProductDomainError extends Error {
+  readonly code: string;
+
+  protected constructor(message: string, code: string) {
     super(message);
+    this.name = new.target.name; // keeps class name at runtime
     this.code = code;
-    this.status = status;
   }
 }
 
-// Convenience constructors (cleaner call-sites)
-export const productErrors = {
-  unauthenticated() {
-    return new ProductDomainError(
-      "UNAUTHENTICATED",
-      "Unauthenticated",
-      401
+/* ================================================== */
+/* Existence                                          */
+/* ================================================== */
+
+export class ProductNotFoundError extends ProductDomainError {
+  constructor() {
+    super("Product not found", "PRODUCT_NOT_FOUND");
+  }
+}
+
+/* ================================================== */
+/* Authorization / Ownership                          */
+/* ================================================== */
+
+export class ForbiddenProductError extends ProductDomainError {
+  constructor() {
+    super(
+      "You do not have permission to access this product",
+      "PRODUCT_FORBIDDEN"
     );
-  },
+  }
+}
 
-  forbidden() {
-    return new ProductDomainError("FORBIDDEN", "Forbidden", 403);
-  },
+/* ================================================== */
+/* Lifecycle                                          */
+/* ================================================== */
 
-  notFound() {
-    return new ProductDomainError("NOT_FOUND", "Product not found", 404);
-  },
+export class ProductDeletedError extends ProductDomainError {
+  constructor() {
+    super("Product has been deleted", "PRODUCT_DELETED");
+  }
+}
 
-  deleted() {
-    return new ProductDomainError(
-      "DELETED",
-      "Product has been deleted",
-      410
-    );
-  },
+export class ProductInactiveError extends ProductDomainError {
+  constructor() {
+    super("Product is inactive", "PRODUCT_INACTIVE");
+  }
+}
 
-  invalidPatch(msg = "Invalid update payload") {
-    return new ProductDomainError("INVALID_PATCH", msg, 400);
-  },
-};
+/* ================================================== */
+/* Validation                                         */
+/* ================================================== */
+
+export class InvalidProductInputError extends ProductDomainError {
+  constructor(message = "Invalid product input") {
+    super(message, "PRODUCT_INVALID_INPUT");
+  }
+}
+
+/* ================================================== */
+/* Conflicts / Business rules                         */
+/* ================================================== */
+
+export class ProductConflictError extends ProductDomainError {
+  constructor(message = "Product conflict") {
+    super(message, "PRODUCT_CONFLICT");
+  }
+}
