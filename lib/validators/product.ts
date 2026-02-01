@@ -1,127 +1,201 @@
-import { CreateProductDTO, UpdateProductDTO } from "@/types/product.dto";
+// lib/validators/product.ts
 
-// --------------------------------------
-// helpers
-// --------------------------------------
+import type {
+  CreateProductDTO,
+  UpdateProductDTO,
+} from "@/types/product.dto";
 
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
+import { InvalidProductInputError } from "../errors/productErrors";
+
+/*
+  =========================================================
+  Product Validators (HTTP boundary only)
+  =========================================================
+
+  Responsibilities:
+  - Validate request JSON
+  - Narrow unknown → DTO types
+  - Throw InvalidProductInputError only
+  - No domain logic
+  - No guards
+  - No DB
+
+  These protect the boundary BEFORE data enters domain.
+*/
+
+
+/* =========================================================
+   Small helpers (boring predicates)
+   ========================================================= */
+
+function isObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
 }
 
-function isPositiveInteger(value: unknown): value is number {
-  return (
-    typeof value === "number" &&
-    Number.isInteger(value) &&
-    value >= 0
-  );
+function isNonEmptyString(v: unknown): v is string {
+  return typeof v === "string" && v.trim().length > 0;
 }
 
-function isPositiveMoney(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value > 0;
+function isPositiveInteger(v: unknown): v is number {
+  return typeof v === "number" && Number.isInteger(v) && v >= 0;
 }
 
-function assertNoForbiddenFields(obj: Record<string, unknown>) {
-  if ("vendorId" in obj || "productId" in obj) {
-    throw new Error("Forbidden fields in request body");
+function isPositiveMoney(v: unknown): v is number {
+  return isPositiveInteger(v) && v > 0;
+}
+
+
+/* =========================================================
+   Shared checks
+   ========================================================= */
+
+function assertImages(v: unknown): asserts v is string[] {
+  if (!Array.isArray(v)) {
+    throw new InvalidProductInputError("Images must be an array");
+  }
+
+  for (const img of v) {
+    if (typeof img !== "string") {
+      throw new InvalidProductInputError("Image URLs must be strings");
+    }
   }
 }
 
-// --------------------------------------
-// Create validation
-// --------------------------------------
-
-export function validateCreateProduct(body: unknown): asserts body is CreateProductDTO {
-  if (typeof body !== "object" || body === null) {
-    throw new Error("Invalid request body");
+function assertTags(v: unknown): asserts v is string[] {
+  if (!Array.isArray(v)) {
+    throw new InvalidProductInputError("Tags must be an array");
   }
 
-  const v = body as Record<string, unknown>;
+  for (const tag of v) {
+    if (typeof tag !== "string") {
+      throw new InvalidProductInputError("Tags must be strings");
+    }
+  }
+}
+
+function assertNoForbiddenFields(
+  obj: Record<string, unknown>
+) {
+  const forbidden = [
+    "productId",
+    "vendorId",
+    "createdAt",
+    "updatedAt",
+    "isDeleted",
+  ];
+
+  for (const key of forbidden) {
+    if (key in obj) {
+      throw new InvalidProductInputError(`Field "${key}" is not allowed`);
+    }
+  }
+}
+
+
+/* =========================================================
+   Create Validator
+   ========================================================= */
+
+/**
+ * unknown → CreateProductDTO
+ */
+export function validateCreateProduct(
+  body: unknown
+): asserts body is CreateProductDTO {
+  if (!isObject(body)) {
+    throw new InvalidProductInputError("Invalid request body");
+  }
+
+  const v = body;
 
   assertNoForbiddenFields(v);
 
   if (!isNonEmptyString(v.title)) {
-    throw new Error("Product title is required");
+    throw new InvalidProductInputError("Title is required");
   }
 
   if (!isPositiveMoney(v.price)) {
-    throw new Error("Price must be a positive integer");
+    throw new InvalidProductInputError("Price must be positive");
   }
 
   if (!isPositiveInteger(v.stock)) {
-    throw new Error("Stock must be an integer >= 0");
+    throw new InvalidProductInputError("Stock must be >= 0");
   }
 
-  if (v.images && !Array.isArray(v.images)) {
-    throw new Error("Images must be an array");
+  if ("description" in v && v.description !== undefined && !isNonEmptyString(v.description)) {
+    throw new InvalidProductInputError("Description must be a string");
   }
 
-  if (Array.isArray(v.images)) {
-    for (const img of v.images) {
-      if (typeof img !== "string") {
-        throw new Error("Image URLs must be strings");
-      }
-    }
+  if ("sku" in v && v.sku !== undefined && !isNonEmptyString(v.sku)) {
+    throw new InvalidProductInputError("SKU must be a string");
   }
 
-  if (v.tags && !Array.isArray(v.tags)) {
-    throw new Error("Tags must be an array");
+  if ("category" in v && v.category !== undefined && !isNonEmptyString(v.category)) {
+    throw new InvalidProductInputError("Category must be a string");
   }
 
-  if (Array.isArray(v.tags)) {
-    for (const tag of v.tags) {
-      if (typeof tag !== "string") {
-        throw new Error("Tags must be strings");
-      }
-    }
+  if ("images" in v && v.images !== undefined) {
+    assertImages(v.images);
+  }
+
+  if ("tags" in v && v.tags !== undefined) {
+    assertTags(v.tags);
   }
 }
 
-// --------------------------------------
-// Update validation (partial)
-// --------------------------------------
 
-export function validateUpdateProduct(body: unknown): asserts body is UpdateProductDTO {
-  if (typeof body !== "object" || body === null) {
-    throw new Error("Invalid request body");
+/* =========================================================
+   Update Validator
+   ========================================================= */
+
+/**
+ * unknown → UpdateProductDTO
+ * partial allowed, but must contain at least one field
+ */
+export function validateUpdateProduct(
+  body: unknown
+): asserts body is UpdateProductDTO {
+  if (!isObject(body)) {
+    throw new InvalidProductInputError("Invalid request body");
   }
 
-  const v = body as Record<string, unknown>;
+  const v = body;
 
   assertNoForbiddenFields(v);
 
-  if ("price" in v && !isPositiveMoney(v.price)) {
-    throw new Error("Price must be a positive integer");
-  }
-
-  if ("stock" in v && !isPositiveInteger(v.stock)) {
-    throw new Error("Stock must be an integer >= 0");
+  if (Object.keys(v).length === 0) {
+    throw new InvalidProductInputError("Empty update body");
   }
 
   if ("title" in v && !isNonEmptyString(v.title)) {
-    throw new Error("Title must be a non-empty string");
+    throw new InvalidProductInputError("Title must be a string");
   }
 
-  if ("images" in v && !Array.isArray(v.images)) {
-    throw new Error("Images must be an array");
+  if ("price" in v && !isPositiveMoney(v.price)) {
+    throw new InvalidProductInputError("Price must be positive");
   }
 
-  if (Array.isArray(v.images)) {
-    for (const img of v.images) {
-      if (typeof img !== "string") {
-        throw new Error("Image URLs must be strings");
-      }
-    }
+  if ("stock" in v && !isPositiveInteger(v.stock)) {
+    throw new InvalidProductInputError("Stock must be >= 0");
   }
 
-  if ("tags" in v && !Array.isArray(v.tags)) {
-    throw new Error("Tags must be an array");
+  if ("description" in v && v.description !== undefined && !isNonEmptyString(v.description)) {
+    throw new InvalidProductInputError("Description must be a string");
   }
 
-  if (Array.isArray(v.tags)) {
-    for (const tag of v.tags) {
-      if (typeof tag !== "string") {
-        throw new Error("Tags must be strings");
-      }
-    }
+  if ("sku" in v && v.sku !== undefined && !isNonEmptyString(v.sku)) {
+    throw new InvalidProductInputError("SKU must be a string");
+  }
+
+  if ("category" in v && v.category !== undefined && !isNonEmptyString(v.category)) {
+    throw new InvalidProductInputError("Category must be a string");
+  }
+
+  if ("images" in v && v.images !== undefined) {
+    assertImages(v.images);
+  }
+
+  if ("tags" in v && v.tags !== undefined) {
+    assertTags(v.tags);
   }
 }

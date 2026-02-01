@@ -1,29 +1,70 @@
 import type { Product } from "@/types/product";
-import { CreateProductDTO, UpdateProductDTO } from "@/types/product.dto";
+import type {
+    CreateProductDTO,
+    UpdateProductDTO,
+} from "@/types/product.dto";
 
 const json = { "Content-Type": "application/json" };
 
-export async function listVendorProducts(): Promise<Product[]> {
-    const res = await fetch("/api/vendor/products");
-    if (!res.ok) throw new Error("Failed to list products");
-    return (await res.json()).products;
+
+/* ======================================================
+   Small helper
+   ====================================================== */
+
+async function handle<T>(res: Response): Promise<T> {
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+        const message =
+            typeof data?.error === "string"
+                ? data.error
+                : "Request failed";
+
+        throw new Error(message);
+    }
+
+    return data;
 }
 
-export async function createVendorProduct(body: CreateProductDTO): Promise<Product> {
+
+/* ======================================================
+   Vendor Products API wrappers
+   ====================================================== */
+
+export async function listVendorProducts(): Promise<Product[]> {
+    const res = await fetch("/api/vendor/products");
+
+    const data = await handle<{ products: Product[] }>(res);
+
+    return data.products;
+}
+
+
+export async function createVendorProduct(
+    body: CreateProductDTO
+): Promise<Product> {
     const res = await fetch("/api/vendor/products", {
         method: "POST",
         headers: json,
         body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error("Failed to create product");
-    return (await res.json()).product;
+
+    const data = await handle<{ product: Product }>(res);
+
+    return data.product;
 }
 
-export async function getVendorProduct(productId: string): Promise<Product> {
+
+export async function getVendorProduct(
+    productId: string
+): Promise<Product> {
     const res = await fetch(`/api/vendor/products/${productId}`);
-    if (!res.ok) throw new Error("Product not found");
-    return (await res.json()).product;
+
+    const data = await handle<{ product: Product }>(res);
+
+    return data.product;
 }
+
 
 export async function updateVendorProduct(
     productId: string,
@@ -34,13 +75,19 @@ export async function updateVendorProduct(
         headers: json,
         body: JSON.stringify(patch),
     });
-    if (!res.ok) throw new Error("Failed to update product");
-    return (await res.json()).product;
+
+    const data = await handle<{ product: Product }>(res);
+
+    return data.product;
 }
 
-export async function deleteVendorProduct(productId: string): Promise<void> {
+
+export async function deleteVendorProduct(
+    productId: string
+): Promise<void> {
     const res = await fetch(`/api/vendor/products/${productId}`, {
         method: "DELETE",
     });
-    if (!res.ok) throw new Error("Failed to delete product");
+
+    await handle(res);
 }

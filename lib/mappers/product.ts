@@ -4,7 +4,15 @@ import type { Product } from "@/types/product";
 import type {
   CreateProductDTO,
   UpdateProductDTO,
-} from "@/types/product.dto.ts"; // adjust paths if separate
+} from "@/types/product.dto"; // adjust paths if separate
+
+// --------------------------------------------------
+// Helpers
+// --------------------------------------------------
+
+function now(): string {
+  return new Date().toISOString();
+}
 
 /*
   =========================================================
@@ -70,7 +78,7 @@ export function toUpdateProductPatch(
 ): DomainUpdatePatch {
   return {
     ...dto,
-    updatedAt: Date.now(),
+    updatedAt: now(),
   };
 }
 

@@ -1,18 +1,32 @@
 import { NextResponse } from "next/server";
+
 import { getVendorFromRequest } from "@/lib/auth";
+
 import {
   getProductById,
   updateProduct,
   softDeleteProduct,
 } from "@/lib/products";
+
 import {
   validateUpdateProduct,
 } from "@/lib/validators/product";
 
-/**
- * GET /api/vendor/products/[productId]
- * Fetch a single product owned by the vendor
- */
+import {
+  toUpdateProductPatch,
+} from "@/lib/mappers/product";
+
+import {
+  ProductDomainError,
+  InvalidProductInputError,
+  ProductNotFoundError,
+} from "@/lib/errors/productErrors";
+
+
+/* =====================================================
+   GET /api/vendor/products/[productId]
+   ===================================================== */
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ productId: string }> }
@@ -23,26 +37,29 @@ export async function GET(
 
     const product = await getProductById(productId, vendorId);
 
-    if (!product) {
-      return NextResponse.json(
-        { error: "Product not found" },
-        { status: 404 }
-      );
+    return NextResponse.json({ product }, { status: 200 });
+
+  } catch (e: unknown) {
+    if (e instanceof ProductNotFoundError) {
+      return NextResponse.json({ error: e.message }, { status: 404 });
     }
 
-    return NextResponse.json({ product }, { status: 200 });
-  } catch (err: any) {
+    if (e instanceof ProductDomainError) {
+      return NextResponse.json({ error: e.message }, { status: 403 });
+    }
+
     return NextResponse.json(
-      { error: err.message ?? "Unauthorized" },
-      { status: 401 }
+      { error: "Failed to fetch product" },
+      { status: 500 }
     );
   }
 }
 
-/**
- * PATCH /api/vendor/products/[productId]
- * Update mutable fields of a vendor product
- */
+
+/* =====================================================
+   PATCH /api/vendor/products/[productId]
+   ===================================================== */
+
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ productId: string }> }
@@ -52,37 +69,49 @@ export async function PATCH(
     const { productId } = await params;
 
     const body = await req.json();
+
+    // validate (unknown → DTO)
     validateUpdateProduct(body);
+
+    // map (DTO → domain patch)
+    const patch = toUpdateProductPatch(body);
 
     const updated = await updateProduct(
       productId,
       vendorId,
-      body
+      patch
     );
-
-    if (!updated) {
-      return NextResponse.json(
-        { error: "Product not found" },
-        { status: 404 }
-      );
-    }
 
     return NextResponse.json(
       { product: updated },
       { status: 200 }
     );
-  } catch (err: any) {
+
+  } catch (e: unknown) {
+    if (e instanceof InvalidProductInputError) {
+      return NextResponse.json({ error: e.message }, { status: 400 });
+    }
+
+    if (e instanceof ProductNotFoundError) {
+      return NextResponse.json({ error: e.message }, { status: 404 });
+    }
+
+    if (e instanceof ProductDomainError) {
+      return NextResponse.json({ error: e.message }, { status: 403 });
+    }
+
     return NextResponse.json(
-      { error: err.message ?? "Unauthorized" },
-      { status: 401 }
+      { error: "Failed to update product" },
+      { status: 500 }
     );
   }
 }
 
-/**
- * DELETE /api/vendor/products/[productId]
- * Soft-delete a vendor product
- */
+
+/* =====================================================
+   DELETE /api/vendor/products/[productId]
+   ===================================================== */
+
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ productId: string }> }
@@ -91,26 +120,25 @@ export async function DELETE(
     const { vendorId } = await getVendorFromRequest();
     const { productId } = await params;
 
-    const deleted = await softDeleteProduct(
-      productId,
-      vendorId
-    );
-
-    if (!deleted) {
-      return NextResponse.json(
-        { error: "Product not found" },
-        { status: 404 }
-      );
-    }
+    await softDeleteProduct(productId, vendorId);
 
     return NextResponse.json(
       { success: true },
       { status: 200 }
     );
-  } catch (err: any) {
+
+  } catch (e: unknown) {
+    if (e instanceof ProductNotFoundError) {
+      return NextResponse.json({ error: e.message }, { status: 404 });
+    }
+
+    if (e instanceof ProductDomainError) {
+      return NextResponse.json({ error: e.message }, { status: 403 });
+    }
+
     return NextResponse.json(
-      { error: err.message ?? "Unauthorized" },
-      { status: 401 }
+      { error: "Failed to delete product" },
+      { status: 500 }
     );
   }
 }

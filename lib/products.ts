@@ -1,12 +1,21 @@
 import { randomUUID } from "crypto";
+
 import type { Product, PublicProduct } from "@/types/product";
-import { CreateProductDTO } from "@/types/product.dto";
 
-// --------------------------------------------------
-// In-memory store (persistence abstraction)
-// --------------------------------------------------
+import {
+  assertVendorCanAccessProduct,
+  assertVendorCanModifyProduct,
+} from "./guards/vendorProduct";
 
-// const products = new Map<string, Product>();
+import {
+  ProductNotFoundError,
+} from "./errors/productErrors";
+
+
+/* =========================================================
+   In-memory store (persistence abstraction)
+   ========================================================= */
+
 const globalForProducts = globalThis as any;
 
 export const products: Map<string, Product> =
@@ -14,20 +23,24 @@ export const products: Map<string, Product> =
 
 globalForProducts.products = products;
 
-// --------------------------------------------------
-// Helpers
-// --------------------------------------------------
+
+/* =========================================================
+   Helpers
+   ========================================================= */
 
 function now(): string {
   return new Date().toISOString();
 }
 
-// --------------------------------------------------
-// Dummy Data
-// --------------------------------------------------
+
+/* =========================================================
+   Dummy seed data
+   ========================================================= */
 
 function seed() {
-  const vendorId = "demo-vendor"; // must match a vendor in auth
+  if (products.size > 0) return;
+
+  const vendorId = "demo-vendor";
 
   const samples: Product[] = [
     {
@@ -44,7 +57,7 @@ function seed() {
         "https://images.unsplash.com/photo-1587829741301-dc798b83add3",
       ],
       category: "Peripherals",
-      tags: ["keyboard", "mechanical", "gaming", "rgb"],
+      tags: ["keyboard", "mechanical"],
       isActive: true,
       isDeleted: false,
       createdAt: now(),
@@ -64,7 +77,7 @@ function seed() {
         "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7",
       ],
       category: "Accessories",
-      tags: ["mouse", "wireless", "ergonomic", "office"],
+      tags: ["mouse", "wireless"],
       isActive: true,
       isDeleted: false,
       createdAt: now(),
@@ -84,7 +97,7 @@ function seed() {
         "https://images.unsplash.com/photo-1609592806787-3d9a2aefbe6f",
       ],
       category: "Connectivity",
-      tags: ["usb-c", "hub", "adapter", "laptop"],
+      tags: ["usb-c", "hub"],
       isActive: true,
       isDeleted: false,
       createdAt: now(),
@@ -99,15 +112,26 @@ function seed() {
 
 seed();
 
-// --------------------------------------------------
-// Create
-// --------------------------------------------------
 
-type CreateProductInput = CreateProductDTO & {
+/* =========================================================
+   Create
+   ========================================================= */
+
+export type CreateProductInput = {
   vendorId: string;
+  title: string;
+  description?: string;
+  price: number;
+  stock: number;
+  sku?: string;
+  images?: string[];
+  category?: string;
+  tags?: string[];
 };
 
-export async function createProduct(data: CreateProductInput): Promise<Product> {
+export async function createProduct(
+  data: CreateProductInput
+): Promise<Product> {
   const product: Product = {
     productId: randomUUID(),
     vendorId: data.vendorId,
@@ -119,25 +143,27 @@ export async function createProduct(data: CreateProductInput): Promise<Product> 
     currency: "INR",
     stock: data.stock,
 
-    isActive: true,
-    isDeleted: false,
-
     sku: data.sku,
     images: data.images,
     category: data.category,
     tags: data.tags,
+
+    isActive: true,
+    isDeleted: false,
 
     createdAt: now(),
     updatedAt: now(),
   };
 
   products.set(product.productId, product);
+
   return product;
 }
 
-// --------------------------------------------------
-// List (vendor-scoped)
-// --------------------------------------------------
+
+/* =========================================================
+   List (vendor scoped)
+   ========================================================= */
 
 export async function getVendorProducts(
   vendorId: string,
@@ -150,35 +176,39 @@ export async function getVendorProducts(
   });
 }
 
-// --------------------------------------------------
-// Get single (vendor-scoped)
-// --------------------------------------------------
+
+/* =========================================================
+   Get single
+   ========================================================= */
 
 export async function getProductById(
   productId: string,
   vendorId: string
-): Promise<Product | null> {
+): Promise<Product> {
   const product = products.get(productId);
-  if (!product) return null;
-  if (product.vendorId !== vendorId) return null;
+
+  assertVendorCanAccessProduct(product, vendorId);
+
   return product;
 }
 
-// --------------------------------------------------
-// Update (vendor-scoped, partial)
-// --------------------------------------------------
 
-type DomainUpdatePatch = Partial<Omit<Product, "productId" | "vendorId" | "createdAt">>;
+/* =========================================================
+   Update
+   ========================================================= */
+
+export type DomainUpdatePatch = Partial<
+  Omit<Product, "productId" | "vendorId" | "createdAt">
+>;
 
 export async function updateProduct(
   productId: string,
   vendorId: string,
   patch: DomainUpdatePatch
-): Promise<Product | null> {
+): Promise<Product> {
   const product = products.get(productId);
-  if (!product) return null;
-  if (product.vendorId !== vendorId) return null;
-  if (product.isDeleted) return null;
+
+  assertVendorCanModifyProduct(product, vendorId);
 
   const updated: Product = {
     ...product,
@@ -187,45 +217,35 @@ export async function updateProduct(
   };
 
   products.set(productId, updated);
+
   return updated;
 }
 
-// --------------------------------------------------
-// Soft delete (vendor-scoped)
-// --------------------------------------------------
+
+/* =========================================================
+   Soft delete
+   ========================================================= */
 
 export async function softDeleteProduct(
   productId: string,
   vendorId: string
-): Promise<boolean> {
+): Promise<void> {
   const product = products.get(productId);
-  if (!product) return false;
-  if (product.vendorId !== vendorId) return false;
-  if (product.isDeleted) return false;
+
+  assertVendorCanModifyProduct(product, vendorId);
 
   products.set(productId, {
     ...product,
     isDeleted: true,
     isActive: false,
-    deletedAt: now(),
     updatedAt: now(),
   });
-
-  return true;
 }
 
 
-
-/*
-|--------------------------------------------------------------------------
-| Public storefront (READ-ONLY — cross-vendor)
-|--------------------------------------------------------------------------
-| These are PUBLIC SAFE PROJECTIONS.
-| They NEVER expose vendorId or deleted/inactive products.
-| Used by /api/products/*
-|--------------------------------------------------------------------------
-*/
-
+/* =========================================================
+   Public storefront (safe projection)
+   ========================================================= */
 
 export async function getAllPublicProducts(): Promise<PublicProduct[]> {
   const result: PublicProduct[] = [];
@@ -245,14 +265,14 @@ export async function getAllPublicProducts(): Promise<PublicProduct[]> {
 
 export async function getPublicProductById(
   productId: string
-): Promise<PublicProduct | null> {
+): Promise<PublicProduct> {
   const p = products.get(productId);
-  if (!p) return null;
 
-  if (p.isDeleted) return null;
-  if (!p.isActive) return null;
-  if (p.stock <= 0) return null;
+  if (!p || p.isDeleted || !p.isActive || p.stock <= 0) {
+    throw new ProductNotFoundError();
+  }
 
   const { vendorId: _omit, ...safe } = p;
+
   return safe;
 }
