@@ -1,23 +1,15 @@
 import { NextResponse } from "next/server";
-import { verifyToken } from "@/lib/jwt";
-import { findUserById } from "@/lib/db";
+import { getUserFromRequest } from "@/lib/auth";
 
-export async function GET(req: Request) {
-  const cookie = req.headers.get("cookie") || "";
-  const match = cookie.match(/auth=([^;]+)/);
-  if (!match) return NextResponse.json({}, { status: 401 });
+export async function GET(_req: Request) {
+  const user = await getUserFromRequest();
 
-  try {
-    const payload = verifyToken(match[1]);
-    const user = await findUserById(payload.id);
-    if (!user) throw new Error();
-
-    return NextResponse.json({
-      id: user.id,
-      email: user.email,
-      role: user.role
-    });
-  } catch {
-    return NextResponse.json({}, { status: 401 });
+  if (!user) {
+    return NextResponse.json(
+      { error: "Unauthenticated" },
+      { status: 401 }
+    );
   }
+
+  return NextResponse.json({ user });
 }

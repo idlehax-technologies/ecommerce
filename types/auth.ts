@@ -4,6 +4,7 @@ export type AuthUser = {
   id: string;
   email: string;
   role: UserRole;
+  vendorId?: string; // present iff role === "vendor"
 }
 
 export type AuthState = {
