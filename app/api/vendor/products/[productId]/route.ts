@@ -15,11 +15,11 @@ import {
  */
 export async function GET(
   _req: Request,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
     const { vendorId } = await getVendorFromRequest();
-    const { productId } = params;
+    const { productId } = await params;
 
     const product = await getProductById(productId, vendorId);
 
@@ -45,11 +45,11 @@ export async function GET(
  */
 export async function PATCH(
   req: Request,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
     const { vendorId } = await getVendorFromRequest();
-    const { productId } = params;
+    const { productId } = await params;
 
     const body = await req.json();
     validateUpdateProduct(body);
@@ -85,11 +85,11 @@ export async function PATCH(
  */
 export async function DELETE(
   _req: Request,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
     const { vendorId } = await getVendorFromRequest();
-    const { productId } = params;
+    const { productId } = await params;
 
     const deleted = await softDeleteProduct(
       productId,

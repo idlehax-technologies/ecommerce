@@ -13,10 +13,11 @@ import { getPublicProductById } from "@/lib/products";
  */
 export async function GET(
   _req: Request,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
-    const product = await getPublicProductById(params.productId);
+    const { productId } = await params;
+    const product = await getPublicProductById(productId);
 
     if (!product) {
       return NextResponse.json(

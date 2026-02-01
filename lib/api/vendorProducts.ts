@@ -1,4 +1,5 @@
 import type { Product } from "@/types/product";
+import { CreateProductDTO, UpdateProductDTO } from "@/types/product.dto";
 
 const json = { "Content-Type": "application/json" };
 
@@ -8,7 +9,7 @@ export async function listVendorProducts(): Promise<Product[]> {
     return (await res.json()).products;
 }
 
-export async function createVendorProduct(body: unknown): Promise<Product> {
+export async function createVendorProduct(body: CreateProductDTO): Promise<Product> {
     const res = await fetch("/api/vendor/products", {
         method: "POST",
         headers: json,
@@ -26,7 +27,7 @@ export async function getVendorProduct(productId: string): Promise<Product> {
 
 export async function updateVendorProduct(
     productId: string,
-    patch: unknown
+    patch: UpdateProductDTO
 ): Promise<Product> {
     const res = await fetch(`/api/vendor/products/${productId}`, {
         method: "PATCH",
