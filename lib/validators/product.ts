@@ -1,3 +1,5 @@
+import { CreateProductDTO, UpdateProductDTO } from "@/types/product.dto";
+
 // --------------------------------------
 // helpers
 // --------------------------------------
@@ -28,7 +30,7 @@ function assertNoForbiddenFields(obj: Record<string, unknown>) {
 // Create validation
 // --------------------------------------
 
-export function validateCreateProduct(body: unknown): void {
+export function validateCreateProduct(body: unknown): asserts body is CreateProductDTO {
   if (typeof body !== "object" || body === null) {
     throw new Error("Invalid request body");
   }
@@ -78,7 +80,7 @@ export function validateCreateProduct(body: unknown): void {
 // Update validation (partial)
 // --------------------------------------
 
-export function validateUpdateProduct(body: unknown): void {
+export function validateUpdateProduct(body: unknown): asserts body is UpdateProductDTO {
   if (typeof body !== "object" || body === null) {
     throw new Error("Invalid request body");
   }

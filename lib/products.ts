@@ -1,11 +1,18 @@
 import { randomUUID } from "crypto";
 import type { Product, PublicProduct } from "@/types/product";
+import { CreateProductDTO } from "@/types/product.dto";
 
 // --------------------------------------------------
 // In-memory store (persistence abstraction)
 // --------------------------------------------------
 
-const products = new Map<string, Product>();
+// const products = new Map<string, Product>();
+const globalForProducts = globalThis as any;
+
+export const products: Map<string, Product> =
+  globalForProducts.products ?? new Map();
+
+globalForProducts.products = products;
 
 // --------------------------------------------------
 // Helpers
@@ -16,20 +23,91 @@ function now(): string {
 }
 
 // --------------------------------------------------
+// Dummy Data
+// --------------------------------------------------
+
+function seed() {
+  const vendorId = "demo-vendor"; // must match a vendor in auth
+
+  const samples: Product[] = [
+    {
+      productId: "p-1",
+      vendorId,
+      title: "Mechanical Keyboard",
+      description: "Hot-swappable, brown switches",
+      price: 499900,
+      currency: "INR",
+      stock: 12,
+      sku: "KEY-MECH-001",
+      images: [
+        "https://images.unsplash.com/photo-1517336714731-489689fd1ca8",
+        "https://images.unsplash.com/photo-1587829741301-dc798b83add3",
+      ],
+      category: "Peripherals",
+      tags: ["keyboard", "mechanical", "gaming", "rgb"],
+      isActive: true,
+      isDeleted: false,
+      createdAt: now(),
+      updatedAt: now(),
+    },
+    {
+      productId: "p-2",
+      vendorId,
+      title: "Wireless Mouse",
+      description: "2.4GHz ergonomic",
+      price: 129900,
+      currency: "INR",
+      stock: 30,
+      sku: "MOU-WL-002",
+      images: [
+        "https://images.unsplash.com/photo-1527814050087-3793815479db",
+        "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7",
+      ],
+      category: "Accessories",
+      tags: ["mouse", "wireless", "ergonomic", "office"],
+      isActive: true,
+      isDeleted: false,
+      createdAt: now(),
+      updatedAt: now(),
+    },
+    {
+      productId: "p-3",
+      vendorId,
+      title: "USB-C Hub",
+      description: "HDMI + USB 3.0 + PD",
+      price: 219900,
+      currency: "INR",
+      stock: 7,
+      sku: "HUB-USBC-003",
+      images: [
+        "https://images.unsplash.com/photo-1580894894513-541e068a3e2b",
+        "https://images.unsplash.com/photo-1609592806787-3d9a2aefbe6f",
+      ],
+      category: "Connectivity",
+      tags: ["usb-c", "hub", "adapter", "laptop"],
+      isActive: true,
+      isDeleted: false,
+      createdAt: now(),
+      updatedAt: now(),
+    },
+  ];
+
+  for (const p of samples) {
+    products.set(p.productId, p);
+  }
+}
+
+seed();
+
+// --------------------------------------------------
 // Create
 // --------------------------------------------------
 
-export async function createProduct(data: {
+type CreateProductInput = CreateProductDTO & {
   vendorId: string;
-  title: string;
-  description?: string;
-  price: number;
-  stock: number;
-  sku?: string;
-  images?: string[];
-  category?: string;
-  tags?: string[];
-}): Promise<Product> {
+};
+
+export async function createProduct(data: CreateProductInput): Promise<Product> {
   const product: Product = {
     productId: randomUUID(),
     vendorId: data.vendorId,
@@ -90,10 +168,12 @@ export async function getProductById(
 // Update (vendor-scoped, partial)
 // --------------------------------------------------
 
+type DomainUpdatePatch = Partial<Omit<Product, "productId" | "vendorId" | "createdAt">>;
+
 export async function updateProduct(
   productId: string,
   vendorId: string,
-  patch: Partial<Omit<Product, "productId" | "vendorId" | "createdAt">>
+  patch: DomainUpdatePatch
 ): Promise<Product | null> {
   const product = products.get(productId);
   if (!product) return null;
