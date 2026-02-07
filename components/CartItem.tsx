@@ -1,35 +1,60 @@
 "use client";
 
 import {
-  Box,
+  Card,
+  CardContent,
   Typography,
   IconButton,
+  Stack,
+  Box,
   Button,
-  Divider,
 } from "@mui/material";
+
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import DeleteIcon from "@mui/icons-material/Delete";
+
 import { useCart } from "@/context/CartContext";
 import type { CartItemType } from "@/types/cart";
 
-export default function CartItem({ item }: { item: CartItemType }) {
-  const { increaseQuantity, decreaseQuantity, startPendingRemove } = useCart();
+type Props = {
+  item: CartItemType;
+};
+
+export default function CartItem({ item }: Props) {
+  const {
+    increaseQuantity,
+    decreaseQuantity,
+    startPendingRemove,
+  } = useCart();
+
+  const total = (item.price * item.quantity) / 100;
 
   return (
-    <Box>
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="flex-start"
-      >
-        <Box>
-          <Typography fontWeight={600}>{item.name}</Typography>
+    <Card variant="outlined">
+      <CardContent>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          spacing={2}
+        >
+          {/* Product info */}
+          <Box>
+            <Typography variant="subtitle1" fontWeight={600}>
+              {item.name}
+            </Typography>
 
-          <Box display="flex" alignItems="center" gap={1} mt={1}>
+            <Typography variant="body2" color="text.secondary">
+              ₹ {(item.price / 100).toFixed(2)} each
+            </Typography>
+          </Box>
+
+          {/* Quantity controls */}
+          <Stack direction="row" alignItems="center" spacing={1}>
             <IconButton
-              size="small"
               onClick={() => decreaseQuantity(item.productId)}
+              size="small"
             >
               <RemoveIcon />
             </IconButton>
@@ -37,30 +62,29 @@ export default function CartItem({ item }: { item: CartItemType }) {
             <Typography>{item.quantity}</Typography>
 
             <IconButton
-              size="small"
               onClick={() => increaseQuantity(item.productId)}
+              size="small"
             >
               <AddIcon />
             </IconButton>
-          </Box>
+          </Stack>
 
-          <Button
-            size="small"
-            color="error"
-            startIcon={<DeleteIcon />}
-            onClick={() => startPendingRemove(item.productId)}
-            sx={{ mt: 1 }}
-          >
-            Remove
-          </Button>
-        </Box>
+          {/* Total + remove */}
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <Typography fontWeight={600}>
+              ₹ {total.toFixed(2)}
+            </Typography>
 
-        <Typography>
-          ₹{item.price} × {item.quantity}
-        </Typography>
-      </Box>
-
-      <Divider sx={{ my: 2 }} />
-    </Box>
+            <Button
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={() => startPendingRemove(item.productId)}
+            >
+              Remove
+            </Button>
+          </Stack>
+        </Stack>
+      </CardContent>
+    </Card>
   );
 }

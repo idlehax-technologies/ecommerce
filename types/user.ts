@@ -5,9 +5,7 @@ export type User = {
     name: string;
     email: string;
     role: UserRole;
-};
 
-export type Vendor = User & {
-    role: "vendor";
-    shopName: string;
+    // NEW — school / tenant binding
+    tenantId: string | null
 };

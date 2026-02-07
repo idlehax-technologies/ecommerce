@@ -1,14 +1,14 @@
 export type CartItemType = {
-    productId: number;
-    vendorId: string;
-    name: string;
-    price: number;
+    productId: string;   // consistent with domain
+
+    name: string;        // display only
+    price: number;       // display only
     quantity: number;
 };
 
 export type AddToCartInput = {
-    productId: number;
-    vendorId: string;
+    productId: string;
+
     name: string;
     price: number;
 };
@@ -16,9 +16,9 @@ export type AddToCartInput = {
 export type CartContextType = {
     items: CartItemType[];
     addToCart: (product: AddToCartInput) => void;
-    removeFromCart: (productId: number) => void;
-    increaseQuantity: (productId: number) => void;
-    decreaseQuantity: (productId: number) => void;
+    removeFromCart: (productId: string) => void;
+    increaseQuantity: (productId: string) => void;
+    decreaseQuantity: (productId: string) => void;
     clearCart: () => void;
 
     placeOrder: () => void;
@@ -28,10 +28,10 @@ export type CartContextType = {
     orderAttempted: boolean;
     orderPlaced: boolean;
 
-    startPendingRemove: (productId: number) => void;
+    startPendingRemove: (productId: string) => void;
     stopPendingRemove: () => void;
     pendingRemove: {
-        productId: number;
+        productId: string;
         timeoutId: NodeJS.Timeout;
     } | null;
 };

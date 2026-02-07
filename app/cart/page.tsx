@@ -11,36 +11,47 @@ import {
   Paper,
   Collapse,
 } from "@mui/material";
-import { useCart } from "@/context/CartContext";
+
 import Link from "next/link";
+import { useCart } from "@/context/CartContext";
 import CartItem from "@/components/CartItem";
+
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
 import AddIcon from "@mui/icons-material/Add";
 
 export default function CartPage() {
   const { items, clearCart, pendingRemove, stopPendingRemove } = useCart();
 
+  // paise → rupees
   const subtotal = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
 
+  const subtotalRupees = (subtotal / 100).toFixed(2);
+
+  const itemCount = items.reduce((s, i) => s + i.quantity, 0);
+
+  // -----------------------------
+  // Empty state
+  // -----------------------------
   if (items.length === 0) {
     return (
-      <Container maxWidth="sm" sx={{ mt: 6, mb: 6 }}>
-        <Paper elevation={3} sx={{ p: 4, textAlign: "center" }}>
+      <Container maxWidth="sm" sx={{ mt: 8, mb: 8 }}>
+        <Paper elevation={3} sx={{ p: 5, textAlign: "center" }}>
           <ShoppingCartOutlinedIcon
             sx={{ fontSize: 64, color: "text.disabled", mb: 2 }}
           />
+
           <Typography variant="h5" gutterBottom>
             Your cart is empty
           </Typography>
 
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Looks like you haven't added anything yet.
+            Add some products to continue shopping.
           </Typography>
 
-          <Button variant="contained" size="large" component={Link} href="/">
+          <Button variant="contained" component={Link} href="/">
             Browse Products
           </Button>
         </Paper>
@@ -48,24 +59,20 @@ export default function CartPage() {
     );
   }
 
+  // -----------------------------
+  // Main cart
+  // -----------------------------
   return (
     <Container maxWidth="sm" sx={{ mt: 6, mb: 6 }}>
       <Paper elevation={3} sx={{ p: 3 }}>
-        <Typography variant="h4">
-          My Cart
+        {/* Header */}
+        <Typography variant="h4" fontWeight={600}>
+          My Cart ({itemCount})
         </Typography>
 
         <Divider sx={{ my: 2 }} />
 
-        <Box display="flex" justifyContent="space-between" sx={{ mb: 1 }}>
-          <Typography variant="subtitle2" color="text.secondary">
-            Item
-          </Typography>
-          <Typography variant="subtitle2" color="text.secondary">
-            Price
-          </Typography>
-        </Box>
-
+        {/* Items */}
         <Stack spacing={2}>
           {items.map((item) => {
             const isBeingRemoved =
@@ -79,39 +86,50 @@ export default function CartPage() {
           })}
         </Stack>
 
+        {/* Add more */}
         <Button
           startIcon={<AddIcon />}
           component={Link}
           href="/"
           variant="text"
-          color="primary"
-          sx={{ textTransform: "none", fontSize: 14 }}
+          sx={{ mt: 1, textTransform: "none" }}
         >
           Add more products
         </Button>
 
         <Divider sx={{ my: 2 }} />
 
+        {/* Subtotal */}
         <Box display="flex" justifyContent="flex-end">
-          <Typography variant="h6">Subtotal: ₹{subtotal}</Typography>
+          <Typography variant="h6" fontWeight={600}>
+            Subtotal: ₹ {subtotalRupees}
+          </Typography>
         </Box>
 
+        {/* Actions */}
         <Button
           variant="outlined"
           color="error"
           fullWidth
-          sx={{ my: 2 }}
+          sx={{ mt: 2 }}
           onClick={clearCart}
         >
           Clear Cart
         </Button>
 
-        <Button variant="contained" fullWidth component={Link} href="/checkout">
+        <Button
+          variant="contained"
+          fullWidth
+          component={Link}
+          href="/checkout"
+          sx={{ mt: 1 }}
+        >
           Checkout
         </Button>
 
+        {/* Undo snackbar */}
         <Snackbar
-          open={!!pendingRemove} // pendingRemove (null -> falsy) => !pendingRemove (true) => !!pendingRemove (false)
+          open={!!pendingRemove}
           autoHideDuration={3000}
           message="Item removed from cart"
           onClose={stopPendingRemove}

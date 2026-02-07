@@ -1,73 +1,46 @@
+// lib/db.ts
+
 import bcrypt from "bcryptjs";
-
-/* =========================
-   Types
-========================= */
-
 import type { UserRole } from "@/types/auth";
 
 export interface DBUser {
-  id: string;
+  userId: string;
   email: string;
   password: string;
+
   role: UserRole;
+  tenantId: string | null;
 }
 
-/* =========================
-   Fake DB (replace later)
-========================= */
-
-// In-memory store for now
 const users = new Map<string, DBUser>();
 
-/* =========================
-   Queries
-========================= */
-
-export async function findUserByEmail(email: string): Promise<DBUser | null> {
-  for (const user of users.values()) {
-    if (user.email === email) return user;
-  }
+export async function findUserByEmail(email: string) {
+  for (const u of users.values()) if (u.email === email) return u;
   return null;
 }
 
-export async function findUserById(id: string): Promise<DBUser | null> {
-  return users.get(id) || null;
+export async function findUserById(userId: string) {
+  return users.get(userId) ?? null;
 }
-
-/* =========================
-   Mutations
-========================= */
 
 export async function createUser(data: {
   email: string;
   password: string;
-  role: UserRole;
-}): Promise<DBUser> {
-  const id = crypto.randomUUID();
+}) {
+  const userId = crypto.randomUUID();
 
   const user: DBUser = {
-    id,
+    userId,
     email: data.email,
     password: data.password,
-    role: data.role
+    role: "customer",
+    tenantId: null,
   };
 
-  users.set(id, user);
+  users.set(userId, user);
   return user;
 }
 
-/* =========================
-   Password helpers
-========================= */
-
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10);
-}
-
-export async function verifyPassword(
-  password: string,
-  hashed: string
-): Promise<boolean> {
-  return bcrypt.compare(password, hashed);
-}
+export const hashPassword = (p: string) => bcrypt.hash(p, 10);
+export const verifyPassword = (p: string, h: string) =>
+  bcrypt.compare(p, h);

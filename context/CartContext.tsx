@@ -16,8 +16,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const [orderPlaced, setOrderPlaced] = useState(false);
 
     const [pendingRemove, setPendingRemove] = useState<{
-        productId: number;
-        timeoutId: NodeJS.Timeout;
+        productId: string;
+        timeoutId: ReturnType<typeof setTimeout>;
     } | null>(null);
 
     function addToCart(product: AddToCartInput) {
@@ -36,11 +36,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         });
     }
 
-    function removeFromCart(productId: number) {
+    function removeFromCart(productId: string) {
         setItems((items) => items.filter((i) => i.productId !== productId));
     }
 
-    function increaseQuantity(productId: number) {
+    function increaseQuantity(productId: string) {
         setItems((items) =>
             items.map((item) =>
                 item.productId === productId ? { ...item, quantity: item.quantity + 1 } : item
@@ -48,7 +48,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         );
     }
 
-    function decreaseQuantity(productId: number) {
+    function decreaseQuantity(productId: string) {
         setItems((items) =>
             items
                 .map((item) =>
@@ -78,7 +78,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setOrderPlaced(false);
     }
 
-    function startPendingRemove(productId: number) {
+    function startPendingRemove(productId: string) {
         if (pendingRemove) {
             clearTimeout(pendingRemove.timeoutId);
         }

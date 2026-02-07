@@ -1,62 +1,44 @@
+// lib/auth.ts
+
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/jwt";
 import type { AuthUser } from "@/types/auth";
 
-// --------------------
-// Type guard
-// --------------------
-function isAuthUser(value: unknown): value is AuthUser {
-  if (typeof value !== "object" || value === null) return false;
+function isAuthUser(v: unknown): v is AuthUser {
+  if (!v || typeof v !== "object") return false;
 
-  const v = value as Record<string, unknown>;
+  const x = v as any;
 
-  if (typeof v.id !== "string") return false;
-  if (typeof v.email !== "string") return false;
-  if (v.role !== "vendor" && v.role !== "customer") return false;
-
-  if (v.role === "vendor" && typeof v.vendorId !== "string") {
-    return false;
-  }
-
-  return true;
+  return (
+    typeof x.userId === "string" &&
+    typeof x.email === "string" &&
+    ["customer", "staff", "admin"].includes(x.role)
+  );
 }
 
-// --------------------
-// Auth helpers
-// --------------------
 export async function getUserFromRequest(): Promise<AuthUser | null> {
+  const token = (await cookies()).get("auth")?.value;
+  if (!token) return null;
+
   try {
-    const cookieStore = await cookies(); // <-- IMPORTANT
-    const token = cookieStore.get("auth")?.value;
-
-    if (!token) return null;
-
-    const payload = verifyToken(token); // unknown
-
-    if (!isAuthUser(payload)) {
-      return null;
-    }
-
-    return payload;
+    const payload = verifyToken(token);
+    return isAuthUser(payload) ? payload : null;
   } catch {
+    // invalid / expired / tampered token
     return null;
   }
 }
 
-export async function getVendorFromRequest(): Promise<{ vendorId: string }> {
+/* ---------- scope helpers ---------- */
+
+export async function getTenantIdFromRequest(): Promise<string> {
   const user = await getUserFromRequest();
+  if (!user?.tenantId) throw new Error("No tenant scope");
+  return user.tenantId;
+}
 
-  if (!user) {
-    throw new Error("Unauthenticated");
-  }
-
-  if (user.role !== "vendor") {
-    throw new Error("Forbidden");
-  }
-
-  if (!user.vendorId) {
-    throw new Error("Vendor ID missing");
-  }
-
-  return { vendorId: user.vendorId };
+export async function requireAdmin() {
+  const user = await getUserFromRequest();
+  if (!user || user.role !== "admin") throw new Error("Forbidden");
+  return user;
 }

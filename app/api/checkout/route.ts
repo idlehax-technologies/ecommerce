@@ -1,47 +1,92 @@
 import { NextResponse } from "next/server";
-import type { CheckoutRequest, CheckoutResponse } from "@/types/checkout";
 
-export async function POST(request: Request) {
+import type {
+    CheckoutRequest,
+    CheckoutResponse,
+} from "@/types/checkout";
+
+import { getUserFromRequest } from "@/lib/auth";
+
+import { assertCheckoutRequest } from "@/lib/checkout/validators";
+import { mapCheckoutDTOToInput } from "@/lib/checkout/mappers";
+import { processCheckout } from "@/lib/checkout/domain";
+import { CheckoutError } from "@/lib/checkout/errors";
+
+
+// Route = HTTP glue only
+export async function POST(req: Request) {
     try {
-        const body = (await request.json()) as CheckoutRequest;
-        const { items, total } = body;
+        // ---------------------------
+        // 1. Auth (transport boundary)
+        // ---------------------------
+        const user = await getUserFromRequest();
 
-        // basic validation
-        if (!items || items.length === 0) {
+        if (!user) {
             const response: CheckoutResponse = {
                 success: false,
-                errorCode: "EMPTY_CART",
-                message: "Cart is empty",
+                errorCode: "UNAUTHORIZED",
+                message: "Please login first",
+            };
+
+            return NextResponse.json(response, { status: 401 });
+        }
+
+        // ---------------------------
+        // 2. Parse JSON
+        // ---------------------------
+        const body: unknown = await req.json();
+
+        // ---------------------------
+        // 3. Validate shape (syntax)
+        // ---------------------------
+        assertCheckoutRequest(body);
+
+        // Now body is typed as CheckoutRequest
+        const dto: CheckoutRequest = body;
+
+        // ---------------------------
+        // 4. Map transport → domain
+        // ---------------------------
+        const input = mapCheckoutDTOToInput(dto, {
+            userId: user.userId,
+            tenantId: user.tenantId,
+        });
+
+        // ---------------------------
+        // 5. Domain logic (real rules)
+        // ---------------------------
+        const result = await processCheckout(input);
+
+        // ---------------------------
+        // 6. Success response
+        // ---------------------------
+        const response: CheckoutResponse = {
+            success: true,
+            orderId: result.orderId,
+            message: "Order placed successfully",
+        };
+
+        return NextResponse.json(response, { status: 200 });
+
+    } catch (e) {
+        // ---------------------------
+        // 7. Domain/validation errors
+        // ---------------------------
+        if (e instanceof CheckoutError) {
+            const response: CheckoutResponse = {
+                success: false,
+                errorCode: "CHECKOUT_FAILED",
+                message: e.message,
             };
 
             return NextResponse.json(response, { status: 400 });
         }
 
-        // 🔧 TEMP: simulate payment delay
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        // ---------------------------
+        // 8. Unexpected errors
+        // ---------------------------
+        console.error("Checkout route crash:", e);
 
-        // 🔧 TEMP: simulate success / failure
-        const isSuccess = Math.random() > 0.5;
-
-        if (!isSuccess) {
-            const response: CheckoutResponse = {
-                success: false,
-                errorCode: "PAYMENT_FAILED",
-                message: "Payment could not be completed",
-            };
-
-            return NextResponse.json(response, { status: 402 });
-        } else {
-            // success response
-            const response: CheckoutResponse = {
-                success: true,
-                orderId: `ORD_${Date.now()}`,
-                message: "Order placed successfully",
-            };
-
-            return NextResponse.json(response);
-        }
-    } catch (error) {
         const response: CheckoutResponse = {
             success: false,
             errorCode: "SERVER_ERROR",

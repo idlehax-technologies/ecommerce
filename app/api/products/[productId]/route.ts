@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getPublicProductById } from "@/lib/products";
+import { getPublicProductById } from "@/lib/products/domain";
 
 /**
  * GET /api/products/[productId]

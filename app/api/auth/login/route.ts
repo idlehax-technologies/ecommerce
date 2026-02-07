@@ -1,80 +1,75 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+
+import {
+  findUserByEmail,
+  verifyPassword,
+} from "@/lib/db";
+
 import { signToken } from "@/lib/jwt";
-import { findUserByEmail, verifyPassword } from "@/lib/db";
-import { getVendorIdForUser } from "@/lib/vendors";
+
 
 export async function POST(req: Request) {
   try {
-    let body;
-    try {
-      body = await req.json();
-    } catch {
+    const body = await req.json();
+    const { email, password } = body ?? {};
+
+    if (!email || !password) {
       return NextResponse.json(
-        { message: "Invalid request body" },
+        { message: "Email and password required" },
         { status: 400 }
       );
     }
 
-    const { email, password } = body;
-
-
-    if (!email || !password)
-      return NextResponse.json({ message: "Missing fields" }, { status: 400 });
-
     const user = await findUserByEmail(email);
-    if (!user)
-      return NextResponse.json({ message: "Invalid credentials" }, { status: 401 });
+
+    if (!user) {
+      return NextResponse.json(
+        { message: "Invalid credentials" },
+        { status: 401 }
+      );
+    }
 
     const ok = await verifyPassword(password, user.password);
-    if (!ok)
-      return NextResponse.json({ message: "Invalid credentials" }, { status: 401 });
 
-
-
-    let vendorId: string | undefined;
-
-    if (user.role === "vendor") {
-      const resolvedVendorId = await getVendorIdForUser(user.id);
-
-      if (!resolvedVendorId) {
-        return NextResponse.json(
-          { message: "Vendor account not configured" },
-          { status: 500 }
-        );
-      }
-      vendorId = resolvedVendorId;
+    if (!ok) {
+      return NextResponse.json(
+        { message: "Invalid credentials" },
+        { status: 401 }
+      );
     }
 
     const token = signToken({
-      id: user.id,
+      userId: user.userId,
       email: user.email,
       role: user.role,
-      vendorId
+      tenantId: user.tenantId ?? undefined,
     });
-
 
     const res = NextResponse.json({
       user: {
-        id: user.id,
+        userId: user.userId,
         email: user.email,
         role: user.role,
-        vendorId: user.role === "vendor" ? vendorId : undefined
-      }
+        tenantId: user.tenantId ?? undefined,
+      },
     });
-
 
     res.cookies.set("auth", token, {
       httpOnly: true,
-      path: "/",
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production"
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
     });
 
     return res;
 
-  } catch {
+  } catch (e) {
+    console.error(e);
+
     return NextResponse.json(
-      { message: "Internal server error" },
+      { message: "Login failed" },
       { status: 500 }
     );
   }
