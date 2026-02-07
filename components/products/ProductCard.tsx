@@ -7,37 +7,42 @@ import {
   CardMedia,
   Typography,
   Stack,
+  CardActionArea,
   Box,
 } from "@mui/material";
+
 import type { PublicProduct } from "@/types/product";
 
 type Props = {
   product: PublicProduct;
 };
 
+/**
+ * Pure presentation component
+ * - no fetch
+ * - no logic
+ * - only formatting
+ */
 export default function ProductCard({ product }: Props) {
   const image =
-    product.images && product.images.length > 0
-      ? product.images[0]
-      : "https://via.placeholder.com/400x300?text=No+Image";
+    product.images?.[0] ??
+    "https://via.placeholder.com/400x300?text=No+Image";
+
+  // price stored in paise → convert for UI
+  const price = (product.price / 100).toFixed(2);
 
   return (
-    <Link
-      href={`/products/${product.productId}`}
-      style={{ textDecoration: "none" }}
+    <Card
+      sx={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+      }}
     >
-      <Card
-        sx={{
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          cursor: "pointer",
-          transition: "0.15s ease",
-          "&:hover": {
-            transform: "translateY(-3px)",
-            boxShadow: 6,
-          },
-        }}
+      <CardActionArea
+        component={Link}
+        href={`/products/${product.productId}`}
+        sx={{ height: "100%" }}
       >
         {/* Image */}
         <CardMedia
@@ -52,7 +57,8 @@ export default function ProductCard({ product }: Props) {
           <Stack spacing={1}>
             {/* Title */}
             <Typography
-              variant="h6"
+              variant="subtitle1"
+              fontWeight={600}
               sx={{
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -63,8 +69,8 @@ export default function ProductCard({ product }: Props) {
             </Typography>
 
             {/* Price */}
-            <Typography variant="subtitle1" fontWeight={600}>
-              ₹{product.price}
+            <Typography variant="body1" fontWeight={600}>
+              ₹ {price}
             </Typography>
 
             {/* Stock */}
@@ -80,7 +86,7 @@ export default function ProductCard({ product }: Props) {
             </Box>
           </Stack>
         </CardContent>
-      </Card>
-    </Link>
+      </CardActionArea>
+    </Card>
   );
 }

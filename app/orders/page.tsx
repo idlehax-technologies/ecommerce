@@ -7,61 +7,73 @@ import {
     CardContent,
     Divider,
     Chip,
+    Stack,
 } from "@mui/material";
+
 import { orders } from "@/lib/orders";
+import type { OrderStatus } from "@/types/order";
+
+function getStatusColor(status: OrderStatus) {
+    switch (status) {
+        case "PICKED_UP":
+            return "success";
+
+        case "PAID":
+            return "info";
+
+        case "RESERVED":
+            return "warning";
+
+        case "CANCELLED":
+        case "EXPIRED":
+            return "error";
+
+        default:
+            return "default";
+    }
+}
 
 export default function OrdersPage() {
     return (
-        <Box p={3} maxWidth='800px' mx="auto">
-            <Typography variant="h4" gutterBottom sx={{ mt: 2 }}>
+        <Box p={3} maxWidth={800} mx="auto">
+            <Typography variant="h4" gutterBottom>
                 My Orders
             </Typography>
+
             {orders.length === 0 && (
                 <Typography color="text.secondary">
                     No Orders Yet.
                 </Typography>
             )}
+
             {orders.map((order) => (
-                <Card key={order.orderId} sx={{
-                    mb: 2,
-                    borderRadius: 3,
-                    boxShadow: 3,
-                }}>
+                <Card key={order.orderId} sx={{ mb: 2 }}>
                     <CardContent>
-                        <Box
-                            display="flex"
-                            justifyContent="space-between"
-                            alignItems="center"
-                        >
-                            <Typography>
+                        <Stack spacing={1}>
+                            <Typography fontWeight={600}>
                                 Order: {order.orderId}
                             </Typography>
-                            <Box>
-                                <Chip
-                                    label={order.status}
-                                    color={
-                                        order.status === "SUCCESS"
-                                            ? "success"
-                                            : order.status === "FAILED"
-                                                ? "error"
-                                                : "warning"
-                                    }
-                                    size="small"
-                                    sx={{ minWidth: 90, justifyContent: "center" }}
-                                />
-                            </Box>
-                        </Box>
-                        <Divider sx={{ my: 1 }} />
-                        <Typography variant="body2" color="text.secondary">
-                            Date: {order.createdAt}
-                        </Typography>
-                        <Typography variant="body1" fontWeight={500}>
-                            Price: {order.total}
-                        </Typography>
+
+                            <Divider />
+
+                            <Typography variant="body2" color="text.secondary">
+                                Date: {new Date(order.createdAt).toLocaleString()}
+                            </Typography>
+
+                            <Typography>
+                                ₹ {(order.total / 100).toFixed(2)}
+                            </Typography>
+
+                            <Chip
+                                label={order.status}
+                                color={getStatusColor(order.status)}
+                                size="small"
+                                sx={{ width: "fit-content" }}
+                            />
+                        </Stack>
                     </CardContent>
                 </Card>
             ))}
         </Box>
     );
-
 }

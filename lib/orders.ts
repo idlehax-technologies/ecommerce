@@ -1,56 +1,85 @@
+// lib/orders.ts
+
 import type { Order } from "@/types/order";
+
+/*
+  Dev-only in-memory sample data
+  Matches current tenant + POS + pickup model
+*/
 
 export const orders: Order[] = [
   {
-    orderId: "ORD_1001",
+    orderId: "ORD_2001",
+
+    tenantId: "school-a",
+    userId: "user-101",
+
     items: [
-      { productId: 1, vendorId: "v1", name: "Shoes", price: 999, quantity: 1 },
-      { productId: 2, vendorId: "v2", name: "T-Shirt", price: 499, quantity: 2 },
+      {
+        productId: "p-notebook-001",
+        name: "Classmate Notebook (200 pages)",
+        price: 5000,
+        quantity: 2,
+      },
     ],
-    total: 999 + 499 * 2,
+
+    total: 10000,
     currency: "INR",
-    status: "SUCCESS",
-    createdAt: "2026-01-01T10:15:00Z",
+
+    paymentMode: "DIGITAL",
+    status: "PICKED_UP",
+
+    createdAt: "2026-02-01T09:00:00Z",
+    updatedAt: "2026-02-01T09:10:00Z",
   },
+
   {
-    orderId: "ORD_1002",
+    orderId: "ORD_2002",
+
+    tenantId: "school-a",
+    userId: "user-102",
+
     items: [
-      { productId: 3, vendorId: "v1", name: "Backpack", price: 1499, quantity: 1 },
+      {
+        productId: "p-geometry-002",
+        name: "Geometry Box – Metal",
+        price: 8500,
+        quantity: 1,
+      },
     ],
-    total: 1499,
+
+    total: 8500,
     currency: "INR",
-    status: "FAILED",
-    createdAt: "2026-01-03T14:40:00Z",
+
+    paymentMode: "CASH",
+    status: "PAID",
+
+    createdAt: "2026-02-02T11:30:00Z",
+    updatedAt: "2026-02-02T11:35:00Z",
   },
+
   {
-    orderId: "ORD_1003",
+    orderId: "ORD_2003",
+
+    tenantId: "school-b",
+    userId: "user-201",
+
     items: [
-      { productId: 4, vendorId: "v3", name: "Headphones", price: 1999, quantity: 1 },
-      { productId: 5, vendorId: "v2", name: "Cap", price: 299, quantity: 1 },
+      {
+        productId: "p-notebook-001",
+        name: "Classmate Notebook (200 pages)",
+        price: 5000,
+        quantity: 3,
+      },
     ],
-    total: 1999 + 299,
+
+    total: 15000,
     currency: "INR",
-    status: "SUCCESS",
-    createdAt: "2026-01-05T09:05:00Z",
-  },
-  {
-    orderId: "ORD_1004",
-    items: [
-      { productId: 6, vendorId: "v4", name: "Notebook", price: 199, quantity: 3 },
-    ],
-    total: 199 * 3,
-    currency: "INR",
-    status: "PENDING",
-    createdAt: "2026-01-07T18:20:00Z",
-  },
-  {
-    orderId: "ORD_1005",
-    items: [
-      { productId: 7, vendorId: "v1", name: "Watch", price: 2999, quantity: 1 },
-    ],
-    total: 2999,
-    currency: "INR",
-    status: "SUCCESS",
-    createdAt: "2026-01-10T11:55:00Z",
+
+    paymentMode: "DIGITAL",
+    status: "RESERVED",
+
+    createdAt: "2026-02-03T14:00:00Z",
+    updatedAt: "2026-02-03T14:00:00Z",
   },
 ];

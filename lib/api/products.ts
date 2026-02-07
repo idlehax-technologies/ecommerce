@@ -1,3 +1,5 @@
+// lib/api/products.ts
+
 import type { PublicProduct } from "@/types/product";
 
 export async function listProducts(): Promise<PublicProduct[]> {
@@ -11,7 +13,9 @@ export async function listProducts(): Promise<PublicProduct[]> {
   return data.products;
 }
 
-export async function getProduct(productId: string): Promise<PublicProduct | null> {
+export async function getProduct(
+  productId: string
+): Promise<PublicProduct> {
   const res = await fetch(`/api/products/${productId}`);
 
   if (!res.ok) {

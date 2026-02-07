@@ -1,30 +1,57 @@
 "use client";
 
-// import { useEffect, useState } from "react";
-import { Container, Grid, Typography } from "@mui/material";
-// import type { Product } from "@/types/product";
+import { useEffect, useState } from "react";
+import { Container, Typography, CircularProgress, Box } from "@mui/material";
+
+import type { PublicProduct } from "@/types/product";
+import { listProducts } from "@/lib/api/products";
+
+import ProductList from "@/components/products/ProductList";
 
 export default function Home() {
-  // const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<PublicProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // useEffect(() => {
-  //   async function loadProducts() {
-  //     const res = await fetch("/api/vendor/products");
-  //     if (!res.ok) return;
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      setError(null);
 
-  //     const data = await res.json();
-  //     setProducts(data.products);
-  //   }
+      try {
+        const data = await listProducts();
+        setProducts(data);
+      } catch {
+        setError("Failed to load products");
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  //   loadProducts();
-  // }, []);
+    load();
+  }, []);
 
   return (
-    <Container sx={{ mt: 4 }}>
-      <Typography variant="h4" gutterBottom sx={{ textAlign: "center" }}>
+    <Container sx={{ py: 4 }}>
+      <Typography variant="h4" textAlign="center" gutterBottom>
         Products
       </Typography>
 
+      {loading && (
+        <Box textAlign="center" py={6}>
+          <CircularProgress />
+        </Box>
+      )}
+
+      {error && (
+        <Typography color="error" textAlign="center">
+          {error}
+        </Typography>
+      )}
+
+      {!loading && !error && (
+        <ProductList products={products} />
+      )}
     </Container>
   );
 }
