@@ -12,10 +12,11 @@ import {
 } from "@mui/material";
 
 import ProductForm from "@/components/admin/products/ProductForm";
-import { getProduct, updateProduct, deleteProduct } from "@/lib/api/adminProducts";
+import { getProduct, updateProduct, deleteProduct } from "@/lib/api/productManagement";
 
 import type { Product } from "@/types/product";
 import type { UpdateProductPatch } from "@/types/product";
+import RoleGuard from "@/components/RoleGuard";
 
 export default function ProductDetailPage() {
   const { productId } = useParams<{ productId: string }>();
@@ -90,19 +91,21 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <Container sx={{ py: 4 }}>
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" mb={2}>
-          Edit Product
-        </Typography>
+    <RoleGuard allow={["admin"]}>
+      <Container sx={{ py: 4 }}>
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h6" mb={2}>
+            Edit Product
+          </Typography>
 
-        <ProductForm
-          mode="edit"
-          initial={product}
-          onSubmit={handleUpdate}
-          onDelete={handleDelete}
-        />
-      </Paper>
-    </Container>
+          <ProductForm
+            mode="edit"
+            initial={product}
+            onSubmit={handleUpdate}
+            onDelete={handleDelete}
+          />
+        </Paper>
+      </Container>
+    </RoleGuard>
   );
 }

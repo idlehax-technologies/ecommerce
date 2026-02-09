@@ -12,7 +12,7 @@ function isAuthUser(v: unknown): v is AuthUser {
   return (
     typeof x.userId === "string" &&
     typeof x.email === "string" &&
-    ["customer", "staff", "admin"].includes(x.role)
+    ["customer", "staff", "admin", "superadmin"].includes(x.role)
   );
 }
 
@@ -24,7 +24,6 @@ export async function getUserFromRequest(): Promise<AuthUser | null> {
     const payload = verifyToken(token);
     return isAuthUser(payload) ? payload : null;
   } catch {
-    // invalid / expired / tampered token
     return null;
   }
 }
@@ -40,5 +39,11 @@ export async function getTenantIdFromRequest(): Promise<string> {
 export async function requireAdmin() {
   const user = await getUserFromRequest();
   if (!user || user.role !== "admin") throw new Error("Forbidden");
+  return user;
+}
+
+export async function requireSuperadmin() {
+  const user = await getUserFromRequest();
+  if (!user || user.role !== "superadmin") throw new Error("Forbidden");
   return user;
 }
