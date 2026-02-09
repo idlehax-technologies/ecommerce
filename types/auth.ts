@@ -1,4 +1,6 @@
-export type UserRole = "customer" | "staff" | "admin";
+// types/auth.ts
+
+export type UserRole = "customer" | "staff" | "admin" | "superadmin";
 
 export type AuthUser = {
   userId: string;
@@ -7,6 +9,9 @@ export type AuthUser = {
 
   // tenant boundary (school membership)
   tenantId?: string;
+
+  // superadmin userId
+  impersonatedBy?: string;
 };
 
 export type AuthState = {

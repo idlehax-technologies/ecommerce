@@ -12,6 +12,9 @@ export type JwtPayload = {
 
   // tenant boundary
   tenantId?: string;
+
+  // audit trail (when assuming)
+  impersonatedBy?: string;
 };
 
 export const signToken = (payload: JwtPayload): string =>

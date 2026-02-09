@@ -13,7 +13,7 @@ import {
 } from "@mui/material";
 
 import Link from "next/link";
-import { useCart } from "@/context/CartContext";
+import { useCart } from "@/contexts/CartContext";
 import CartItem from "@/components/CartItem";
 
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
