@@ -17,3 +17,7 @@ export type PublicTenant = {
 export type CreateTenantDTO = {
     name: string;
 };
+
+export type UpdateTenantDTO = {
+    name: string;
+};

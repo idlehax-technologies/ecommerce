@@ -1,6 +1,6 @@
 // lib/tenants.ts
 
-import type { Tenant } from "@/types/tenant";
+import type { Tenant, CreateTenantDTO, UpdateTenantDTO } from "@/types/tenant";
 
 /**
  * TEMP in-memory store
@@ -12,9 +12,13 @@ const tenants = new Map<string, Tenant>([
     {
       tenantId: "demo-school",
       name: "Demo School",
+      status: "active",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     },
   ],
 ]);
+
 
 /**
  * Get tenant by id
@@ -26,6 +30,7 @@ export async function getTenantById(
   return tenants.get(tenantId) ?? null;
 }
 
+
 /**
  * List all tenants (admin usage only)
  */
@@ -33,17 +38,22 @@ export async function listTenants(): Promise<Tenant[]> {
   return Array.from(tenants.values());
 }
 
+
 /**
  * Create a new tenant (superadmin flow)
  */
 export async function createTenant(
-  input: { name: string }
+  input: CreateTenantDTO
 ): Promise<Tenant> {
   const tenantId = crypto.randomUUID();
+  const now = new Date().toISOString();
 
   const tenant: Tenant = {
     tenantId,
     name: input.name,
+    status: "created",
+    createdAt: now,
+    updatedAt: now,
   };
 
   tenants.set(tenantId, tenant);
@@ -51,21 +61,61 @@ export async function createTenant(
   return tenant;
 }
 
+
 /**
  * Update tenant metadata
  */
 export async function updateTenant(
   tenantId: string,
-  patch: Partial<Pick<Tenant, "name">>
+  input: UpdateTenantDTO
 ): Promise<Tenant | null> {
   const existing = tenants.get(tenantId);
   if (!existing) return null;
 
-  const updated = { ...existing, ...patch };
+  const updated: Tenant = {
+    ...existing,
+    ...input,
+    updatedAt: new Date().toISOString(),
+  };
   tenants.set(tenantId, updated);
 
   return updated;
 }
+
+
+export async function activateTenant(
+  tenantId: string
+): Promise<Tenant | null> {
+  const t = tenants.get(tenantId);
+  if (!t) return null;
+
+  const updated: Tenant = {
+    ...t,
+    status: "active",
+    updatedAt: new Date().toISOString(),
+  };
+
+  tenants.set(tenantId, updated);
+  return updated;
+}
+
+
+export async function deactivateTenant(
+  tenantId: string
+): Promise<Tenant | null> {
+  const t = tenants.get(tenantId);
+  if (!t) return null;
+
+  const updated: Tenant = {
+    ...t,
+    status: "inactive",
+    updatedAt: new Date().toISOString(),
+  };
+
+  tenants.set(tenantId, updated);
+  return updated;
+}
+
 
 /**
  * Delete tenant (rare / admin only)

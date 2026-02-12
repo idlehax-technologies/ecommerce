@@ -9,11 +9,7 @@ const SEVEN_DAYS = 60 * 60 * 24 * 7;
 /*
   POST /api/auth/stop-assume
 
-  Behavior:
-  - only valid if currently assuming
-  - restores original superadmin identity
-  - clears tenant scope
-  - issues fresh JWT cookie
+  Restores original superadmin identity.
 */
 
 export async function POST() {
@@ -23,7 +19,6 @@ export async function POST() {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // must be an assumed session
     if (!user.impersonatedBy) {
         return NextResponse.json(
             { error: "Not in assumed session" },
@@ -31,10 +26,9 @@ export async function POST() {
         );
     }
 
-    // restore original superadmin identity
     const token = signToken({
         userId: user.impersonatedBy,
-        email: user.email,
+        phone: user.phone, // still same phone
         role: "superadmin",
     });
 
