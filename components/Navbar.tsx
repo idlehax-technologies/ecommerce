@@ -8,10 +8,11 @@ import {
     Toolbar,
     Typography,
     Button,
-    Box,
-    Badge,
     Stack,
+    Badge,
+    Divider,
 } from "@mui/material";
+
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,11 +20,16 @@ import { useCart } from "@/contexts/CartContext";
 
 export default function Navbar() {
     const router = useRouter();
-
     const { user, loading, logout } = useAuth();
     const { items } = useCart();
 
     const cartCount = items.reduce((s, i) => s + i.quantity, 0);
+
+    const role = user?.role;
+
+    const isCustomer = role === "customer";
+    const isTenantOperator = role === "admin" || role === "staff";
+    const isSuperadmin = role === "superadmin";
 
     const handleLogout = async () => {
         await logout();
@@ -33,45 +39,68 @@ export default function Navbar() {
     return (
         <AppBar position="static" color="default" elevation={1}>
             <Toolbar sx={{ justifyContent: "space-between" }}>
-                {/* Left: Brand */}
+                {/* Brand */}
                 <Typography
                     variant="h6"
                     component={Link}
                     href="/"
-                    sx={{ textDecoration: "none", color: "inherit" }}
+                    sx={{ textDecoration: "none", color: "inherit", fontWeight: 600 }}
                 >
-                    SchoolMart
+                    TenantMart
                 </Typography>
 
-                {/* Right: Actions */}
+                {/* Navigation */}
                 <Stack direction="row" spacing={2} alignItems="center">
                     <Button component={Link} href="/products" color="inherit">
                         Products
                     </Button>
 
-                    <Button component={Link} href="/cart" color="inherit">
-                        <Badge badgeContent={cartCount} color="primary">
-                            <ShoppingCartIcon />
-                        </Badge>
-                    </Button>
+                    {/* Customer */}
+                    {!loading && isCustomer && (
+                        <Button component={Link} href="/cart" color="inherit">
+                            <Badge badgeContent={cartCount} color="primary">
+                                <ShoppingCartIcon />
+                            </Badge>
+                        </Button>
+                    )}
 
-                    {!loading && (
-                        user ? (
-                            <>
+                    {/* Staff + Admin */}
+                    {!loading && isTenantOperator && (
+                        <Button component={Link} href="/admin" color="inherit">
+                            Admin
+                        </Button>
+                    )}
+
+                    {/* Superadmin */}
+                    {!loading && isSuperadmin && (
+                        <Button component={Link} href="/admin/tenants" color="inherit">
+                            Tenants
+                        </Button>
+                    )}
+
+                    <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+
+                    {/* Auth */}
+                    {!loading &&
+                        (user ? (
+                            <Stack direction="row" spacing={2} alignItems="center">
                                 <Typography variant="body2" color="text.secondary">
-                                    {user.email}
+                                    {user.phone}
                                 </Typography>
 
-                                <Button color="error" onClick={handleLogout}>
+                                <Button component={Link} href="/profile" size="small">
+                                    Profile
+                                </Button>
+
+                                <Button color="error" size="small" onClick={handleLogout}>
                                     Logout
                                 </Button>
-                            </>
+                            </Stack>
                         ) : (
                             <Button component={Link} href="/login" variant="contained">
                                 Login
                             </Button>
-                        )
-                    )}
+                        ))}
                 </Stack>
             </Toolbar>
         </AppBar>

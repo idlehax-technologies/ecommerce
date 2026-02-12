@@ -13,6 +13,12 @@ export class TenantNotFoundError extends TenantDomainError {
     }
 }
 
+export class TenantAlreadyExistsError extends TenantDomainError {
+    constructor(message = "Tenant already exists") {
+        super(message, 409);
+    }
+}
+
 export class TenantAlreadyActiveError extends TenantDomainError {
     constructor(message = "Tenant already active") {
         super(message, 409);
