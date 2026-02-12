@@ -4,8 +4,8 @@ import CustomStyles from "./theme";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
-import { AuthProvider } from "@/context/AuthContext";
-import { CartProvider } from "@/context/CartContext";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { CartProvider } from "@/contexts/CartContext";
 
 export const metadata: Metadata = {
   title: "SchoolMart",

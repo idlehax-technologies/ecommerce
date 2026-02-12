@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useCart } from "@/context/CartContext";
+import { useCart } from "@/contexts/CartContext";
 import { checkout } from "@/lib/api/checkout";
 
-import type { CheckoutRequest, CheckoutResponse } from "@/types/checkout";
+import type { CheckoutRequest } from "@/types/checkout";
 
 import {
   Box,

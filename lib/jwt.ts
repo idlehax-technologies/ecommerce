@@ -1,20 +1,11 @@
 // lib/jwt.ts
 
 import jwt from "jsonwebtoken";
-import { UserRole } from "@/types/auth";
+import type { SessionPayload } from "@/types/session";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
-export type JwtPayload = {
-  userId: string;
-  email: string;
-  role: UserRole;
-
-  // tenant boundary
-  tenantId?: string;
-};
-
-export const signToken = (payload: JwtPayload): string =>
+export const signToken = (payload: SessionPayload): string =>
   jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
 
 export const verifyToken = (token: string): unknown =>
