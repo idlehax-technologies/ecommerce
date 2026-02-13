@@ -1,4 +1,4 @@
-export class TenantDomainError extends Error {
+export abstract class TenantDomainError extends Error {
     status: number;
 
     constructor(message: string, status: number) {
