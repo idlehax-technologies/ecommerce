@@ -6,93 +6,61 @@ import type {
 } from "@/types/checkout";
 
 import { getUserFromRequest } from "@/lib/auth";
+import { requireAuth, requireTenant } from "@/lib/auth/guards";
 
 import { assertCheckoutRequest } from "@/lib/checkout/validators";
 import { mapCheckoutDTOToInput } from "@/lib/checkout/mappers";
 import { processCheckout } from "@/lib/checkout/domain";
-import { CheckoutError } from "@/lib/checkout/errors";
+
+import { handleRouteError } from "@/lib/http/handleRouteError";
 
 
-// Route = HTTP glue only
+// Route = HTTP orchestration only
 export async function POST(req: Request) {
     try {
-        // ---------------------------
-        // 1. Auth (transport boundary)
-        // ---------------------------
-        const user = await getUserFromRequest();
+        // ---------------------------------
+        // 1. Resolve authenticated identity
+        // ---------------------------------
+        const rawUser = await getUserFromRequest();
+        const user = requireTenant(rawUser);
 
-        if (!user) {
-            const response: CheckoutResponse = {
-                success: false,
-                errorCode: "UNAUTHORIZED",
-                message: "Please login first",
-            };
-
-            return NextResponse.json(response, { status: 401 });
-        }
-
-        // ---------------------------
-        // 2. Parse JSON
-        // ---------------------------
+        // ---------------------------------
+        // 2. Parse request body (unknown)
+        // ---------------------------------
         const body: unknown = await req.json();
 
-        // ---------------------------
-        // 3. Validate shape (syntax)
-        // ---------------------------
+        // ---------------------------------
+        // 3. Validate transport DTO shape
+        // ---------------------------------
         assertCheckoutRequest(body);
-
-        // Now body is typed as CheckoutRequest
         const dto: CheckoutRequest = body;
 
-        // ---------------------------
-        // 4. Map transport → domain
-        // ---------------------------
+        // ---------------------------------
+        // 4. Map DTO → domain input
+        // Inject server-owned identity fields
+        // ---------------------------------
         const input = mapCheckoutDTOToInput(dto, {
             userId: user.userId,
-            tenantId: user.tenantId,
+            tenantId: user.tenantId!,
         });
 
-        // ---------------------------
-        // 5. Domain logic (real rules)
-        // ---------------------------
-        const result = await processCheckout(input);
+        // ---------------------------------
+        // 5. Execute business logic
+        // ---------------------------------
+        const order = await processCheckout(input);
 
-        // ---------------------------
-        // 6. Success response
-        // ---------------------------
+        // ---------------------------------
+        // 6. Return protocol response
+        // ---------------------------------
         const response: CheckoutResponse = {
             success: true,
-            orderId: result.orderId,
+            orderId: order.orderId,
             message: "Order placed successfully",
         };
 
         return NextResponse.json(response, { status: 200 });
 
-    } catch (e) {
-        // ---------------------------
-        // 7. Domain/validation errors
-        // ---------------------------
-        if (e instanceof CheckoutError) {
-            const response: CheckoutResponse = {
-                success: false,
-                errorCode: "CHECKOUT_FAILED",
-                message: e.message,
-            };
-
-            return NextResponse.json(response, { status: 400 });
-        }
-
-        // ---------------------------
-        // 8. Unexpected errors
-        // ---------------------------
-        console.error("Checkout route crash:", e);
-
-        const response: CheckoutResponse = {
-            success: false,
-            errorCode: "SERVER_ERROR",
-            message: "Something went wrong",
-        };
-
-        return NextResponse.json(response, { status: 500 });
+    } catch (err: unknown) {
+        return handleRouteError(err);
     }
 }

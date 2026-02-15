@@ -1,5 +1,5 @@
-export class TenantDomainError extends Error {
-    status: number;
+export abstract class TenantDomainError extends Error {
+    readonly status: number;
 
     constructor(message: string, status: number) {
         super(message);
@@ -37,8 +37,8 @@ export class TenantInvalidInputError extends TenantDomainError {
     }
 }
 
-export class TenantPermissionError extends TenantDomainError {
-    constructor(message = "Forbidden") {
-        super(message, 403);
-    }
-}
+// export class TenantPermissionError extends TenantDomainError {
+//     constructor(message = "Forbidden") {
+//         super(message, 403);
+//     }
+// }

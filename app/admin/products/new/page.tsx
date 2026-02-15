@@ -7,7 +7,6 @@ import { useState } from "react";
 import type { CreateProductInput } from "@/types/product";
 import { createProduct } from "@/lib/api/productManagement";
 import ProductForm from "@/components/admin/products/ProductForm";
-import RoleGuard from "@/components/RoleGuard";
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -31,19 +30,17 @@ export default function NewProductPage() {
   }
 
   return (
-    <RoleGuard allow={["admin"]}>
-      <Container sx={{ py: 4 }}>
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" mb={2}>
-            Create Product
-          </Typography>
+    <Container sx={{ py: 4 }}>
+      <Paper sx={{ p: 3 }}>
+        <Typography variant="h6" mb={2}>
+          Create Product
+        </Typography>
 
-          {loading && <CircularProgress />}
-          {error && <Alert severity="error">{error}</Alert>}
+        {loading && <CircularProgress />}
+        {error && <Alert severity="error">{error}</Alert>}
 
-          <ProductForm mode="create" onSubmit={handleCreate} />
-        </Paper>
-      </Container>
-    </RoleGuard>
+        <ProductForm mode="create" onSubmit={handleCreate} />
+      </Paper>
+    </Container>
   );
 }

@@ -1,23 +1,22 @@
-// lib/checkout/guards.ts
+import { getProductById } from "@/lib/products/domain";
+import type { Product } from "@/types/product";
+import { OrderItemNotFoundError, ProductOutOfStockError } from "./errors";
 
-import { products } from "@/lib/products/domain";
-import {
-    ProductNotFoundError,
-    OutOfStockError,
-} from "./errors";
+export async function assertOrderableProduct(
+    productId: string,
+    tenantId: string
+): Promise<Product> {
+    const product = await getProductById(productId, tenantId);
 
-export function guardProductExists(productId: string) {
-    const product = products.get(productId);
-
-    if (!product || product.isDeleted || !product.isActive) {
-        throw new ProductNotFoundError();
+    if (!product.isActive || product.isDeleted) {
+        throw new OrderItemNotFoundError();
     }
 
     return product;
 }
 
-export function guardStock(stock: number, qty: number) {
-    if (stock < qty) {
-        throw new OutOfStockError();
+export function assertSufficientStock(stock: number, quantity: number) {
+    if (stock < quantity) {
+        throw new ProductOutOfStockError();
     }
 }

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { requireSuperadmin } from "@/lib/auth";
 import { signToken } from "@/lib/jwt";
+import { getUserFromRequest } from "@/lib/auth";
+import { requireRole } from "@/lib/auth/guards";
+import { handleRouteError } from "@/lib/http/handleRouteError";
 
 const SEVEN_DAYS = 60 * 60 * 24 * 7;
 
@@ -21,14 +23,15 @@ export async function POST(
     { params }: { params: { tenantId: string } }
 ) {
     try {
-        const superadmin = await requireSuperadmin();
+        const rawUser = await getUserFromRequest();
+        const user = requireRole(rawUser, "superadmin");
 
         const token = signToken({
-            userId: superadmin.userId,
-            phone: superadmin.phone,
+            userId: user.userId,
+            phone: user.phone,
             role: "admin",
             tenantId: params.tenantId,
-            impersonatedBy: superadmin.userId,
+            impersonatedBy: user.userId,
         });
 
         const cookieStore = await cookies();
@@ -42,10 +45,7 @@ export async function POST(
         });
 
         return NextResponse.json({ success: true });
-    } catch (err) {
-        return NextResponse.json(
-            { error: "Forbidden" },
-            { status: 403 }
-        );
+    } catch (err: unknown) {
+        return handleRouteError(err);
     }
 }

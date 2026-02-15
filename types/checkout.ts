@@ -18,7 +18,7 @@ export type CheckoutRequest = {
 
 export type CheckoutInput = {
   userId: string;
-  tenantId?: string;
+  tenantId: string;
   items: CheckoutItem[];
 };
 

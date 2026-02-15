@@ -79,21 +79,3 @@ export async function getTenantIdFromRequest(): Promise<string> {
 
   return user.tenantId;
 }
-
-export async function requireRole(role: UserRole) {
-  const user = await getUserFromRequest();
-
-  if (!user || user.role !== role) {
-    throw new Error("Forbidden");
-  }
-
-  return user;
-}
-
-export async function requireAdmin() {
-  return requireRole("admin");
-}
-
-export async function requireSuperadmin() {
-  return requireRole("superadmin");
-}

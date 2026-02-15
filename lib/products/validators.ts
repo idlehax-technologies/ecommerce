@@ -5,7 +5,7 @@ import type {
   UpdateProductPatch,
 } from "@/types/product";
 
-import { InvalidProductInputError } from "./errors";
+import { ProductInvalidInputError } from "./errors";
 
 /*
   =========================================================
@@ -15,7 +15,7 @@ import { InvalidProductInputError } from "./errors";
   Responsibilities:
   - Validate request JSON
   - Narrow unknown → DTO types
-  - Throw InvalidProductInputError only
+  - Throw ProductInvalidInputError only
   - No domain logic
   - No guards
   - No DB
@@ -51,24 +51,24 @@ function isPositiveMoney(v: unknown): v is number {
 
 function assertImages(v: unknown): asserts v is string[] {
   if (!Array.isArray(v)) {
-    throw new InvalidProductInputError("Images must be an array");
+    throw new ProductInvalidInputError("Images must be an array");
   }
 
   for (const img of v) {
     if (typeof img !== "string") {
-      throw new InvalidProductInputError("Image URLs must be strings");
+      throw new ProductInvalidInputError("Image URLs must be strings");
     }
   }
 }
 
 function assertTags(v: unknown): asserts v is string[] {
   if (!Array.isArray(v)) {
-    throw new InvalidProductInputError("Tags must be an array");
+    throw new ProductInvalidInputError("Tags must be an array");
   }
 
   for (const tag of v) {
     if (typeof tag !== "string") {
-      throw new InvalidProductInputError("Tags must be strings");
+      throw new ProductInvalidInputError("Tags must be strings");
     }
   }
 }
@@ -86,7 +86,7 @@ function assertNoForbiddenFields(
 
   for (const key of forbidden) {
     if (key in obj) {
-      throw new InvalidProductInputError(`Field "${key}" is not allowed`);
+      throw new ProductInvalidInputError(`Field "${key}" is not allowed`);
     }
   }
 }
@@ -103,7 +103,7 @@ export function validateCreateProduct(
   body: unknown
 ): asserts body is CreateProductInput {
   if (!isObject(body)) {
-    throw new InvalidProductInputError("Invalid request body");
+    throw new ProductInvalidInputError("Invalid request body");
   }
 
   const v = body;
@@ -111,27 +111,27 @@ export function validateCreateProduct(
   assertNoForbiddenFields(v);
 
   if (!isNonEmptyString(v.title)) {
-    throw new InvalidProductInputError("Title is required");
+    throw new ProductInvalidInputError("Title is required");
   }
 
   if (!isPositiveMoney(v.price)) {
-    throw new InvalidProductInputError("Price must be positive");
+    throw new ProductInvalidInputError("Price must be positive");
   }
 
   if (!isPositiveInteger(v.stock)) {
-    throw new InvalidProductInputError("Stock must be >= 0");
+    throw new ProductInvalidInputError("Stock must be >= 0");
   }
 
   if ("description" in v && v.description !== undefined && !isNonEmptyString(v.description)) {
-    throw new InvalidProductInputError("Description must be a string");
+    throw new ProductInvalidInputError("Description must be a string");
   }
 
   if ("sku" in v && v.sku !== undefined && !isNonEmptyString(v.sku)) {
-    throw new InvalidProductInputError("SKU must be a string");
+    throw new ProductInvalidInputError("SKU must be a string");
   }
 
   if ("category" in v && v.category !== undefined && !isNonEmptyString(v.category)) {
-    throw new InvalidProductInputError("Category must be a string");
+    throw new ProductInvalidInputError("Category must be a string");
   }
 
   if ("images" in v && v.images !== undefined) {
@@ -156,7 +156,7 @@ export function validateUpdateProduct(
   body: unknown
 ): asserts body is UpdateProductPatch {
   if (!isObject(body)) {
-    throw new InvalidProductInputError("Invalid request body");
+    throw new ProductInvalidInputError("Invalid request body");
   }
 
   const v = body;
@@ -164,31 +164,31 @@ export function validateUpdateProduct(
   assertNoForbiddenFields(v);
 
   if (Object.keys(v).length === 0) {
-    throw new InvalidProductInputError("Empty update body");
+    throw new ProductInvalidInputError("Empty update body");
   }
 
   if ("title" in v && !isNonEmptyString(v.title)) {
-    throw new InvalidProductInputError("Title must be a string");
+    throw new ProductInvalidInputError("Title must be a string");
   }
 
   if ("price" in v && !isPositiveMoney(v.price)) {
-    throw new InvalidProductInputError("Price must be positive");
+    throw new ProductInvalidInputError("Price must be positive");
   }
 
   if ("stock" in v && !isPositiveInteger(v.stock)) {
-    throw new InvalidProductInputError("Stock must be >= 0");
+    throw new ProductInvalidInputError("Stock must be >= 0");
   }
 
   if ("description" in v && v.description !== undefined && !isNonEmptyString(v.description)) {
-    throw new InvalidProductInputError("Description must be a string");
+    throw new ProductInvalidInputError("Description must be a string");
   }
 
   if ("sku" in v && v.sku !== undefined && !isNonEmptyString(v.sku)) {
-    throw new InvalidProductInputError("SKU must be a string");
+    throw new ProductInvalidInputError("SKU must be a string");
   }
 
   if ("category" in v && v.category !== undefined && !isNonEmptyString(v.category)) {
-    throw new InvalidProductInputError("Category must be a string");
+    throw new ProductInvalidInputError("Category must be a string");
   }
 
   if ("images" in v && v.images !== undefined) {

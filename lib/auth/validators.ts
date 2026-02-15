@@ -1,17 +1,29 @@
+import { InvalidOtpError } from "./errors";
+
 export function assertOtpRequest(body: unknown): asserts body is { phone: string } {
-    if (!body || typeof body !== "object") throw new Error("Invalid body");
+    if (!body || typeof body !== "object") {
+        throw new InvalidOtpError("Invalid request body");
+    }
 
-    const b = body as any;
+    const obj = body as Record<string, unknown>;
 
-    if (typeof b.phone !== "string" || b.phone.length < 8)
-        throw new Error("Invalid phone");
+    if (typeof obj.phone !== "string" || obj.phone.trim().length < 8) {
+        throw new InvalidOtpError("Invalid phone");
+    }
 }
 
 export function assertOtpVerify(body: unknown): asserts body is { phone: string; code: string } {
-    if (!body || typeof body !== "object") throw new Error("Invalid body");
+    if (!body || typeof body !== "object") {
+        throw new InvalidOtpError("Invalid request body");
+    }
 
-    const b = body as any;
+    const obj = body as Record<string, unknown>;
 
-    if (typeof b.phone !== "string") throw new Error("Invalid phone");
-    if (typeof b.code !== "string") throw new Error("Invalid code");
+    if (typeof obj.phone !== "string") {
+        throw new InvalidOtpError("Invalid phone");
+    }
+
+    if (typeof obj.code !== "string") {
+        throw new InvalidOtpError("Invalid code");
+    }
 }

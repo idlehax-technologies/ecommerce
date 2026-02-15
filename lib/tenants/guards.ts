@@ -1,13 +1,17 @@
 import { Tenant } from "@/types/tenant";
 import {
     TenantAlreadyActiveError,
+    TenantAlreadyExistsError,
     TenantAlreadyInactiveError,
     TenantNotFoundError,
-    TenantPermissionError,
 } from "./errors";
 
 export function assertExists(t: Tenant | null): asserts t is Tenant {
     if (!t) throw new TenantNotFoundError("Tenant not found");
+}
+
+export function assertDoesNotExist(t: Tenant | null): asserts t is null {
+    if (t) throw new TenantAlreadyExistsError("Tenant already exists");
 }
 
 export function assertCanActivate(t: Tenant) {
@@ -22,8 +26,8 @@ export function assertCanDeactivate(t: Tenant) {
     }
 }
 
-export function assertSuperadmin(role?: string) {
-    if (role !== "superadmin") {
-        throw new TenantPermissionError("Superadmin only");
-    }
-}
+// export function assertSuperadmin(role?: string) {
+//     if (role !== "superadmin") {
+//         throw new TenantPermissionError("Superadmin only");
+//     }
+// }

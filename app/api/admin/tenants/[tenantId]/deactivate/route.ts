@@ -1,25 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deactivateTenant } from "@/lib/tenants/domain";
-import { TenantDomainError } from "@/lib/tenants/errors";
+import { getUserFromRequest } from "@/lib/auth";
+import { requireRole } from "@/lib/auth/guards";
+import { handleRouteError } from "@/lib/http/handleRouteError";
 
 export async function POST(
     _: NextRequest,
     { params }: { params: { tenantId: string } }
 ) {
     try {
-        const tenant = deactivateTenant(params.tenantId);
-        return NextResponse.json(tenant);
-    } catch (err) {
-        if (err instanceof TenantDomainError) {
-            return NextResponse.json(
-                { error: err.message },
-                { status: err.status }
-            );
-        }
+        const rawUser = await getUserFromRequest();
+        requireRole(rawUser, "superadmin");
 
-        return NextResponse.json(
-            { error: "Internal server error" },
-            { status: 500 }
-        );
+        const tenant = deactivateTenant(params.tenantId);
+
+        return NextResponse.json(tenant);
+    } catch (err: unknown) {
+        return handleRouteError(err);
     }
 }

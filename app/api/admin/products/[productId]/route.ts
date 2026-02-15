@@ -16,9 +16,9 @@ import {
   toUpdateProductPatch,
 } from "@/lib/products/mappers";
 
-import { ProductDomainError } from "@/lib/products/errors";
-
 import type { UpdateProductPatch } from "@/types/product";
+import { requireRole } from "@/lib/auth/guards";
+import { handleRouteError } from "@/lib/http/handleRouteError";
 
 
 // ============================================
@@ -29,11 +29,8 @@ export async function GET(
   { params }: { params: { productId: string } }
 ) {
   try {
-    const user = await getUserFromRequest();
-
-    if (!user || (user.role !== "admin" && user.role !== "staff")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const rawUser = await getUserFromRequest();
+    const user = requireRole(rawUser, "staff");
 
     const product = await getProductById(
       params.productId,
@@ -41,17 +38,8 @@ export async function GET(
     );
 
     return NextResponse.json({ product });
-  } catch (e) {
-    if (e instanceof ProductDomainError) {
-      return NextResponse.json({ error: e.message }, { status: 400 });
-    }
-
-    console.error(e);
-
-    return NextResponse.json(
-      { error: "Failed to fetch product" },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    return handleRouteError(err);
   }
 }
 
@@ -64,11 +52,8 @@ export async function PATCH(
   { params }: { params: { productId: string } }
 ) {
   try {
-    const user = await getUserFromRequest();
-
-    if (!user || (user.role !== "admin" && user.role !== "staff")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const rawUser = await getUserFromRequest();
+    const user = requireRole(rawUser, "staff");
 
     const body: unknown = await req.json();
 
@@ -85,17 +70,8 @@ export async function PATCH(
     );
 
     return NextResponse.json({ product });
-  } catch (e) {
-    if (e instanceof ProductDomainError) {
-      return NextResponse.json({ error: e.message }, { status: 400 });
-    }
-
-    console.error(e);
-
-    return NextResponse.json(
-      { error: "Failed to update product" },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    return handleRouteError(err);
   }
 }
 
@@ -108,25 +84,13 @@ export async function DELETE(
   { params }: { params: { productId: string } }
 ) {
   try {
-    const user = await getUserFromRequest();
-
-    if (!user || (user.role !== "admin" && user.role !== "staff")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const rawUser = await getUserFromRequest();
+    const user = requireRole(rawUser, "staff");
 
     await softDeleteProduct(params.productId, user.tenantId!);
 
     return NextResponse.json({ success: true });
-  } catch (e) {
-    if (e instanceof ProductDomainError) {
-      return NextResponse.json({ error: e.message }, { status: 400 });
-    }
-
-    console.error(e);
-
-    return NextResponse.json(
-      { error: "Failed to delete product" },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    return handleRouteError(err);
   }
 }

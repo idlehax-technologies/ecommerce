@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
 import { getAllPublicProducts } from "@/lib/products/domain";
-import { ProductDomainError } from "@/lib/products/errors";
+import { handleRouteError } from "@/lib/http/handleRouteError";
+import { getUserFromRequest } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth/guards";
 
 /**
  * Public storefront
@@ -18,19 +20,13 @@ import { ProductDomainError } from "@/lib/products/errors";
  */
 export async function GET() {
   try {
+    const rawUser = await getUserFromRequest();
+    requireAuth(rawUser);
+
     const products = await getAllPublicProducts();
 
     return NextResponse.json({ products });
-  } catch (e) {
-    if (e instanceof ProductDomainError) {
-      return NextResponse.json({ error: e.message }, { status: 400 });
-    }
-
-    console.error(e);
-
-    return NextResponse.json(
-      { error: "Failed to fetch products" },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    return handleRouteError(err);
   }
 }

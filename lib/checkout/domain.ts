@@ -1,44 +1,45 @@
-// lib/checkout/domain.ts
-
-import { products } from "@/lib/products/domain";
 import type { CheckoutInput } from "@/types/checkout";
-import {
-    guardProductExists,
-    guardStock,
-} from "./guards";
+import { orderStore } from "./storage";
+import { assertOrderableProduct, assertSufficientStock } from "./guards";
+import { toOrderItemSnapshot, toNewOrder } from "./mappers";
 
 export async function processCheckout(input: CheckoutInput) {
-    let total = 0;
-
-    // -------------
-    // Validate + compute
-    // -------------
-    for (const item of input.items) {
-        const product = guardProductExists(item.productId);
-
-        guardStock(product.stock, item.quantity);
-
-        total += product.price * item.quantity;
+    if (!input.tenantId) {
+        throw new Error("Tenant context required");
     }
 
-    // -------------
-    // Reserve stock
-    // -------------
+    const snapshots = [];
+    let total = 0;
+
+    // Phase 1 — validate and compute
     for (const item of input.items) {
-        const product = products.get(item.productId)!;
+        const product = await assertOrderableProduct(
+            item.productId,
+            input.tenantId
+        );
+
+        assertSufficientStock(product.stock, item.quantity);
+
+        const snapshot = toOrderItemSnapshot(product, item.quantity);
+        snapshots.push(snapshot);
+
+        total += snapshot.price * snapshot.quantity;
+    }
+
+    // Phase 2 — commit mutation
+    for (const item of input.items) {
+        const product = await assertOrderableProduct(
+            item.productId,
+            input.tenantId
+        );
+
         product.stock -= item.quantity;
         product.updatedAt = new Date().toISOString();
     }
 
-    // -------------
-    // Create order id
-    // -------------
-    const orderId = crypto.randomUUID();
+    const order = toNewOrder(input.userId, input.tenantId, snapshots, total);
 
-    // Later: persist order here
+    orderStore.save(order);
 
-    return {
-        orderId,
-        total,
-    };
+    return order;
 }
