@@ -1,25 +1,26 @@
 import { NextResponse } from "next/server";
+
+import { assertOtpRequest } from "@/lib/auth/validators";
+import { mapOtpRequest } from "@/lib/auth/mappers";
 import { requestOtp } from "@/lib/auth/domain";
-import { AuthDomainError } from "@/lib/auth/errors";
+
+import { handleRouteError } from "@/lib/http/handleRouteError";
 
 export async function POST(req: Request) {
     try {
-        const { phone } = await req.json();
+        const body: unknown = await req.json();
 
-        await requestOtp(phone);
+        // transport validation
+        assertOtpRequest(body);
+
+        // normalization boundary
+        const input = mapOtpRequest(body);
+
+        // business action
+        await requestOtp(input);
 
         return NextResponse.json({ success: true });
     } catch (err) {
-        if (err instanceof AuthDomainError) {
-            return NextResponse.json(
-                { error: err.message },
-                { status: err.status }
-            );
-        }
-
-        return NextResponse.json(
-            { error: "Internal server error" },
-            { status: 500 }
-        );
+        return handleRouteError(err);
     }
 }

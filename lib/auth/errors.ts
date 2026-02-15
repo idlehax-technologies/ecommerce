@@ -1,26 +1,50 @@
-export class AuthDomainError extends Error {
-    status: number;
+export abstract class AuthDomainError extends Error {
+    readonly status: number;
 
-    constructor(message: string, status = 400) {
+    constructor(message: string, status: number) {
         super(message);
         this.status = status;
     }
 }
 
 export class InvalidOtpError extends AuthDomainError {
-    constructor() {
-        super("Invalid or expired OTP", 401);
+    constructor(message = "Invalid or expired OTP") {
+        super(message, 401);
     }
 }
 
 export class OtpRateLimitError extends AuthDomainError {
-    constructor() {
-        super("Too many OTP requests. Try again later.", 429);
+    constructor(message = "Too many OTP requests. Try again later.") {
+        super(message, 429);
     }
 }
 
 export class UserNotFoundError extends AuthDomainError {
-    constructor() {
-        super("User not found", 404);
+    constructor(message = "User not found") {
+        super(message, 404);
+    }
+}
+
+export class UnauthorizedError extends AuthDomainError {
+    constructor(message = "Unauthorized") {
+        super(message, 401);
+    }
+}
+
+export class ForbiddenError extends AuthDomainError {
+    constructor(message = "Forbidden") {
+        super(message, 403);
+    }
+}
+
+export class TenantNotAssociatedError extends AuthDomainError {
+    constructor(message = "User is not associated with a tenant") {
+        super(message, 403);
+    }
+}
+
+export class NotInAssumedSessionError extends AuthDomainError {
+    constructor(message = "Operation requires an assumed session") {
+        super(message, 400);
     }
 }

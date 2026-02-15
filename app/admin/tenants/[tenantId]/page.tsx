@@ -15,7 +15,6 @@ import {
 } from "@mui/material";
 
 import { tenantAdminApi } from "@/lib/api/tenantManagement";
-import RoleGuard from "@/components/RoleGuard";
 
 type Tenant = {
     tenantId: string;
@@ -60,50 +59,48 @@ export default function TenantDetailPage() {
     }
 
     return (
-        <RoleGuard allow={["superadmin"]}>
-            <Container maxWidth="sm" sx={{ py: 6 }}>
-                <Card>
-                    <CardContent>
-                        <Stack spacing={3}>
-                            <Typography variant="h5">{tenant.name}</Typography>
+        <Container maxWidth="sm" sx={{ py: 6 }}>
+            <Card>
+                <CardContent>
+                    <Stack spacing={3}>
+                        <Typography variant="h5">{tenant.name}</Typography>
 
-                            <Chip
-                                label={tenant.status}
-                                color={
-                                    tenant.status === "active"
-                                        ? "success"
-                                        : tenant.status === "inactive"
-                                            ? "error"
-                                            : "default"
-                                }
-                                sx={{ width: "fit-content" }}
-                            />
+                        <Chip
+                            label={tenant.status}
+                            color={
+                                tenant.status === "active"
+                                    ? "success"
+                                    : tenant.status === "inactive"
+                                        ? "error"
+                                        : "default"
+                            }
+                            sx={{ width: "fit-content" }}
+                        />
 
-                            <Stack direction="row" spacing={2}>
-                                {tenant.status !== "active" && (
-                                    <Button variant="contained" onClick={activate}>
-                                        Activate
-                                    </Button>
-                                )}
-
-                                {tenant.status === "active" && (
-                                    <Button color="error" variant="contained" onClick={deactivate}>
-                                        Deactivate
-                                    </Button>
-                                )}
-
-                                <Button variant="outlined" onClick={assume}>
-                                    Assume as Admin
+                        <Stack direction="row" spacing={2}>
+                            {tenant.status !== "active" && (
+                                <Button variant="contained" onClick={activate}>
+                                    Activate
                                 </Button>
-                            </Stack>
+                            )}
 
-                            <Button onClick={() => router.push("/admin/tenants")}>
-                                Back
+                            {tenant.status === "active" && (
+                                <Button color="error" variant="contained" onClick={deactivate}>
+                                    Deactivate
+                                </Button>
+                            )}
+
+                            <Button variant="outlined" onClick={assume}>
+                                Assume as Admin
                             </Button>
                         </Stack>
-                    </CardContent>
-                </Card>
-            </Container>
-        </RoleGuard>
+
+                        <Button onClick={() => router.push("/admin/tenants")}>
+                            Back
+                        </Button>
+                    </Stack>
+                </CardContent>
+            </Card>
+        </Container>
     );
 }

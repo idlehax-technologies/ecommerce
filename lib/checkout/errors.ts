@@ -1,29 +1,28 @@
-// lib/checkout/errors.ts
+export abstract class CheckoutDomainError extends Error {
+    readonly status: number;
+    readonly code: string;
 
-export class CheckoutError extends Error {
-    constructor(message: string) {
+    constructor(message: string, status: number, code: string) {
         super(message);
-        this.name = "CheckoutError";
+        this.status = status;
+        this.code = code;
     }
 }
 
-export class InvalidCheckoutInputError extends CheckoutError {
-    constructor(message = "Invalid checkout request") {
-        super(message);
-        this.name = "InvalidCheckoutInputError";
+export class CheckoutInvalidInputError extends CheckoutDomainError {
+    constructor(message = "Invalid checkout input") {
+        super(message, 400, "INVALID_INPUT");
     }
 }
 
-export class ProductNotFoundError extends CheckoutError {
-    constructor(message = "Product not found") {
-        super(message);
-        this.name = "ProductNotFoundError";
+export class OrderItemNotFoundError extends CheckoutDomainError {
+    constructor(message = "Order item no longer available") {
+        super(message, 404, "PRODUCT_NOT_FOUND");
     }
 }
 
-export class OutOfStockError extends CheckoutError {
+export class ProductOutOfStockError extends CheckoutDomainError {
     constructor(message = "Insufficient stock") {
-        super(message);
-        this.name = "OutOfStockError";
+        super(message, 409, "OUT_OF_STOCK");
     }
 }

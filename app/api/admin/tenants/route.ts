@@ -1,32 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createTenant, listTenants } from "@/lib/tenants/domain";
 import { assertCreateTenantDTO } from "@/lib/tenants/validators";
-import { TenantDomainError } from "@/lib/tenants/errors";
+import { getUserFromRequest } from "@/lib/auth";
+import { requireRole } from "@/lib/auth/guards";
+import { handleRouteError } from "@/lib/http/handleRouteError";
 
 export async function GET() {
-    return NextResponse.json(listTenants());
+    try {
+        const user = await getUserFromRequest();
+        requireRole(user, "superadmin");
+
+        return NextResponse.json(listTenants());
+    } catch (err: unknown) {
+        return handleRouteError(err);
+    }
 }
 
 export async function POST(req: NextRequest) {
     try {
-        const body = await req.json();
+        const rawUser = await getUserFromRequest();
+        requireRole(rawUser, "superadmin");
+
+        const body: unknown = await req.json();
 
         assertCreateTenantDTO(body);
 
         const tenant = createTenant(body);
 
         return NextResponse.json(tenant);
-    } catch (err) {
-        if (err instanceof TenantDomainError) {
-            return NextResponse.json(
-                { error: err.message },
-                { status: err.status }
-            );
-        }
-
-        return NextResponse.json(
-            { error: "Invalid request" },
-            { status: 400 }
-        );
+    } catch (err: unknown) {
+        return handleRouteError(err);
     }
 }

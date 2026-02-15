@@ -1,16 +1,13 @@
 import { tenantStore } from "./storage";
 import { toNewTenant, toPublicTenant } from "./mappers";
-import { assertExists, assertCanActivate, assertCanDeactivate } from "./guards";
+import { assertExists, assertCanActivate, assertCanDeactivate, assertDoesNotExist } from "./guards";
 import { CreateTenantDTO, PublicTenant } from "@/types/tenant";
-import { TenantAlreadyExistsError } from "./errors";
 
 export function createTenant(dto: CreateTenantDTO): PublicTenant {
     const t = toNewTenant(dto);
 
     const existing = tenantStore.get(t.tenantId);
-    if (existing) {
-        throw new TenantAlreadyExistsError();
-    }
+    assertDoesNotExist(existing);
 
     tenantStore.save(t);
 
@@ -23,7 +20,7 @@ export function listTenants(): PublicTenant[] {
 
 export function getTenant(id: string): PublicTenant | null {
     const t = tenantStore.get(id);
-    if (!t) return null;
+    assertExists(t);
 
     return toPublicTenant(t);
 }
