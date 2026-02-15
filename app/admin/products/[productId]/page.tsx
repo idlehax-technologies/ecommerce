@@ -16,7 +16,6 @@ import { getProduct, updateProduct, deleteProduct } from "@/lib/api/productManag
 
 import type { Product } from "@/types/product";
 import type { UpdateProductPatch } from "@/types/product";
-import RoleGuard from "@/components/RoleGuard";
 
 export default function ProductDetailPage() {
   const { productId } = useParams<{ productId: string }>();
@@ -91,21 +90,19 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <RoleGuard allow={["admin"]}>
-      <Container sx={{ py: 4 }}>
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" mb={2}>
-            Edit Product
-          </Typography>
+    <Container sx={{ py: 4 }}>
+      <Paper sx={{ p: 3 }}>
+        <Typography variant="h6" mb={2}>
+          Edit Product
+        </Typography>
 
-          <ProductForm
-            mode="edit"
-            initial={product}
-            onSubmit={handleUpdate}
-            onDelete={handleDelete}
-          />
-        </Paper>
-      </Container>
-    </RoleGuard>
+        <ProductForm
+          mode="edit"
+          initial={product}
+          onSubmit={handleUpdate}
+          onDelete={handleDelete}
+        />
+      </Paper>
+    </Container>
   );
 }

@@ -13,8 +13,8 @@ export class MembershipNotFoundError extends MembershipDomainError {
     }
 }
 
-export class MembershipAlreadyExistsError extends MembershipDomainError {
-    constructor(message = "Membership already requested") {
+export class MembershipAlreadyActiveError extends MembershipDomainError {
+    constructor(message = "User already has access or a pending request for this tenant") {
         super(message, 409);
     }
 }

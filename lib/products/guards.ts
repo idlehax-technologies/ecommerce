@@ -3,9 +3,10 @@
 import type { Product } from "@/types/product";
 import {
   ProductNotFoundError,
-  ForbiddenProductError,
+  ProductForbiddenError,
   ProductDeletedError,
   ProductInactiveError,
+  ProductOutOfStockError,
 } from "./errors";
 
 export function assertProductExists(
@@ -15,7 +16,7 @@ export function assertProductExists(
 }
 
 export function assertTenantOwnsProduct(p: Product, tenantId: string) {
-  if (p.tenantId !== tenantId) throw new ForbiddenProductError();
+  if (p.tenantId !== tenantId) throw new ProductForbiddenError();
 }
 
 export function assertNotDeleted(p: Product) {
@@ -41,4 +42,10 @@ export function assertTenantCanModifyProduct(
 ): asserts p is Product {
   assertTenantCanAccessProduct(p, tenantId);
   assertActive(p);
+}
+
+export function assertInStock(p: Product): asserts p is Product {
+  if (p.stock <= 0) {
+    throw new ProductOutOfStockError();
+  }
 }

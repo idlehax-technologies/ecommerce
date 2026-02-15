@@ -1,33 +1,18 @@
-// lib/products/errors.ts
-
-/*
-  Product Domain Errors
-
-  Philosophy:
-  - Domain must express *meaning*, not HTTP codes.
-  - Routes translate these → 404 / 403 / 400 / 409 etc.
-  - No side effects.
-  - No business logic.
-  - Just typed failure signals.
-
-  Domain language example:
-    throw new ProductNotFoundError()
-
-  Route layer decides:
-    ProductNotFoundError → 404
-*/
-
-/* ================================================== */
-/* Base                                               */
-/* ================================================== */
+/**
+ * Product Domain Errors
+ *
+ * Philosophy (aligned with current system):
+ * - Domain expresses failure + HTTP meaning together.
+ * - Routes forward { message, status } without translation tables.
+ * - Errors are immutable signals.
+ */
 
 export abstract class ProductDomainError extends Error {
-  readonly code: string;
+  readonly status: number;
 
-  protected constructor(message: string, code: string) {
+  constructor(message: string, status: number) {
     super(message);
-    this.name = new.target.name; // keeps class name at runtime
-    this.code = code;
+    this.status = status;
   }
 }
 
@@ -36,8 +21,8 @@ export abstract class ProductDomainError extends Error {
 /* ================================================== */
 
 export class ProductNotFoundError extends ProductDomainError {
-  constructor() {
-    super("Product not found", "PRODUCT_NOT_FOUND");
+  constructor(message = "Product not found") {
+    super(message, 404);
   }
 }
 
@@ -45,12 +30,9 @@ export class ProductNotFoundError extends ProductDomainError {
 /* Authorization / Ownership                          */
 /* ================================================== */
 
-export class ForbiddenProductError extends ProductDomainError {
-  constructor() {
-    super(
-      "Product does not belong to your tenant",
-      "PRODUCT_FORBIDDEN"
-    );
+export class ProductForbiddenError extends ProductDomainError {
+  constructor(message = "Product does not belong to your tenant") {
+    super(message, 403);
   }
 }
 
@@ -59,14 +41,14 @@ export class ForbiddenProductError extends ProductDomainError {
 /* ================================================== */
 
 export class ProductDeletedError extends ProductDomainError {
-  constructor() {
-    super("Product has been deleted", "PRODUCT_DELETED");
+  constructor(message = "Product has been deleted") {
+    super(message, 409);
   }
 }
 
 export class ProductInactiveError extends ProductDomainError {
-  constructor() {
-    super("Product is inactive", "PRODUCT_INACTIVE");
+  constructor(message = "Product is inactive") {
+    super(message, 409);
   }
 }
 
@@ -74,9 +56,9 @@ export class ProductInactiveError extends ProductDomainError {
 /* Validation                                         */
 /* ================================================== */
 
-export class InvalidProductInputError extends ProductDomainError {
+export class ProductInvalidInputError extends ProductDomainError {
   constructor(message = "Invalid product input") {
-    super(message, "PRODUCT_INVALID_INPUT");
+    super(message, 400);
   }
 }
 
@@ -86,6 +68,12 @@ export class InvalidProductInputError extends ProductDomainError {
 
 export class ProductConflictError extends ProductDomainError {
   constructor(message = "Product conflict") {
-    super(message, "PRODUCT_CONFLICT");
+    super(message, 409);
+  }
+}
+
+export class ProductOutOfStockError extends ProductDomainError {
+  constructor(message = "Product is out of stock") {
+    super(message, 409);
   }
 }

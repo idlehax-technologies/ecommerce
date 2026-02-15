@@ -15,9 +15,9 @@ import {
   toCreateProductInput,
 } from "@/lib/products/mappers";
 
-import { ProductDomainError } from "@/lib/products/errors";
-
 import type { CreateProductInput } from "@/types/product";
+import { requireRole } from "@/lib/auth/guards";
+import { handleRouteError } from "@/lib/http/handleRouteError";
 
 
 // ============================================
@@ -26,22 +26,14 @@ import type { CreateProductInput } from "@/types/product";
 // ============================================
 export async function GET() {
   try {
-    const user = await getUserFromRequest();
-
-    if (!user || (user.role !== "admin" && user.role !== "staff")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const rawUser = await getUserFromRequest();
+    const user = requireRole(rawUser, "staff");
 
     const products = await getTenantProducts(user.tenantId!);
 
     return NextResponse.json({ products });
-  } catch (e) {
-    console.error(e);
-
-    return NextResponse.json(
-      { error: "Failed to fetch products" },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    return handleRouteError(err);
   }
 }
 
@@ -52,11 +44,8 @@ export async function GET() {
 // ============================================
 export async function POST(req: Request) {
   try {
-    const user = await getUserFromRequest();
-
-    if (!user || (user.role !== "admin" && user.role !== "staff")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const rawUser = await getUserFromRequest();
+    const user = requireRole(rawUser, "staff");
 
     const body: unknown = await req.json();
 
@@ -71,16 +60,7 @@ export async function POST(req: Request) {
     const product = await createProduct(input);
 
     return NextResponse.json({ product }, { status: 201 });
-  } catch (e) {
-    if (e instanceof ProductDomainError) {
-      return NextResponse.json({ error: e.message }, { status: 400 });
-    }
-
-    console.error(e);
-
-    return NextResponse.json(
-      { error: "Failed to create product" },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    return handleRouteError(err);
   }
 }

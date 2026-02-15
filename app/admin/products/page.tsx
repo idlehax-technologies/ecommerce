@@ -14,7 +14,6 @@ import {
 import type { Product } from "@/types/product";
 import { listProducts } from "@/lib/api/productManagement";
 import ProductList from "@/components/admin/products/ProductList";
-import RoleGuard from "@/components/RoleGuard";
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -37,27 +36,25 @@ export default function AdminProductsPage() {
   }, []);
 
   return (
-    <RoleGuard allow={["admin"]}>
-      <Container sx={{ py: 4 }}>
-        <Stack direction="row" justifyContent="space-between" mb={3}>
-          <Typography variant="h5">Products</Typography>
+    <Container sx={{ py: 4 }}>
+      <Stack direction="row" justifyContent="space-between" mb={3}>
+        <Typography variant="h5">Products</Typography>
 
-          <Button
-            component={Link}
-            href="/admin/products/new"
-            variant="contained"
-          >
-            New Product
-          </Button>
-        </Stack>
+        <Button
+          component={Link}
+          href="/admin/products/new"
+          variant="contained"
+        >
+          New Product
+        </Button>
+      </Stack>
 
-        {loading && <CircularProgress />}
-        {error && <Alert severity="error">{error}</Alert>}
+      {loading && <CircularProgress />}
+      {error && <Alert severity="error">{error}</Alert>}
 
-        {!loading && !error && (
-          <ProductList products={products} />
-        )}
-      </Container>
-    </RoleGuard>
+      {!loading && !error && (
+        <ProductList products={products} />
+      )}
+    </Container>
   );
 }

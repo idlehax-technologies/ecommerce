@@ -14,7 +14,6 @@ import {
 } from "@mui/material";
 
 import { tenantAdminApi } from "@/lib/api/tenantManagement";
-import RoleGuard from "@/components/RoleGuard";
 
 export default function NewTenantPage() {
     const [name, setName] = useState("");
@@ -30,33 +29,31 @@ export default function NewTenantPage() {
     };
 
     return (
-        <RoleGuard allow={["superadmin"]}>
-            <Container maxWidth="sm" sx={{ py: 6 }}>
-                <Card>
-                    <CardContent>
-                        <Stack spacing={3}>
-                            <Typography variant="h5">Create Tenant</Typography>
+        <Container maxWidth="sm" sx={{ py: 6 }}>
+            <Card>
+                <CardContent>
+                    <Stack spacing={3}>
+                        <Typography variant="h5">Create Tenant</Typography>
 
-                            <TextField
-                                label="School Name"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                fullWidth
-                            />
+                        <TextField
+                            label="School Name"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            fullWidth
+                        />
 
-                            <Stack direction="row" spacing={2}>
-                                <Button variant="contained" onClick={submit} disabled={loading}>
-                                    Create
-                                </Button>
+                        <Stack direction="row" spacing={2}>
+                            <Button variant="contained" onClick={submit} disabled={loading}>
+                                Create
+                            </Button>
 
-                                <Button onClick={() => router.push("/admin/tenants")}>
-                                    Cancel
-                                </Button>
-                            </Stack>
+                            <Button onClick={() => router.push("/admin/tenants")}>
+                                Cancel
+                            </Button>
                         </Stack>
-                    </CardContent>
-                </Card>
-            </Container>
-        </RoleGuard>
+                    </Stack>
+                </CardContent>
+            </Card>
+        </Container>
     );
 }

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { getPublicProductById } from "@/lib/products/domain";
+import { handleRouteError } from "@/lib/http/handleRouteError";
+import { getUserFromRequest } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth/guards";
 
 /**
  * GET /api/products/[productId]
@@ -16,24 +19,14 @@ export async function GET(
   { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
+    const rawUser = await getUserFromRequest();
+    requireAuth(rawUser);
+
     const { productId } = await params;
     const product = await getPublicProductById(productId);
 
-    if (!product) {
-      return NextResponse.json(
-        { error: "Product not found" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(
-      { product },
-      { status: 200 }
-    );
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to load product" },
-      { status: 500 }
-    );
+    return NextResponse.json({ product });
+  } catch (err: unknown) {
+    return handleRouteError(err);
   }
 }

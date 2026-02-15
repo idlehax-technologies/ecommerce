@@ -2,28 +2,30 @@ import { NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/auth";
 import { requestMembership, myMemberships } from "@/lib/memberships/domain";
 import { assertRequestMembershipDTO } from "@/lib/memberships/validators";
+import { handleRouteError } from "@/lib/http/handleRouteError";
+import { requireAuth } from "@/lib/auth/guards";
 
 export async function GET() {
     try {
-        const user = await getUserFromRequest();
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const rawUser = await getUserFromRequest();
+        const user = requireAuth(rawUser);
 
         return NextResponse.json(myMemberships(user.userId));
-    } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: e.status ?? 400 });
+    } catch (err: unknown) {
+        return handleRouteError(err);
     }
 }
 
 export async function POST(req: Request) {
     try {
-        const user = await getUserFromRequest();
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const rawUser = await getUserFromRequest();
+        const user = requireAuth(rawUser);
 
-        const body = await req.json();
+        const body: unknown = await req.json();
         assertRequestMembershipDTO(body);
 
         return NextResponse.json(requestMembership(user.userId, body.tenantId));
-    } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: e.status ?? 400 });
+    } catch (err: unknown) {
+        return handleRouteError(err);
     }
 }

@@ -8,6 +8,7 @@ import type {
   DomainCreateInput,
   DomainUpdatePatch,
 } from "@/types/product";
+import { randomUUID } from "crypto";
 
 
 // ============================================================
@@ -19,9 +20,31 @@ function now(): string {
 }
 
 
-// ============================================================
-// DTO → Domain input
-// ============================================================
+export function toNewProduct(input: DomainCreateInput): Product {
+  return {
+    productId: randomUUID(),
+    tenantId: input.tenantId,
+
+    title: input.title,
+    description: input.description,
+
+    price: input.price,
+    currency: "INR",
+    stock: input.stock,
+
+    sku: input.sku,
+    images: input.images,
+    category: input.category,
+    tags: input.tags,
+
+    isActive: true,
+    isDeleted: false,
+
+    createdAt: now(),
+    updatedAt: now(),
+  };
+}
+
 
 /**
  * Client CreateProductInput → DomainCreateInput

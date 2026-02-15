@@ -1,12 +1,21 @@
 import { NextResponse } from "next/server";
+
+import { assertOtpVerify } from "@/lib/auth/validators";
+import { mapOtpVerify } from "@/lib/auth/mappers";
 import { verifyOtp } from "@/lib/auth/domain";
-import { AuthDomainError } from "@/lib/auth/errors";
+
+import { handleRouteError } from "@/lib/http/handleRouteError";
+
+const SEVEN_DAYS = 60 * 60 * 24 * 7;
 
 export async function POST(req: Request) {
     try {
-        const { phone, code } = await req.json();
+        const body: unknown = await req.json();
 
-        const { user, token } = await verifyOtp(phone, code);
+        assertOtpVerify(body);
+        const input = mapOtpVerify(body);
+
+        const { user, token } = await verifyOtp(input);
 
         const res = NextResponse.json({ user });
 
@@ -15,21 +24,11 @@ export async function POST(req: Request) {
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
             path: "/",
-            maxAge: 60 * 60 * 24 * 7,
+            maxAge: SEVEN_DAYS,
         });
 
         return res;
     } catch (err) {
-        if (err instanceof AuthDomainError) {
-            return NextResponse.json(
-                { error: err.message },
-                { status: err.status }
-            );
-        }
-
-        return NextResponse.json(
-            { error: "Internal server error" },
-            { status: 500 }
-        );
+        return handleRouteError(err);
     }
 }

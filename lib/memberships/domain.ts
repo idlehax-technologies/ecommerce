@@ -1,14 +1,13 @@
 import { membershipStore } from "./storage";
 import { toNewMembership, toPublicMembership } from "./mappers";
-import { assertExists, assertPending } from "./guards";
-import { MembershipAlreadyExistsError } from "./errors";
+import { assertDoesNotExist, assertExists, assertPending } from "./guards";
 
 export function requestMembership(userId: string, tenantId: string) {
     const existing = membershipStore
         .getByUser(userId)
-        .find((m) => m.tenantId === tenantId && m.status === "pending");
+        .find((m) => m.tenantId === tenantId && (m.status === "pending" || m.status === "approved"));
 
-    if (existing) throw new MembershipAlreadyExistsError();
+    assertDoesNotExist(existing);
 
     const m = toNewMembership(userId, tenantId);
     membershipStore.save(m);
