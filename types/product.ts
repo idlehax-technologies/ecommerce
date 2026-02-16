@@ -1,18 +1,14 @@
-// ============================================
-// Core domain model
-// ============================================
-
 export type Product = {
-  productId: string;          // immutable
-  tenantId: string;           // immutable – assigned at creation
+  productId: string;
+  tenantId: string;
 
   title: string;
   description?: string;
 
-  price: number;              // smallest currency unit (paise)
+  price: number;
   currency: "INR";
 
-  stock: number;              // integer >= 0
+  stock: number;
 
   isActive: boolean;
   isDeleted: boolean;
@@ -27,30 +23,12 @@ export type Product = {
   deletedAt?: string;
 };
 
-
-// ============================================
-// Safe projection for storefront
-// (never leak tenant/internal flags)
-// ============================================
-
 export type PublicProduct = Omit<
   Product,
   "tenantId" | "isDeleted" | "createdAt" | "updatedAt" | "deletedAt"
 >;
 
-
-// ============================================
-// Transport types (client → server)
-// ============================================
-
-/**
- * Create product payload (admin form)
- * Client never sends:
- *   - tenantId
- *   - timestamps
- *   - lifecycle flags
- */
-export type CreateProductInput = {
+export type CreateProductDTO = {
   title: string;
   description?: string;
   price: number;
@@ -61,8 +39,7 @@ export type CreateProductInput = {
   tags?: string[];
 };
 
-
-export type UpdateProductPatch = {
+export type UpdateProductDTO = {
   title?: string;
   description?: string;
   price?: number;
@@ -73,23 +50,13 @@ export type UpdateProductPatch = {
   tags?: string[];
 };
 
-
-export type DomainCreateInput = {
+/**
+ * Internal-only seed used by domain AFTER tenant is injected.
+ */
+export type NewProductData = CreateProductDTO & {
   tenantId: string;
-
-  title: string;
-  description?: string;
-
-  price: number;
-  stock: number;
-
-  sku?: string;
-  images?: string[];
-  category?: string;
-  tags?: string[];
 };
 
-
-export type DomainUpdatePatch = Partial<
+export type ProductChanges = Partial<
   Omit<Product, "productId" | "tenantId" | "createdAt">
 >;

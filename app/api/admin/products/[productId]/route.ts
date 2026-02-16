@@ -1,41 +1,30 @@
 import { NextResponse } from "next/server";
 
 import { getUserFromRequest } from "@/lib/auth";
+import { requireRole, requireTenant } from "@/lib/auth/guards";
 
 import {
-  getProductById,
+  getProduct,
   updateProduct,
   softDeleteProduct,
 } from "@/lib/products/domain";
 
-import {
-  validateUpdateProduct,
-} from "@/lib/products/validators";
+import { validateUpdateProduct } from "@/lib/products/validators";
 
-import {
-  toUpdateProductPatch,
-} from "@/lib/products/mappers";
+import type { UpdateProductDTO } from "@/types/product";
 
-import type { UpdateProductPatch } from "@/types/product";
-import { requireRole } from "@/lib/auth/guards";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
-
-// ============================================
-// GET /api/admin/products/:productId
-// ============================================
 export async function GET(
   _req: Request,
   { params }: { params: { productId: string } }
 ) {
   try {
     const rawUser = await getUserFromRequest();
-    const user = requireRole(rawUser, "staff");
+    const actor = requireTenant(rawUser);
+    requireRole(actor, "staff");
 
-    const product = await getProductById(
-      params.productId,
-      user.tenantId!
-    );
+    const product = await getProduct(actor, params.productId);
 
     return NextResponse.json({ product });
   } catch (err: unknown) {
@@ -43,31 +32,21 @@ export async function GET(
   }
 }
 
-
-// ============================================
-// PATCH /api/admin/products/:productId
-// ============================================
 export async function PATCH(
   req: Request,
   { params }: { params: { productId: string } }
 ) {
   try {
     const rawUser = await getUserFromRequest();
-    const user = requireRole(rawUser, "staff");
+    const actor = requireTenant(rawUser);
+    requireRole(actor, "staff");
 
     const body: unknown = await req.json();
-
     validateUpdateProduct(body);
 
-    const dto = body as UpdateProductPatch;
+    const dto = body as UpdateProductDTO;
 
-    const patch = toUpdateProductPatch(dto);
-
-    const product = await updateProduct(
-      params.productId,
-      user.tenantId!,
-      patch
-    );
+    const product = await updateProduct(actor, params.productId, dto);
 
     return NextResponse.json({ product });
   } catch (err: unknown) {
@@ -75,19 +54,16 @@ export async function PATCH(
   }
 }
 
-
-// ============================================
-// DELETE /api/admin/products/:productId
-// ============================================
 export async function DELETE(
   _req: Request,
   { params }: { params: { productId: string } }
 ) {
   try {
     const rawUser = await getUserFromRequest();
-    const user = requireRole(rawUser, "staff");
+    const actor = requireTenant(rawUser);
+    requireRole(actor, "staff");
 
-    await softDeleteProduct(params.productId, user.tenantId!);
+    await softDeleteProduct(actor, params.productId);
 
     return NextResponse.json({ success: true });
   } catch (err: unknown) {

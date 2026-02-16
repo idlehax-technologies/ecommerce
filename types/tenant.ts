@@ -1,3 +1,5 @@
+import { UserRole } from "./auth";
+
 export type TenantStatus = "created" | "active" | "inactive";
 
 export type Tenant = {
@@ -20,4 +22,14 @@ export type CreateTenantDTO = {
 
 export type UpdateTenantDTO = {
     name: string;
+};
+
+/**
+ * This is NOT transport data.
+ * This is runtime execution identity produced by requireTenant().
+ */
+export type TenantScopedActor = {
+    userId: string;
+    role: UserRole;
+    tenantId: string;
 };

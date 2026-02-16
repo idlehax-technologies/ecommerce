@@ -1,27 +1,31 @@
-// lib/api/adminProducts.ts
-
 import type { Product } from "@/types/product";
 import type {
-    CreateProductInput,
-    UpdateProductPatch,
+    CreateProductDTO,
+    UpdateProductDTO,
 } from "@/types/product";
 
 const json = { "Content-Type": "application/json" };
-
 async function handle<T>(res: Response): Promise<T> {
-    const data = await res.json().catch(() => ({}));
+    const data: unknown = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-        const message =
-            typeof data?.error === "string"
-                ? data.error
-                : "Request failed";
+        let message = "Request failed";
+
+        if (
+            typeof data === "object" &&
+            data !== null &&
+            "error" in data &&
+            typeof (data as { error?: unknown }).error === "string"
+        ) {
+            message = (data as { error: string }).error;
+        }
 
         throw new Error(message);
     }
 
-    return data;
+    return data as T;
 }
+
 
 /* ======================================================
    ADMIN routes (privileged)
@@ -34,7 +38,7 @@ export async function listProducts(): Promise<Product[]> {
 }
 
 export async function createProduct(
-    body: CreateProductInput
+    body: CreateProductDTO
 ): Promise<Product> {
     const res = await fetch("/api/admin/products", {
         method: "POST",
@@ -54,7 +58,7 @@ export async function getProduct(productId: string): Promise<Product> {
 
 export async function updateProduct(
     productId: string,
-    patch: UpdateProductPatch
+    patch: UpdateProductDTO
 ): Promise<Product> {
     const res = await fetch(`/api/admin/products/${productId}`, {
         method: "PATCH",

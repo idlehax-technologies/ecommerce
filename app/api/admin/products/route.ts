@@ -1,35 +1,23 @@
 import { NextResponse } from "next/server";
 
 import { getUserFromRequest } from "@/lib/auth";
+import { requireRole, requireTenant } from "@/lib/auth/guards";
 
-import {
-  getTenantProducts,
-  createProduct,
-} from "@/lib/products/domain";
+import { listProducts, createProduct } from "@/lib/products/domain";
 
-import {
-  validateCreateProduct,
-} from "@/lib/products/validators";
+import { validateCreateProduct } from "@/lib/products/validators";
 
-import {
-  toCreateProductInput,
-} from "@/lib/products/mappers";
+import type { CreateProductDTO } from "@/types/product";
 
-import type { CreateProductInput } from "@/types/product";
-import { requireRole } from "@/lib/auth/guards";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
-
-// ============================================
-// GET /api/admin/products
-// List tenant products
-// ============================================
 export async function GET() {
   try {
     const rawUser = await getUserFromRequest();
-    const user = requireRole(rawUser, "staff");
+    const actor = requireTenant(rawUser);
+    requireRole(actor, "staff");
 
-    const products = await getTenantProducts(user.tenantId!);
+    const products = await listProducts(actor);
 
     return NextResponse.json({ products });
   } catch (err: unknown) {
@@ -37,27 +25,18 @@ export async function GET() {
   }
 }
 
-
-// ============================================
-// POST /api/admin/products
-// Create product
-// ============================================
 export async function POST(req: Request) {
   try {
     const rawUser = await getUserFromRequest();
-    const user = requireRole(rawUser, "staff");
+    const actor = requireTenant(rawUser);
+    requireRole(actor, "staff");
 
     const body: unknown = await req.json();
-
-    // shape validation
     validateCreateProduct(body);
 
-    const dto = body as CreateProductInput;
+    const dto = body as CreateProductDTO;
 
-    // DTO → domain input
-    const input = toCreateProductInput(dto, user.tenantId!);
-
-    const product = await createProduct(input);
+    const product = await createProduct(actor, dto);
 
     return NextResponse.json({ product }, { status: 201 });
   } catch (err: unknown) {

@@ -1,4 +1,11 @@
-import type { Product, PublicProduct, DomainCreateInput, DomainUpdatePatch } from "@/types/product";
+import type {
+  Product,
+  PublicProduct,
+  NewProductData,
+  ProductChanges,
+} from "@/types/product";
+
+import type { TenantScopedActor } from "@/types/tenant";
 
 import { productStore } from "./storage";
 
@@ -11,14 +18,19 @@ import {
 import { toNewProduct, toPublicProduct } from "./mappers";
 
 /* =========================================================
-   Create
+   Create (tenant derived from actor — never from input)
    ========================================================= */
 
-export async function createProduct(input: DomainCreateInput): Promise<Product> {
-  const product = toNewProduct(input);
+export async function createProduct(
+  actor: TenantScopedActor,
+  input: Omit<NewProductData, "tenantId">
+): Promise<Product> {
+  const product = toNewProduct({
+    ...input,
+    tenantId: actor.tenantId,
+  });
 
   productStore.save(product);
-
   return product;
 }
 
@@ -26,12 +38,12 @@ export async function createProduct(input: DomainCreateInput): Promise<Product> 
    Tenant list
    ========================================================= */
 
-export async function getTenantProducts(
-  tenantId: string,
+export async function listProducts(
+  actor: TenantScopedActor,
   includeDeleted = false
 ): Promise<Product[]> {
   return productStore.getAll().filter(p => {
-    if (p.tenantId !== tenantId) return false;
+    if (p.tenantId !== actor.tenantId) return false;
     if (!includeDeleted && p.isDeleted) return false;
     return true;
   });
@@ -41,14 +53,12 @@ export async function getTenantProducts(
    Get single
    ========================================================= */
 
-export async function getProductById(
-  productId: string,
-  tenantId: string
+export async function getProduct(
+  actor: TenantScopedActor,
+  productId: string
 ): Promise<Product> {
   const product = productStore.get(productId);
-
-  assertTenantCanAccessProduct(product, tenantId);
-
+  assertTenantCanAccessProduct(product, actor.tenantId);
   return product;
 }
 
@@ -57,13 +67,12 @@ export async function getProductById(
    ========================================================= */
 
 export async function updateProduct(
+  actor: TenantScopedActor,
   productId: string,
-  tenantId: string,
-  patch: DomainUpdatePatch
+  patch: ProductChanges
 ): Promise<Product> {
   const product = productStore.get(productId);
-
-  assertTenantCanModifyProduct(product, tenantId);
+  assertTenantCanModifyProduct(product, actor.tenantId);
 
   const updated: Product = {
     ...product,
@@ -72,7 +81,6 @@ export async function updateProduct(
   };
 
   productStore.save(updated);
-
   return updated;
 }
 
@@ -81,12 +89,11 @@ export async function updateProduct(
    ========================================================= */
 
 export async function softDeleteProduct(
-  productId: string,
-  tenantId: string
+  actor: TenantScopedActor,
+  productId: string
 ): Promise<void> {
   const product = productStore.get(productId);
-
-  assertTenantCanModifyProduct(product, tenantId);
+  assertTenantCanModifyProduct(product, actor.tenantId);
 
   productStore.save({
     ...product,
@@ -97,20 +104,31 @@ export async function softDeleteProduct(
 }
 
 /* =========================================================
-   Public storefront
+   Public storefront (still tenant-scoped!)
    ========================================================= */
 
-export async function getAllPublicProducts(): Promise<PublicProduct[]> {
+export async function listPublicProducts(
+  actor: TenantScopedActor
+): Promise<PublicProduct[]> {
   return productStore
     .getAll()
-    .filter(p => !p.isDeleted && p.isActive && p.stock > 0)
+    .filter(
+      p =>
+        p.tenantId === actor.tenantId &&
+        !p.isDeleted &&
+        p.isActive &&
+        p.stock > 0
+    )
     .map(toPublicProduct);
 }
 
-export async function getPublicProductById(productId: string): Promise<PublicProduct> {
+export async function getPublicProduct(
+  actor: TenantScopedActor,
+  productId: string
+): Promise<PublicProduct> {
   const product = productStore.get(productId);
 
-  assertTenantCanAccessProduct(product, product?.tenantId ?? "");
+  assertTenantCanAccessProduct(product, actor.tenantId);
   assertInStock(product);
 
   return toPublicProduct(product);
