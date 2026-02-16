@@ -1,5 +1,3 @@
-// lib/products/guards.ts
-
 import type { Product } from "@/types/product";
 import {
   ProductNotFoundError,
@@ -45,7 +43,5 @@ export function assertTenantCanModifyProduct(
 }
 
 export function assertInStock(p: Product): asserts p is Product {
-  if (p.stock <= 0) {
-    throw new ProductOutOfStockError();
-  }
+  if (p.stock <= 0) throw new ProductOutOfStockError();
 }
