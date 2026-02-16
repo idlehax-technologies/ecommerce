@@ -1,29 +1,16 @@
 import { NextResponse } from "next/server";
 
-import { getAllPublicProducts } from "@/lib/products/domain";
+import { listPublicProducts } from "@/lib/products/domain";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 import { getUserFromRequest } from "@/lib/auth";
-import { requireAuth } from "@/lib/auth/guards";
+import { requireAuth, requireTenant } from "@/lib/auth/guards";
 
-/**
- * Public storefront
- * GET /api/products
- *
- * No auth
- * No tenant scoping
- * No validators
- * Domain already filters:
- *   - isActive
- *   - not deleted
- *   - stock > 0
- *   - strips tenantId
- */
 export async function GET() {
   try {
     const rawUser = await getUserFromRequest();
-    requireAuth(rawUser);
+    const actor = requireTenant(rawUser);
 
-    const products = await getAllPublicProducts();
+    const products = await listPublicProducts(actor);
 
     return NextResponse.json({ products });
   } catch (err: unknown) {

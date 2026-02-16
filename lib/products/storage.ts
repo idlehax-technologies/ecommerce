@@ -1,10 +1,5 @@
 import type { Product } from "@/types/product";
 
-/**
- * Dev-only in-memory persistence.
- * Domain must not know how data is stored.
- */
-
 const globalForProducts = globalThis as any;
 
 const store: Map<string, Product> =
@@ -27,5 +22,5 @@ export const productStore = {
 
     delete(id: string) {
         store.delete(id);
-    }
+    },
 };

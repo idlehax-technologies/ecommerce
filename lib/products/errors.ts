@@ -1,12 +1,3 @@
-/**
- * Product Domain Errors
- *
- * Philosophy (aligned with current system):
- * - Domain expresses failure + HTTP meaning together.
- * - Routes forward { message, status } without translation tables.
- * - Errors are immutable signals.
- */
-
 export abstract class ProductDomainError extends Error {
   readonly status: number;
 
@@ -16,29 +7,17 @@ export abstract class ProductDomainError extends Error {
   }
 }
 
-/* ================================================== */
-/* Existence                                          */
-/* ================================================== */
-
 export class ProductNotFoundError extends ProductDomainError {
   constructor(message = "Product not found") {
     super(message, 404);
   }
 }
 
-/* ================================================== */
-/* Authorization / Ownership                          */
-/* ================================================== */
-
 export class ProductForbiddenError extends ProductDomainError {
   constructor(message = "Product does not belong to your tenant") {
     super(message, 403);
   }
 }
-
-/* ================================================== */
-/* Lifecycle                                          */
-/* ================================================== */
 
 export class ProductDeletedError extends ProductDomainError {
   constructor(message = "Product has been deleted") {
@@ -52,19 +31,11 @@ export class ProductInactiveError extends ProductDomainError {
   }
 }
 
-/* ================================================== */
-/* Validation                                         */
-/* ================================================== */
-
 export class ProductInvalidInputError extends ProductDomainError {
   constructor(message = "Invalid product input") {
     super(message, 400);
   }
 }
-
-/* ================================================== */
-/* Conflicts / Business rules                         */
-/* ================================================== */
 
 export class ProductConflictError extends ProductDomainError {
   constructor(message = "Product conflict") {

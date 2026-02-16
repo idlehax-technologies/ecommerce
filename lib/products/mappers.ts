@@ -1,26 +1,23 @@
-// lib/products/mappers.ts
-
 import type {
   Product,
   PublicProduct,
-  CreateProductInput,
-  UpdateProductPatch,
-  DomainCreateInput,
-  DomainUpdatePatch,
+  CreateProductDTO,
+  UpdateProductDTO,
+  NewProductData,
+  ProductChanges,
 } from "@/types/product";
+
 import { randomUUID } from "crypto";
-
-
-// ============================================================
-// helpers
-// ============================================================
 
 function now(): string {
   return new Date().toISOString();
 }
 
+/* =========================================================
+   Domain creation (tenant already injected by domain)
+   ========================================================= */
 
-export function toNewProduct(input: DomainCreateInput): Product {
+export function toNewProduct(input: NewProductData): Product {
   return {
     productId: randomUUID(),
     tenantId: input.tenantId,
@@ -45,30 +42,18 @@ export function toNewProduct(input: DomainCreateInput): Product {
   };
 }
 
+/* =========================================================
+   Client → Domain (tenant intentionally NOT accepted)
+   ========================================================= */
 
-/**
- * Client CreateProductInput → DomainCreateInput
- *
- * Adds tenantId only.
- * Explicit mapping (no spreading).
- * Domain will generate:
- *   - productId
- *   - timestamps
- *   - flags
- */
 export function toCreateProductInput(
-  input: CreateProductInput,
-  tenantId: string
-): DomainCreateInput {
+  input: CreateProductDTO
+): Omit<NewProductData, "tenantId"> {
   return {
-    tenantId,
-
     title: input.title,
     description: input.description,
-
     price: input.price,
     stock: input.stock,
-
     sku: input.sku,
     images: input.images,
     category: input.category,
@@ -76,52 +61,32 @@ export function toCreateProductInput(
   };
 }
 
-
-/**
- * Client UpdateProductPatch → DomainUpdatePatch
- *
- * Explicit + safe:
- *   - only copy defined fields
- *   - prevent undefined overwrite bugs
- */
 export function toUpdateProductPatch(
-  patch: UpdateProductPatch
-): DomainUpdatePatch {
-  const safePatch: DomainUpdatePatch = {};
+  patch: UpdateProductDTO
+): ProductChanges {
+  const safe: ProductChanges = {};
 
-  if (patch.title !== undefined) safePatch.title = patch.title;
-  if (patch.description !== undefined) safePatch.description = patch.description;
-  if (patch.price !== undefined) safePatch.price = patch.price;
-  if (patch.stock !== undefined) safePatch.stock = patch.stock;
-  if (patch.sku !== undefined) safePatch.sku = patch.sku;
-  if (patch.images !== undefined) safePatch.images = patch.images;
-  if (patch.category !== undefined) safePatch.category = patch.category;
-  if (patch.tags !== undefined) safePatch.tags = patch.tags;
+  if (patch.title !== undefined) safe.title = patch.title;
+  if (patch.description !== undefined) safe.description = patch.description;
+  if (patch.price !== undefined) safe.price = patch.price;
+  if (patch.stock !== undefined) safe.stock = patch.stock;
+  if (patch.sku !== undefined) safe.sku = patch.sku;
+  if (patch.images !== undefined) safe.images = patch.images;
+  if (patch.category !== undefined) safe.category = patch.category;
+  if (patch.tags !== undefined) safe.tags = patch.tags;
 
-  // domain also sets updatedAt,
-  // but harmless if included here too
-  safePatch.updatedAt = now();
+  safe.updatedAt = now();
 
-  return safePatch;
+  return safe;
 }
 
+/* =========================================================
+   Domain → Public projection
+   ========================================================= */
 
-// ============================================================
-// Domain → Public projection
-// ============================================================
-
-/**
- * Strip private/internal fields
- */
 export function toPublicProduct(product: Product): PublicProduct {
-  const {
-    tenantId,
-    isDeleted,
-    createdAt,
-    updatedAt,
-    deletedAt,
-    ...rest
-  } = product;
+  const { tenantId, isDeleted, createdAt, updatedAt, deletedAt, ...rest } =
+    product;
 
   return rest;
 }
