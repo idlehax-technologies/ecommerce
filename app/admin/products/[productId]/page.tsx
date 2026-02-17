@@ -12,10 +12,13 @@ import {
 } from "@mui/material";
 
 import ProductForm from "@/components/admin/products/ProductForm";
-import { getProduct, updateProduct, deleteProduct } from "@/lib/api/productManagement";
+import {
+  getProduct,
+  updateProduct,
+  deleteProduct,
+} from "@/lib/api/productManagement";
 
-import type { Product } from "@/types/product";
-import type { UpdateProductPatch } from "@/types/product";
+import type { Product, UpdateProductDTO } from "@/types/product";
 
 export default function ProductDetailPage() {
   const { productId } = useParams<{ productId: string }>();
@@ -43,21 +46,31 @@ export default function ProductDetailPage() {
     load();
   }, [productId]);
 
-  async function handleUpdate(values: UpdateProductPatch) {
+  async function handleUpdate(values: UpdateProductDTO) {
+    setLoading(true);
+    setError(null);
+
     try {
       const updated = await updateProduct(productId, values);
       setProduct(updated);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to update");
+    } finally {
+      setLoading(false);
     }
   }
 
   async function handleDelete() {
+    setLoading(true);
+    setError(null);
+
     try {
       await deleteProduct(productId);
       router.push("/admin/products");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
+      setLoading(false);
     }
   }
 

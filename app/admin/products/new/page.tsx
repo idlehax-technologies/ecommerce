@@ -1,10 +1,10 @@
 "use client";
 
-import { Container, Typography, Paper, CircularProgress, Alert } from "@mui/material";
+import { Container, Typography, Paper, Alert, CircularProgress } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import type { CreateProductInput } from "@/types/product";
+import type { CreateProductDTO } from "@/types/product";
 import { createProduct } from "@/lib/api/productManagement";
 import ProductForm from "@/components/admin/products/ProductForm";
 
@@ -14,11 +14,11 @@ export default function NewProductPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleCreate(values: CreateProductInput) {
-    try {
-      setLoading(true);
-      setError(null);
+  async function handleCreate(values: CreateProductDTO) {
+    setLoading(true);
+    setError(null);
 
+    try {
       const product = await createProduct(values);
 
       router.push(`/admin/products/${product.productId}`);

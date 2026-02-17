@@ -8,7 +8,6 @@ import {
   Typography,
   Stack,
   CardActionArea,
-  Box,
 } from "@mui/material";
 
 import type { PublicProduct } from "@/types/product";
@@ -17,18 +16,11 @@ type Props = {
   product: PublicProduct;
 };
 
-/**
- * Pure presentation component
- * - no fetch
- * - no logic
- * - only formatting
- */
 export default function ProductCard({ product }: Props) {
   const image =
     product.images?.[0] ??
     "https://via.placeholder.com/400x300?text=No+Image";
 
-  // price stored in paise → convert for UI
   const price = (product.price / 100).toFixed(2);
 
   return (
@@ -74,16 +66,14 @@ export default function ProductCard({ product }: Props) {
             </Typography>
 
             {/* Stock */}
-            <Box>
-              <Typography
-                variant="body2"
-                color={product.stock > 0 ? "text.secondary" : "error"}
-              >
-                {product.stock > 0
-                  ? `${product.stock} in stock`
-                  : "Out of stock"}
-              </Typography>
-            </Box>
+            <Typography
+              variant="body2"
+              color={product.stock > 0 ? "text.secondary" : "error"}
+            >
+              {product.stock > 0
+                ? `${product.stock} in stock`
+                : "Out of stock"}
+            </Typography>
           </Stack>
         </CardContent>
       </CardActionArea>

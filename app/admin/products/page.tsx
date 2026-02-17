@@ -13,7 +13,7 @@ import {
 
 import type { Product } from "@/types/product";
 import { listProducts } from "@/lib/api/productManagement";
-import ProductList from "@/components/admin/products/ProductList";
+import ProductTable from "@/components/admin/products/ProductTable";
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -22,9 +22,12 @@ export default function AdminProductsPage() {
 
   useEffect(() => {
     async function load() {
+      setLoading(true);
+      setError(null);
+
       try {
-        setError(null);
-        setProducts(await listProducts());
+        const data = await listProducts();
+        setProducts(data);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load products");
       } finally {
@@ -40,11 +43,7 @@ export default function AdminProductsPage() {
       <Stack direction="row" justifyContent="space-between" mb={3}>
         <Typography variant="h5">Products</Typography>
 
-        <Button
-          component={Link}
-          href="/admin/products/new"
-          variant="contained"
-        >
+        <Button component={Link} href="/admin/products/new" variant="contained">
           New Product
         </Button>
       </Stack>
@@ -52,9 +51,7 @@ export default function AdminProductsPage() {
       {loading && <CircularProgress />}
       {error && <Alert severity="error">{error}</Alert>}
 
-      {!loading && !error && (
-        <ProductList products={products} />
-      )}
+      {!loading && !error && <ProductTable products={products} />}
     </Container>
   );
 }
