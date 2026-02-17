@@ -1,16 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-    Container,
-    Typography,
-    CircularProgress,
-    Alert,
-} from "@mui/material";
+import { Container, Typography, CircularProgress, Alert } from "@mui/material";
 
 import type { PublicProduct } from "@/types/product";
 import { listProducts } from "@/lib/api/products";
-import ProductList from "@/components/products/ProductList";
+import ProductGrid from "@/components/products/ProductGrid";
 
 export default function ProductsPage() {
     const [products, setProducts] = useState<PublicProduct[]>([]);
@@ -26,9 +21,7 @@ export default function ProductsPage() {
                 const data = await listProducts();
                 setProducts(data);
             } catch (e) {
-                setError(
-                    e instanceof Error ? e.message : "Failed to load products"
-                );
+                setError(e instanceof Error ? e.message : "Failed to load products");
             } finally {
                 setLoading(false);
             }
@@ -59,7 +52,7 @@ export default function ProductsPage() {
                 Products
             </Typography>
 
-            <ProductList products={products} />
+            <ProductGrid products={products} />
         </Container>
     );
 }

@@ -6,7 +6,7 @@ import { Container, Typography, CircularProgress, Box } from "@mui/material";
 import type { PublicProduct } from "@/types/product";
 import { listProducts } from "@/lib/api/products";
 
-import ProductList from "@/components/products/ProductList";
+import ProductList from "@/components/products/ProductGrid";
 
 export default function Home() {
   const [products, setProducts] = useState<PublicProduct[]>([]);

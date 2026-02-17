@@ -10,19 +10,19 @@ import {
 
 import type { Product } from "@/types/product";
 import type {
-  CreateProductInput,
-  UpdateProductPatch,
+  CreateProductDTO,
+  UpdateProductDTO,
 } from "@/types/product";
 
 type CreateProps = {
   mode: "create";
-  onSubmit: (values: CreateProductInput) => Promise<void>;
+  onSubmit: (values: CreateProductDTO) => Promise<void>;
 };
 
 type EditProps = {
   mode: "edit";
   initial: Product;
-  onSubmit: (values: UpdateProductPatch) => Promise<void>;
+  onSubmit: (values: UpdateProductDTO) => Promise<void>;
   onDelete?: () => Promise<void>;
 };
 
@@ -34,7 +34,7 @@ export default function ProductForm(props: Props) {
   const initial = mode === "edit" ? props.initial : undefined;
   const onDelete = mode === "edit" ? props.onDelete : undefined;
 
-  const [values, setValues] = useState<CreateProductInput>({
+  const [values, setValues] = useState<CreateProductDTO>({
     title: initial?.title ?? "",
     description: initial?.description ?? "",
     price: initial?.price ?? 0,
