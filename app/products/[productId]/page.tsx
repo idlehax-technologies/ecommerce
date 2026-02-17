@@ -2,18 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import {
-  Container,
-  Typography,
-  CircularProgress,
-  Button,
-  Stack,
-  Alert,
-  Chip,
-} from "@mui/material";
+import { Container, CircularProgress, Alert, Button, Typography } from "@mui/material";
 
 import type { PublicProduct } from "@/types/product";
 import { getProduct } from "@/lib/api/products";
+import ProductDetail from "@/components/products/ProductDetail";
 
 export default function ProductDetailPage() {
   const { productId } = useParams<{ productId: string }>();
@@ -29,12 +22,10 @@ export default function ProductDetailPage() {
       setError(null);
 
       try {
-        const p = await getProduct(productId);
-        setProduct(p);
+        const data = await getProduct(productId);
+        setProduct(data);
       } catch (e) {
-        setError(
-          e instanceof Error ? e.message : "Failed to load product"
-        );
+        setError(e instanceof Error ? e.message : "Failed to load product");
       } finally {
         setLoading(false);
       }
@@ -56,7 +47,7 @@ export default function ProductDetailPage() {
       <Container sx={{ mt: 6 }}>
         <Alert severity="error">{error}</Alert>
         <Button sx={{ mt: 2 }} onClick={() => router.push("/products")}>
-          Back
+          Back to products
         </Button>
       </Container>
     );
@@ -66,37 +57,14 @@ export default function ProductDetailPage() {
     return (
       <Container sx={{ mt: 6, textAlign: "center" }}>
         <Typography>Product not found</Typography>
-        <Button onClick={() => router.push("/products")}>Back</Button>
+        <Button onClick={() => router.push("/products")}>Back to products</Button>
       </Container>
     );
   }
 
   return (
     <Container sx={{ mt: 6 }}>
-      <Stack spacing={2}>
-        <Typography variant="h4">{product.title}</Typography>
-
-        <Typography fontWeight={600}>
-          ₹ {(product.price / 100).toFixed(2)}
-        </Typography>
-
-        <Chip
-          label={
-            product.stock > 0
-              ? `In stock (${product.stock} available)`
-              : "Out of stock (0 available)"
-          }
-          color={product.stock > 0 ? "success" : "error"}
-          size="small"
-          sx={{ width: "fit-content" }}
-        />
-
-        {product.description && (
-          <Typography color="text.secondary">
-            {product.description}
-          </Typography>
-        )}
-      </Stack>
+      <ProductDetail product={product} />
     </Container>
   );
 }
