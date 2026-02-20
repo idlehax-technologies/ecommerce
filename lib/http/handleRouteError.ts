@@ -5,6 +5,7 @@ import { TenantDomainError } from "@/lib/tenants/errors";
 import { ProductDomainError } from "@/lib/products/errors";
 import { MembershipDomainError } from "@/lib/memberships/errors";
 import { CheckoutDomainError } from "@/lib/checkout/errors";
+import { CartDomainError } from "@/lib/cart/errors";
 
 /**
  * Central HTTP error translator.
@@ -18,7 +19,8 @@ export function handleRouteError(err: unknown) {
         err instanceof AuthDomainError ||
         err instanceof TenantDomainError ||
         err instanceof ProductDomainError ||
-        err instanceof MembershipDomainError
+        err instanceof MembershipDomainError ||
+        err instanceof CartDomainError
     ) {
         return NextResponse.json(
             { error: err.message },

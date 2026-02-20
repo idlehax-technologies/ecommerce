@@ -1,57 +1,40 @@
 "use client";
 
 import {
-  Box,
   Typography,
   Button,
   Divider,
-  Stack,
   Container,
   Snackbar,
   Paper,
-  Collapse,
 } from "@mui/material";
 
 import Link from "next/link";
-import { useCart } from "@/contexts/CartContext";
-import CartItem from "@/components/CartItem";
-
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
-import AddIcon from "@mui/icons-material/Add";
+
+import { useCart } from "@/contexts/CartContext";
+import CartList from "@/components/cart/CartList";
+import CartSummary from "@/components/cart/CartSummary";
+import { useState } from "react";
 
 export default function CartPage() {
-  const { items, clearCart, pendingRemove, stopPendingRemove } = useCart();
+  const { cart, remove, clear } = useCart();
 
-  // paise → rupees
-  const subtotal = items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+  const [undoAction, setUndoAction] = useState<(() => void) | null>(null);
+  const [open, setOpen] = useState(false);
 
-  const subtotalRupees = (subtotal / 100).toFixed(2);
-
-  const itemCount = items.reduce((s, i) => s + i.quantity, 0);
-
-  // -----------------------------
-  // Empty state
-  // -----------------------------
-  if (items.length === 0) {
+  if (!cart || cart.items.length === 0) {
     return (
       <Container maxWidth="sm" sx={{ mt: 8, mb: 8 }}>
         <Paper elevation={3} sx={{ p: 5, textAlign: "center" }}>
           <ShoppingCartOutlinedIcon
             sx={{ fontSize: 64, color: "text.disabled", mb: 2 }}
           />
-
-          <Typography variant="h5" gutterBottom>
-            Your cart is empty
-          </Typography>
-
+          <Typography variant="h5">Your cart is empty</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             Add some products to continue shopping.
           </Typography>
-
-          <Button variant="contained" component={Link} href="/">
+          <Button variant="contained" component={Link} href="/products">
             Browse Products
           </Button>
         </Paper>
@@ -59,60 +42,37 @@ export default function CartPage() {
     );
   }
 
-  // -----------------------------
-  // Main cart
-  // -----------------------------
+  function registerUndo(undo: () => void) {
+    setUndoAction(() => undo);
+    setOpen(true);
+  }
+
+  function handleUndo() {
+    undoAction?.();
+    setOpen(false);
+  }
+
   return (
     <Container maxWidth="sm" sx={{ mt: 6, mb: 6 }}>
       <Paper elevation={3} sx={{ p: 3 }}>
-        {/* Header */}
         <Typography variant="h4" fontWeight={600}>
-          My Cart ({itemCount})
+          My Cart ({cart.items.length})
         </Typography>
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Items */}
-        <Stack spacing={2}>
-          {items.map((item) => {
-            const isBeingRemoved =
-              pendingRemove?.productId === item.productId;
-
-            return (
-              <Collapse key={item.productId} in={!isBeingRemoved} timeout={200}>
-                <CartItem item={item} />
-              </Collapse>
-            );
-          })}
-        </Stack>
-
-        {/* Add more */}
-        <Button
-          startIcon={<AddIcon />}
-          component={Link}
-          href="/"
-          variant="text"
-          sx={{ mt: 1, textTransform: "none" }}
-        >
-          Add more products
-        </Button>
+        <CartList cart={cart} removeItem={remove} registerUndo={registerUndo} />
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Subtotal */}
-        <Box display="flex" justifyContent="flex-end">
-          <Typography variant="h6" fontWeight={600}>
-            Subtotal: ₹ {subtotalRupees}
-          </Typography>
-        </Box>
+        <CartSummary items={cart.items} />
 
-        {/* Actions */}
         <Button
           variant="outlined"
           color="error"
           fullWidth
           sx={{ mt: 2 }}
-          onClick={clearCart}
+          onClick={clear}
         >
           Clear Cart
         </Button>
@@ -127,14 +87,13 @@ export default function CartPage() {
           Checkout
         </Button>
 
-        {/* Undo snackbar */}
         <Snackbar
-          open={!!pendingRemove}
+          open={open}
           autoHideDuration={3000}
           message="Item removed from cart"
-          onClose={stopPendingRemove}
+          onClose={() => setOpen(false)}
           action={
-            <Button size="small" onClick={stopPendingRemove}>
+            <Button size="small" onClick={handleUndo}>
               UNDO
             </Button>
           }
