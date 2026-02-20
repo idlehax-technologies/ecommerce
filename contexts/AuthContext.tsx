@@ -23,10 +23,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.me()
-      .then((d) => setUser(d.user))
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
+    async function hydrate() {
+      setLoading(true);
+      try {
+        const d = await api.me();
+        setUser(d.user);
+      } catch {
+        // Not an error condition for UI — just means no session.
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    hydrate();
   }, []);
 
   const requestOtp = async (p: string) => {
