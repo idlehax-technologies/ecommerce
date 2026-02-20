@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  Button,
   Card,
   CardContent,
   CardMedia,
@@ -10,6 +11,8 @@ import {
   CardActionArea,
 } from "@mui/material";
 
+import { useCart } from "@/contexts/CartContext";
+
 import type { PublicProduct } from "@/types/product";
 
 type Props = {
@@ -17,6 +20,14 @@ type Props = {
 };
 
 export default function ProductCard({ product }: Props) {
+  const { add } = useCart();
+
+  function handleAddToCart(e: React.MouseEvent) {
+    e.preventDefault(); // prevent navigation
+    e.stopPropagation(); // keep CardActionArea from firing
+    add(product.productId);
+  }
+
   const image =
     product.images?.[0] ??
     "https://via.placeholder.com/400x300?text=No+Image";
@@ -74,6 +85,16 @@ export default function ProductCard({ product }: Props) {
                 ? `${product.stock} in stock`
                 : "Out of stock"}
             </Typography>
+
+            <Button
+              size="small"
+              variant="contained"
+              disabled={product.stock <= 0}
+              onClick={handleAddToCart}
+            >
+              Add to Cart
+            </Button>
+
           </Stack>
         </CardContent>
       </CardActionArea>

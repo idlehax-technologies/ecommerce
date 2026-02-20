@@ -62,6 +62,29 @@ export async function getProduct(
   return product;
 }
 
+
+/* =========================================================
+   Read-only access for dependent domains (Cart / Checkout)
+   This intentionally exposes a minimal validation surface.
+   ========================================================= */
+
+export async function getProductForCart(
+  actor: TenantScopedActor,
+  productId: string
+): Promise<Product> {
+  // Reuse the same guarded access path.
+  // Cart must not bypass product invariants.
+  const product = productStore.get(productId);
+
+  assertTenantCanAccessProduct(product, actor.tenantId);
+
+  // NOTE:
+  // We do NOT check stock or activity here.
+  // Cart is allowed to hold intent; checkout will enforce availability.
+  return product;
+}
+
+
 /* =========================================================
    Update
    ========================================================= */

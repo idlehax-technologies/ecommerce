@@ -22,7 +22,7 @@ export default function OtpVerifyForm({ phone }: { phone: string }) {
     };
 
     return (
-        <Box>
+        <Box maxWidth={400} mx="auto" mt={8}>
             {error && <Alert severity="error">{error}</Alert>}
 
             <TextField

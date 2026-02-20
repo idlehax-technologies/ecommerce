@@ -1,37 +1,30 @@
-export type CartItemType = {
-    productId: string;   // consistent with domain
-
-    name: string;        // display only
-    price: number;       // display only
+export type CartItem = {
+    productId: string;
+    title: string;
+    price: number; // paise
     quantity: number;
 };
 
-export type AddToCartInput = {
+export type Cart = {
+    tenantId: string;
+    items: CartItem[];
+    updatedAt: string;
+};
+
+export type AddToCartDTO = {
     productId: string;
-
-    name: string;
-    price: number;
+    quantity?: number;
 };
 
-export type CartContextType = {
-    items: CartItemType[];
-    addToCart: (product: AddToCartInput) => void;
-    removeFromCart: (productId: string) => void;
-    increaseQuantity: (productId: string) => void;
-    decreaseQuantity: (productId: string) => void;
-    clearCart: () => void;
-
-    placeOrder: () => void;
-    failOrder: () => void;
-
-    resetOrderState: () => void;
-    orderAttempted: boolean;
-    orderPlaced: boolean;
-
-    startPendingRemove: (productId: string) => void;
-    stopPendingRemove: () => void;
-    pendingRemove: {
-        productId: string;
-        timeoutId: NodeJS.Timeout;
-    } | null;
+export type UpdateCartItemDTO = {
+    quantity: number;
 };
+
+export type CartContextValue = {
+    cart: Cart | null;
+    refresh: () => Promise<void>;
+    add: (id: string) => Promise<void>;
+    update: (id: string, q: number) => Promise<void>;
+    remove: (id: string) => Promise<void>;
+    clear: () => Promise<void>;
+}

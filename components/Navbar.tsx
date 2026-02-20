@@ -11,6 +11,7 @@ import {
     Stack,
     Badge,
     Divider,
+    CircularProgress,
 } from "@mui/material";
 
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
@@ -20,10 +21,19 @@ import { useCart } from "@/contexts/CartContext";
 
 export default function Navbar() {
     const router = useRouter();
-    const { user, loading, logout } = useAuth();
-    const { items } = useCart();
 
-    const cartCount = items.reduce((s, i) => s + i.quantity, 0);
+    // Auth state (identity surface only — no business logic here)
+    const { user, loading, logout } = useAuth();
+
+    // Cart is server-owned snapshot mirrored by context
+    const { cart } = useCart();
+
+    /**
+     * Derive cart count from authoritative cart snapshot.
+     * No local math, no optimistic state.
+     */
+    const cartCount =
+        cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 
     const role = user?.role;
 
@@ -31,10 +41,14 @@ export default function Navbar() {
     const isTenantOperator = role === "admin" || role === "staff";
     const isSuperadmin = role === "superadmin";
 
-    const handleLogout = async () => {
+    /**
+     * Logout is async but UI concern.
+     * Errors propagate upward if they occur.
+     */
+    async function handleLogout() {
         await logout();
         router.replace("/login");
-    };
+    }
 
     return (
         <AppBar position="static" color="default" elevation={1}>
@@ -44,7 +58,11 @@ export default function Navbar() {
                     variant="h6"
                     component={Link}
                     href="/"
-                    sx={{ textDecoration: "none", color: "inherit", fontWeight: 600 }}
+                    sx={{
+                        textDecoration: "none",
+                        color: "inherit",
+                        fontWeight: 600,
+                    }}
                 >
                     TenantMart
                 </Typography>
@@ -55,7 +73,7 @@ export default function Navbar() {
                         Products
                     </Button>
 
-                    {/* Customer */}
+                    {/* Customer Navigation */}
                     {!loading && isCustomer && (
                         <Button component={Link} href="/cart" color="inherit">
                             <Badge badgeContent={cartCount} color="primary">
@@ -64,7 +82,7 @@ export default function Navbar() {
                         </Button>
                     )}
 
-                    {/* Staff + Admin */}
+                    {/* Staff / Admin */}
                     {!loading && isTenantOperator && (
                         <Button component={Link} href="/admin" color="inherit">
                             Admin
@@ -80,27 +98,28 @@ export default function Navbar() {
 
                     <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
 
-                    {/* Auth */}
-                    {!loading &&
-                        (user ? (
-                            <Stack direction="row" spacing={2} alignItems="center">
-                                <Typography variant="body2" color="text.secondary">
-                                    {user.phone}
-                                </Typography>
+                    {/* Auth Section */}
+                    {loading ? (
+                        <CircularProgress size={20} />
+                    ) : user ? (
+                        <Stack direction="row" spacing={2} alignItems="center">
+                            <Typography variant="body2" color="text.secondary">
+                                {user.phone}
+                            </Typography>
 
-                                <Button component={Link} href="/profile" size="small">
-                                    Profile
-                                </Button>
-
-                                <Button color="error" size="small" onClick={handleLogout}>
-                                    Logout
-                                </Button>
-                            </Stack>
-                        ) : (
-                            <Button component={Link} href="/login" variant="contained">
-                                Login
+                            <Button component={Link} href="/profile" size="small">
+                                Profile
                             </Button>
-                        ))}
+
+                            <Button color="error" size="small" onClick={handleLogout}>
+                                Logout
+                            </Button>
+                        </Stack>
+                    ) : (
+                        <Button component={Link} href="/login" variant="contained">
+                            Login
+                        </Button>
+                    )}
                 </Stack>
             </Toolbar>
         </AppBar>
