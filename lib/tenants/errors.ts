@@ -37,8 +37,8 @@ export class TenantInvalidInputError extends TenantDomainError {
     }
 }
 
-// export class TenantPermissionError extends TenantDomainError {
-//     constructor(message = "Forbidden") {
-//         super(message, 403);
-//     }
-// }
+export class TenantScopeError extends TenantDomainError {
+    constructor(message = "Cross-tenant access denied") {
+        super(message, 403);
+    }
+}

@@ -1,19 +1,19 @@
 import { NextResponse } from "next/server";
-
-import { listPublicProducts } from "@/lib/products/domain";
-import { handleRouteError } from "@/lib/http/handleRouteError";
+import { requireTenant } from "@/lib/auth/guards";
 import { getUserFromRequest } from "@/lib/auth";
-import { requireAuth, requireTenant } from "@/lib/auth/guards";
+
+import { listProducts } from "@/lib/products/domain";
+import { listTenantInventory } from "@/lib/tenantInventory/domain";
 
 export async function GET() {
-  try {
-    const rawUser = await getUserFromRequest();
-    const actor = requireTenant(rawUser);
+  const actor = requireTenant(await getUserFromRequest());
 
-    const products = await listPublicProducts(actor);
+  const products = await listProducts();
+  const inventory = listTenantInventory(actor.tenantId);
 
-    return NextResponse.json({ products });
-  } catch (err: unknown) {
-    return handleRouteError(err);
-  }
+  const visible = products.filter(p =>
+    inventory.some(i => i.productId === p.productId && i.enabled)
+  );
+
+  return NextResponse.json({ products: visible });
 }

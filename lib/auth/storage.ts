@@ -1,11 +1,4 @@
-import type { UserRole } from "@/types/auth";
-
-export interface DBUser {
-    userId: string;
-    phone: string;
-    role: UserRole;
-    tenantId: string | null;
-}
+import type { AuthUser } from "@/types/auth";
 
 export interface OtpRecord {
     phone: string;
@@ -15,43 +8,102 @@ export interface OtpRecord {
     lastRequestedAt: number;
 }
 
-
-const globalAny = globalThis as any;
-
-const users: Map<string, DBUser> =
-    globalAny.__users ?? (globalAny.__users = new Map());
-
-const otps: Map<string, OtpRecord> =
-    globalAny.__otps ?? (globalAny.__otps = new Map());
-
-// ---------- users ----------
-
-export const getUserById = (id: string) =>
-    users.get(id) ?? null;
-
-export const findUserByPhone = (phone: string) => {
-    for (const u of users.values()) if (u.phone === phone) return u;
-    return null;
+/**
+ * Global anchors so Next.js hot reload does not wipe memory.
+ */
+const globalForAuth = globalThis as unknown as {
+    __authUsers?: Map<string, AuthUser>;
+    __authOtps?: Map<string, OtpRecord>;
 };
 
-export const createUser = (phone: string): DBUser => {
-    const u: DBUser = {
-        userId: crypto.randomUUID(),
-        phone,
-        role: "customer",
-        tenantId: null,
-    };
-    users.set(u.userId, u);
-    return u;
+const userStore: Map<string, AuthUser> =
+    globalForAuth.__authUsers ?? new Map();
+
+const otpStore: Map<string, OtpRecord> =
+    globalForAuth.__authOtps ?? new Map();
+
+globalForAuth.__authUsers = userStore;
+globalForAuth.__authOtps = otpStore;
+
+/**
+ * ---- One-time seed ----
+ * Runs only if store is empty.
+ */
+function seedUsers() {
+    if (userStore.size > 0) return;
+
+    const seed: AuthUser[] = [
+        {
+            userId: "u_customer",
+            phone: "9000000001",
+            role: "customer",
+            tenantId: "tenant_alpha",
+        },
+        {
+            userId: "u_staff",
+            phone: "9000000002",
+            role: "staff",
+            tenantId: "tenant_alpha",
+        },
+        {
+            userId: "u_admin",
+            phone: "9000000003",
+            role: "admin",
+            tenantId: "tenant_alpha",
+        },
+        {
+            userId: "u_superadmin",
+            phone: "9000000004",
+            role: "superadmin",
+        },
+    ];
+
+    for (const u of seed) {
+        userStore.set(u.userId, u);
+    }
+}
+
+seedUsers();
+
+/**
+ * ---------- Auth Store ----------
+ * Infrastructure only — no business logic.
+ */
+export const authStore = {
+    getById(userId: string): AuthUser | undefined {
+        return userStore.get(userId);
+    },
+
+    getAll(): AuthUser[] {
+        return Array.from(userStore.values());
+    },
+
+    findByPhone(phone: string): AuthUser | undefined {
+        for (const u of userStore.values()) {
+            if (u.phone === phone) return u;
+        }
+        return undefined;
+    },
+
+    save(user: AuthUser) {
+        userStore.set(user.userId, user);
+    },
 };
 
-// ---------- otp ----------
+/**
+ * ---------- OTP Store ----------
+ * Same structural pattern as authStore.
+ */
+export const otpStoreApi = {
+    get(phone: string): OtpRecord | undefined {
+        return otpStore.get(phone);
+    },
 
-export const saveOtp = (rec: OtpRecord) =>
-    otps.set(rec.phone, rec);
+    save(rec: OtpRecord) {
+        otpStore.set(rec.phone, rec);
+    },
 
-export const getOtp = (phone: string) =>
-    otps.get(phone);
-
-export const deleteOtp = (phone: string) =>
-    otps.delete(phone);
+    delete(phone: string) {
+        otpStore.delete(phone);
+    },
+};

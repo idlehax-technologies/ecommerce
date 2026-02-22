@@ -25,12 +25,11 @@ export async function addItem(
 ): Promise<Cart> {
     const cart = getCartForTenant(actor.tenantId);
 
-    // This enforces tenant access + existence checks centrally
-    const product = await getProductForCart(actor, dto.productId);
+    const product = await getProductForCart(dto.productId);
 
     const quantityToAdd = dto.quantity ?? 1;
 
-    const existing = cart.items.find(i => i.productId === product.productId);
+    const existing = cart.items.find((i) => i.productId === product.productId);
 
     if (existing) {
         existing.quantity += quantityToAdd;
@@ -79,7 +78,7 @@ export function removeItem(
 ): Cart {
     const cart = getCartForTenant(actor.tenantId);
 
-    cart.items = cart.items.filter(i => i.productId !== productId);
+    cart.items = cart.items.filter((i) => i.productId !== productId);
 
     saveCart(cart);
     return cart;
@@ -89,6 +88,6 @@ export function removeItem(
    Clear cart
    ========================================================= */
 
-export function clearCart(actor: TenantScopedActor) {
+export function clearCart(actor: TenantScopedActor): void {
     clearStorage(actor.tenantId);
 }
