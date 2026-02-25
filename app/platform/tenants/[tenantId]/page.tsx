@@ -85,8 +85,12 @@ export default async function TenantDetailPage({ params }: PageProps) {
                                 </Button>
                             </form>
                         </Stack>
-
-                        <Link href="/admin/tenants" style={{ textDecoration: "none" }}>
+                        <Link href={`/platform/tenants/${tenantId}/inventory`} style={{ textDecoration: "none" }}>
+                            <Button variant="contained">
+                                Go to inventory
+                            </Button>
+                        </Link>
+                        <Link href="/platform/tenants" style={{ textDecoration: "none" }}>
                             <Button variant="contained">
                                 Back
                             </Button>

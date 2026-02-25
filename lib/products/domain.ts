@@ -1,49 +1,62 @@
-// lib/products/domain.ts
-
 import { productStore } from "./storage";
-import type { Product, ProductChanges, CreateProductDTO } from "@/types/product";
-import { toNewProduct } from "./mappers";
+import type {
+  Product,
+  ProductChanges,
+  CreateProductDTO,
+} from "@/types/product";
 
-export async function createProduct(dto: CreateProductDTO): Promise<Product> {
+import { toNewProduct } from "./mappers";
+import { assertNotDeleted, assertProductExists } from "./guards";
+
+function now(): string {
+  return new Date().toISOString();
+}
+
+export async function createProduct(
+  dto: CreateProductDTO
+): Promise<Product> {
   const product = toNewProduct(dto);
   productStore.save(product);
   return product;
 }
 
 export async function listProducts(): Promise<Product[]> {
-  return productStore.getAll().filter(p => !p.isDeleted);
+  return productStore.getAll().filter(p => !p.deletedAt);
 }
 
 export async function getProduct(productId: string): Promise<Product> {
   const p = productStore.get(productId);
-  if (!p || p.isDeleted) throw new Error("Product not found");
+  assertProductExists(p);
+  assertNotDeleted(p);
+
   return p;
 }
 
 export async function updateProduct(
   productId: string,
-  patch: ProductChanges
+  changes: ProductChanges
 ): Promise<Product> {
   const existing = await getProduct(productId);
 
-  const updated = {
+  const updated: Product = {
     ...existing,
-    ...patch,
-    updatedAt: new Date().toISOString(),
+    ...changes,
   };
 
   productStore.save(updated);
   return updated;
 }
 
-export async function softDeleteProduct(productId: string): Promise<void> {
+export async function softDeleteProduct(
+  productId: string
+): Promise<void> {
   const existing = await getProduct(productId);
 
   const updated: Product = {
     ...existing,
-    isDeleted: true,
+    deletedAt: now(),
     isActive: false,
-    updatedAt: new Date().toISOString(),
+    updatedAt: now(),
   };
 
   productStore.save(updated);
@@ -51,6 +64,8 @@ export async function softDeleteProduct(productId: string): Promise<void> {
 
 export async function getProductForCart(productId: string): Promise<Product> {
   const p = productStore.get(productId);
-  if (!p || p.isDeleted) throw new Error("Product not found");
+  assertProductExists(p);
+  assertNotDeleted(p);
+
   return p;
 }

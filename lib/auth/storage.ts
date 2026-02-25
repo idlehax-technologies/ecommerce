@@ -56,6 +56,32 @@ function seedUsers() {
             phone: "9000000004",
             role: "superadmin",
         },
+
+
+
+        {
+            userId: "mnsnhs_customer",
+            phone: "8000000001",
+            role: "customer",
+            tenantId: "tenant_mnsnhs",
+        },
+        {
+            userId: "mnsnhs_staff",
+            phone: "8000000002",
+            role: "staff",
+            tenantId: "tenant_mnsnhs",
+        },
+        {
+            userId: "mnsnhs_admin",
+            phone: "8000000003",
+            role: "admin",
+            tenantId: "tenant_mnsnhs",
+        },
+        {
+            userId: "mnsnhs_superadmin",
+            phone: "8000000004",
+            role: "superadmin",
+        },
     ];
 
     for (const u of seed) {

@@ -17,14 +17,13 @@ export default function ProductRow({ product }: { product: Product }) {
     <TableRow hover>
       <TableCell>{product.title}</TableCell>
       <TableCell>{formatINR(product.price)}</TableCell>
-      <TableCell>{product.stock}</TableCell>
       <TableCell>{product.category ?? "—"}</TableCell>
 
       <TableCell align="right">
         <Stack direction="row" spacing={1} justifyContent="flex-end">
           <Button
             component={Link}
-            href={`/admin/products/${product.productId}`}
+            href={`/platform/products/${product.productId}`}
             size="small"
           >
             Edit

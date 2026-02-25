@@ -15,15 +15,26 @@ globalForTenants.__tenantStore = store;
 function seedTenants() {
     if (store.size > 0) return;
 
-    const tenant: Tenant = {
-        tenantId: "tenant_alpha",
-        name: "Alpha School",
-        status: "active",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-    };
+    const seed: Tenant[] = [
+        {
+            tenantId: "tenant_alpha",
+            name: "Alpha School",
+            status: "active",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        },
+        {
+            tenantId: "tenant_mnsnhs",
+            name: "Michaelnagar Shikshaniketan",
+            status: "active",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        },
+    ];
 
-    store.set(tenant.tenantId, tenant);
+    for (const t of seed) {
+        store.set(t.tenantId, t);
+    }
 }
 
 seedTenants();

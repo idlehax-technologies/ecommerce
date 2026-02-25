@@ -2,102 +2,72 @@
 
 import Link from "next/link";
 import {
-  Button,
   Card,
   CardContent,
   CardMedia,
+  CardActions,
   Typography,
+  Button,
+  Chip,
   Stack,
-  CardActionArea,
 } from "@mui/material";
-
-import { useCart } from "@/contexts/CartContext";
-
-import type { PublicProduct } from "@/types/product";
+import type { TenantProvisioningRow } from "@/lib/mappers/tenantProvisioningView";
 
 type Props = {
-  product: PublicProduct;
+  row: TenantProvisioningRow;
 };
 
-export default function ProductCard({ product }: Props) {
-  const { add } = useCart();
-
-  function handleAddToCart(e: React.MouseEvent) {
-    e.preventDefault(); // prevent navigation
-    e.stopPropagation(); // keep CardActionArea from firing
-    add(product.productId);
-  }
-
-  const image =
-    product.images?.[0] ??
-    "https://via.placeholder.com/400x300?text=No+Image";
+export default function ProductCard({ row }: Props) {
+  const { product, stock } = row;
 
   const price = (product.price / 100).toFixed(2);
+  const image = product.images?.[0];
 
   return (
-    <Card
-      sx={{
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <CardActionArea
-        component={Link}
-        href={`/products/${product.productId}`}
-        sx={{ height: "100%" }}
-      >
-        {/* Image */}
+    <Card sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      {image && (
         <CardMedia
           component="img"
           height="180"
           image={image}
           alt={product.title}
         />
+      )}
 
-        {/* Content */}
-        <CardContent sx={{ flexGrow: 1 }}>
-          <Stack spacing={1}>
-            {/* Title */}
-            <Typography
-              variant="subtitle1"
-              fontWeight={600}
-              sx={{
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {product.title}
-            </Typography>
+      <CardContent sx={{ flexGrow: 1 }}>
+        <Stack spacing={1}>
+          <Typography variant="h6">
+            {product.title}
+          </Typography>
 
-            {/* Price */}
-            <Typography variant="body1" fontWeight={600}>
-              ₹ {price}
-            </Typography>
+          <Typography fontWeight={600}>
+            ₹ {price}
+          </Typography>
 
-            {/* Stock */}
-            <Typography
-              variant="body2"
-              color={product.stock > 0 ? "text.secondary" : "error"}
-            >
-              {product.stock > 0
-                ? `${product.stock} in stock`
-                : "Out of stock"}
-            </Typography>
+          <Chip
+            label={
+              stock > 0
+                ? `In stock (${stock})`
+                : "Out of stock"
+            }
+            color={stock > 0 ? "success" : "error"}
+            size="small"
+            sx={{ width: "fit-content" }}
+          />
+        </Stack>
+      </CardContent>
 
-            <Button
-              size="small"
-              variant="contained"
-              disabled={product.stock <= 0}
-              onClick={handleAddToCart}
-            >
-              Add to Cart
-            </Button>
-
-          </Stack>
-        </CardContent>
-      </CardActionArea>
+      <CardActions>
+        <Button
+          component={Link}
+          href={`/products/${product.productId}`}
+          size="small"
+          fullWidth
+          variant="outlined"
+        >
+          View Details
+        </Button>
+      </CardActions>
     </Card>
   );
 }
