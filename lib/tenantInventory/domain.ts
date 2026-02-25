@@ -59,3 +59,10 @@ export function listTenantInventory(
 ): TenantInventory[] {
     return tenantInventoryStore.listByTenant(tenantId);
 }
+
+export function findTenantProvision(
+    tenantId: string,
+    productId: string
+): TenantInventory | null {
+    return tenantInventoryStore.get(tenantId, productId) ?? null;
+}

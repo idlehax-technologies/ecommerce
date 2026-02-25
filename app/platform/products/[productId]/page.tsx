@@ -66,7 +66,7 @@ export default function ProductDetailPage() {
 
     try {
       await deleteProduct(productId);
-      router.push("/admin/products");
+      router.push("/platform/products");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to delete");
     } finally {

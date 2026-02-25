@@ -5,6 +5,8 @@ import { getCartForTenant, saveCart, clearCart as clearStorage } from "./storage
 import { requireItem } from "./guards";
 
 import { getProductForCart } from "@/lib/products/domain";
+import { findTenantProvision } from "../tenantInventory/domain";
+import { CartProductUnavailableError, CartStockExceededError, InvalidQuantityError } from "./errors";
 
 /* =========================================================
    Get cart (tenant-scoped aggregate)
@@ -27,18 +29,38 @@ export async function addItem(
 
     const product = await getProductForCart(dto.productId);
 
+    const provision = findTenantProvision(actor.tenantId, product.productId);
+
+    if (!provision || !provision.enabled) {
+        throw new CartProductUnavailableError();
+    }
+
     const quantityToAdd = dto.quantity ?? 1;
 
-    const existing = cart.items.find((i) => i.productId === product.productId);
+    if (quantityToAdd <= 0) {
+        throw new InvalidQuantityError("Quantity must be greater than zero");
+    }
+
+    const existing = cart.items.find(
+        (i) => i.productId === product.productId
+    );
+
+    const newQuantity = existing
+        ? existing.quantity + quantityToAdd
+        : quantityToAdd;
+
+    if (newQuantity > provision.stock) {
+        throw new CartStockExceededError();
+    }
 
     if (existing) {
-        existing.quantity += quantityToAdd;
+        existing.quantity = newQuantity;
     } else {
         cart.items.push({
             productId: product.productId,
             title: product.title,
             price: product.price,
-            quantity: quantityToAdd,
+            quantity: newQuantity,
         });
     }
 
@@ -56,13 +78,26 @@ export function updateItem(
     dto: UpdateCartItemDTO
 ): Cart {
     const cart = getCartForTenant(actor.tenantId);
+
     const item = requireItem(cart, productId);
 
     if (dto.quantity <= 0) {
         cart.items = cart.items.filter(i => i.productId !== productId);
-    } else {
-        item.quantity = dto.quantity;
+        saveCart(cart);
+        return cart;
     }
+
+    const provision = findTenantProvision(actor.tenantId, productId);
+
+    if (!provision || !provision.enabled) {
+        throw new CartProductUnavailableError();
+    }
+
+    if (dto.quantity > provision.stock) {
+        throw new CartStockExceededError();
+    }
+
+    item.quantity = dto.quantity;
 
     saveCart(cart);
     return cart;

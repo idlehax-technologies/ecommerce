@@ -44,3 +44,15 @@ export class InvalidQuantityError extends CartDomainError {
         super(message, 400);
     }
 }
+
+export class CartProductUnavailableError extends CartDomainError {
+    constructor(message = "Product is not available for this tenant") {
+        super(message, 409);
+    }
+}
+
+export class CartStockExceededError extends CartDomainError {
+    constructor(message = "Requested quantity exceeds available stock") {
+        super(message, 409);
+    }
+}

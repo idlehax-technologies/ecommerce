@@ -6,10 +6,11 @@ import { handleRouteError } from "@/lib/http/handleRouteError";
 
 export async function POST(
     _: Request,
-    { params }: { params: { tenantId: string } }
+    { params }: { params: Promise<{ tenantId: string }> }
 ) {
     try {
-        const tenant = await activateTenantUseCase(params.tenantId);
+        const { tenantId } = await params;
+        const tenant = await activateTenantUseCase(tenantId);
         return NextResponse.json(tenant);
     } catch (err) {
         return handleRouteError(err);

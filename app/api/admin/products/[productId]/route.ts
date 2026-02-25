@@ -6,35 +6,27 @@ import { getUserFromRequest } from "@/lib/auth";
 import { requireRole } from "@/lib/auth/guards";
 
 import {
-  getProduct,
-  updateProduct,
-  softDeleteProduct,
-} from "@/lib/products/domain";
+  getPlatformProduct,
+  updatePlatformProduct,
+  deletePlatformProduct,
+} from "@/lib/products/service";
 
 import { validateUpdateProduct } from "@/lib/products/validators";
-
 import type { UpdateProductDTO } from "@/types/product";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
-/**
- * Admin Product Mutation Surface
- *
- * Still platform-owned.
- * No tenant resolution required anymore.
- */
-
 export async function GET(
   _req: Request,
-  context: { params: Promise<{ productId: string }> }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
-    const { productId } = await context.params;
+    const { productId } = await params;
 
     const rawUser = await getUserFromRequest();
     requireRole(rawUser, "superadmin");
 
-    const product = await getProduct(productId);
+    const product = await getPlatformProduct(productId);
 
     return NextResponse.json({ product });
   } catch (err: unknown) {
@@ -44,10 +36,10 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  context: { params: Promise<{ productId: string }> }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
-    const { productId } = await context.params;
+    const { productId } = await params;
 
     const rawUser = await getUserFromRequest();
     requireRole(rawUser, "superadmin");
@@ -57,7 +49,7 @@ export async function PATCH(
 
     const dto = body as UpdateProductDTO;
 
-    const product = await updateProduct(productId, dto);
+    const product = await updatePlatformProduct(productId, dto);
 
     return NextResponse.json({ product });
   } catch (err: unknown) {
@@ -67,15 +59,15 @@ export async function PATCH(
 
 export async function DELETE(
   _req: Request,
-  context: { params: Promise<{ productId: string }> }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
-    const { productId } = await context.params;
+    const { productId } = await params;
 
     const rawUser = await getUserFromRequest();
     requireRole(rawUser, "superadmin");
 
-    await softDeleteProduct(productId);
+    await deletePlatformProduct(productId);
 
     return NextResponse.json({ success: true });
   } catch (err: unknown) {

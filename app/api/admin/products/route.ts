@@ -5,26 +5,22 @@ import { NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/auth";
 import { requireRole } from "@/lib/auth/guards";
 
-import { listProducts, createProduct } from "@/lib/products/domain";
-import { validateCreateProduct } from "@/lib/products/validators";
+import {
+  listProductsForPlatform,
+  createPlatformProduct,
+} from "@/lib/products/service";
 
+import { validateCreateProduct } from "@/lib/products/validators";
 import type { CreateProductDTO } from "@/types/product";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
-
-/**
- * Admin Catalog Surface (Platform-Owned)
- *
- * Products are no longer tenant-scoped.
- * Only privileged operators (staff/admin/superadmin) manage catalog.
- */
 
 export async function GET() {
   try {
     const rawUser = await getUserFromRequest();
     requireRole(rawUser, "superadmin");
 
-    const products = await listProducts();
+    const products = await listProductsForPlatform();
 
     return NextResponse.json({ products });
   } catch (err: unknown) {
@@ -42,7 +38,7 @@ export async function POST(req: Request) {
 
     const dto = body as CreateProductDTO;
 
-    const product = await createProduct(dto);
+    const product = await createPlatformProduct(dto);
 
     return NextResponse.json({ product }, { status: 201 });
   } catch (err: unknown) {

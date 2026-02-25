@@ -18,12 +18,12 @@ export const tenantAdminApi = {
     list: () =>
         fetch("/api/admin/tenants").then(handle),
 
-    get: (id: string) =>
-        fetch(`/api/admin/tenants/${id}`).then(handle),
+    get: (tenantId: string) =>
+        fetch(`/api/admin/tenants/${tenantId}`).then(handle),
 
-    activate: (id: string) =>
-        fetch(`/api/admin/tenants/${id}/activate`, { method: "POST" }).then(handle),
+    activate: (tenantId: string) =>
+        fetch(`/api/admin/tenants/${tenantId}/activate`, { method: "POST" }).then(handle),
 
-    deactivate: (id: string) =>
-        fetch(`/api/admin/tenants/${id}/deactivate`, { method: "POST" }).then(handle),
+    deactivate: (tenantId: string) =>
+        fetch(`/api/admin/tenants/${tenantId}/deactivate`, { method: "POST" }).then(handle),
 };

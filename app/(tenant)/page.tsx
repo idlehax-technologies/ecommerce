@@ -1,34 +1,18 @@
-"use client";
+// app/(tenant)/page.tsx
 
-import { useEffect, useState } from "react";
-import { Container, Typography, CircularProgress, Box } from "@mui/material";
-
-import type { PublicProduct } from "@/types/product";
-import { listProducts } from "@/lib/api/products";
+import { Container, Typography, Box } from "@mui/material";
+import { getUserFromRequest } from "@/lib/auth";
+import { requireTenant } from "@/lib/auth/guards";
+import { getTenantProvisioningView } from "@/lib/tenantInventory/service";
 import ProductGrid from "@/components/products/ProductGrid";
 
-export default function Home() {
-  const [products, setProducts] = useState<PublicProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export default async function TenantHomePage() {
+  const actor = requireTenant(await getUserFromRequest());
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      setError(null);
+  const { rows } = await getTenantProvisioningView(actor.tenantId);
 
-      try {
-        const data = await listProducts();
-        setProducts(data);
-      } catch {
-        setError("Failed to load products");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    load();
-  }, []);
+  // Visible storefront products only
+  const visible = rows.filter(r => r.enabled);
 
   return (
     <Container sx={{ py: 4 }}>
@@ -36,21 +20,9 @@ export default function Home() {
         Products
       </Typography>
 
-      {loading && (
-        <Box textAlign="center" py={6}>
-          <CircularProgress />
-        </Box>
-      )}
-
-      {error && (
-        <Typography color="error" textAlign="center">
-          {error}
-        </Typography>
-      )}
-
-      {!loading && !error && (
-        <ProductGrid products={products} />
-      )}
+      <Box mt={4}>
+        <ProductGrid rows={visible} />
+      </Box>
     </Container>
   );
 }
