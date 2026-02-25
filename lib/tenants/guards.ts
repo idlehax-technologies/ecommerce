@@ -4,7 +4,10 @@ import {
     TenantAlreadyExistsError,
     TenantAlreadyInactiveError,
     TenantNotFoundError,
+    TenantScopeError,
 } from "./errors";
+import { AuthUser, UserRole } from "@/types/auth";
+import { requireAuth, requireTenant } from "../auth/guards";
 
 export function assertExists(t: Tenant | null): asserts t is Tenant {
     if (!t) throw new TenantNotFoundError("Tenant not found");
@@ -26,8 +29,11 @@ export function assertCanDeactivate(t: Tenant) {
     }
 }
 
-// export function assertSuperadmin(role?: string) {
-//     if (role !== "superadmin") {
-//         throw new TenantPermissionError("Superadmin only");
-//     }
-// }
+export function assertTenantScope(
+    user: AuthUser & { tenantId: string },
+    tenantId: string
+): void {
+    if (user.tenantId !== tenantId) {
+        throw new TenantScopeError("Cross-tenant access denied");
+    }
+}

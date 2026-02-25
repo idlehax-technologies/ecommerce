@@ -1,21 +1,28 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getTenant } from "@/lib/tenants/domain";
-import { getUserFromRequest } from "@/lib/auth";
-import { requireRole } from "@/lib/auth/guards";
+// app/api/admin/tenants/[tenantId]/route.ts
+
+import { NextResponse } from "next/server";
 import { handleRouteError } from "@/lib/http/handleRouteError";
+import { getTenantById } from "@/lib/tenants/service";
+
+/**
+ * Transport Adapter Only
+ * ----------------------
+ * - No authorization logic here
+ * - No domain orchestration here
+ * - Delegates entirely to service layer
+ */
 
 export async function GET(
-    _: NextRequest,
-    { params }: { params: { tenantId: string } }
+    _: Request,
+    { params }: { params: Promise<{ tenantId: string }> }
 ) {
     try {
-        const rawUser = await getUserFromRequest();
-        requireRole(rawUser, "superadmin");
+        const { tenantId } = await params;
 
-        const tenant = getTenant(params.tenantId);
+        const tenant = await getTenantById(tenantId);
 
         return NextResponse.json(tenant);
-    } catch (err: unknown) {
+    } catch (err) {
         return handleRouteError(err);
     }
 }

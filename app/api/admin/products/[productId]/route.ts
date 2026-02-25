@@ -1,7 +1,9 @@
+// app/api/admin/products/[productId]/route.ts
+
 import { NextResponse } from "next/server";
 
 import { getUserFromRequest } from "@/lib/auth";
-import { requireRole, requireTenant } from "@/lib/auth/guards";
+import { requireRole } from "@/lib/auth/guards";
 
 import {
   getProduct,
@@ -15,16 +17,24 @@ import type { UpdateProductDTO } from "@/types/product";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
+/**
+ * Admin Product Mutation Surface
+ *
+ * Still platform-owned.
+ * No tenant resolution required anymore.
+ */
+
 export async function GET(
   _req: Request,
-  { params }: { params: { productId: string } }
+  context: { params: Promise<{ productId: string }> }
 ) {
   try {
-    const rawUser = await getUserFromRequest();
-    const actor = requireTenant(rawUser);
-    requireRole(actor, "staff");
+    const { productId } = await context.params;
 
-    const product = await getProduct(actor, params.productId);
+    const rawUser = await getUserFromRequest();
+    requireRole(rawUser, "superadmin");
+
+    const product = await getProduct(productId);
 
     return NextResponse.json({ product });
   } catch (err: unknown) {
@@ -34,19 +44,20 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { productId: string } }
+  context: { params: Promise<{ productId: string }> }
 ) {
   try {
+    const { productId } = await context.params;
+
     const rawUser = await getUserFromRequest();
-    const actor = requireTenant(rawUser);
-    requireRole(actor, "staff");
+    requireRole(rawUser, "superadmin");
 
     const body: unknown = await req.json();
     validateUpdateProduct(body);
 
     const dto = body as UpdateProductDTO;
 
-    const product = await updateProduct(actor, params.productId, dto);
+    const product = await updateProduct(productId, dto);
 
     return NextResponse.json({ product });
   } catch (err: unknown) {
@@ -56,14 +67,15 @@ export async function PATCH(
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { productId: string } }
+  context: { params: Promise<{ productId: string }> }
 ) {
   try {
-    const rawUser = await getUserFromRequest();
-    const actor = requireTenant(rawUser);
-    requireRole(actor, "staff");
+    const { productId } = await context.params;
 
-    await softDeleteProduct(actor, params.productId);
+    const rawUser = await getUserFromRequest();
+    requireRole(rawUser, "superadmin");
+
+    await softDeleteProduct(productId);
 
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
