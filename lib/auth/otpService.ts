@@ -1,4 +1,4 @@
-import { saveOtp, getOtp, deleteOtp } from "./storage";
+import { otpStoreApi } from "./storage";
 import { InvalidOtpError, OtpRateLimitError } from "./errors";
 
 const EXPIRY_MS = 2 * 60 * 1000;
@@ -9,7 +9,7 @@ const randomCode = () =>
     Math.floor(100000 + Math.random() * 900000).toString();
 
 export async function sendOtp(phone: string) {
-    const existing = getOtp(phone);
+    const existing = otpStoreApi.get(phone);
 
     if (existing && Date.now() - existing.lastRequestedAt < RESEND_COOLDOWN) {
         throw new OtpRateLimitError();
@@ -18,7 +18,7 @@ export async function sendOtp(phone: string) {
     // const code = randomCode();
     const code = "123456";
 
-    saveOtp({
+    otpStoreApi.save({
         phone,
         code,
         expiresAt: Date.now() + EXPIRY_MS,
@@ -30,24 +30,24 @@ export async function sendOtp(phone: string) {
 }
 
 export function verifyOtp(phone: string, code: string) {
-    const rec = getOtp(phone);
+    const rec = otpStoreApi.get(phone);
     if (!rec) throw new InvalidOtpError();
 
     if (rec.expiresAt < Date.now()) {
-        deleteOtp(phone);
+        otpStoreApi.delete(phone);
         throw new InvalidOtpError();
     }
 
     if (rec.attempts >= MAX_ATTEMPTS) {
-        deleteOtp(phone);
+        otpStoreApi.delete(phone);
         throw new InvalidOtpError();
     }
 
     if (rec.code !== code) {
         rec.attempts++;
-        saveOtp(rec);
+        otpStoreApi.save(rec);
         throw new InvalidOtpError();
     }
 
-    deleteOtp(phone);
+    otpStoreApi.delete(phone);
 }

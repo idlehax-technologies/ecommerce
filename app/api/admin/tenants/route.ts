@@ -1,32 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createTenant, listTenants } from "@/lib/tenants/domain";
-import { assertCreateTenantDTO } from "@/lib/tenants/validators";
-import { getUserFromRequest } from "@/lib/auth";
-import { requireRole } from "@/lib/auth/guards";
+import { NextResponse } from "next/server";
 import { handleRouteError } from "@/lib/http/handleRouteError";
+import {
+    listAllTenants,
+    createTenantUseCase,
+} from "@/lib/tenants/service";
 
 export async function GET() {
     try {
-        const user = await getUserFromRequest();
-        requireRole(user, "superadmin");
-
-        return NextResponse.json(listTenants());
+        const tenants = await listAllTenants();
+        return NextResponse.json(tenants);
     } catch (err: unknown) {
         return handleRouteError(err);
     }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
     try {
-        const rawUser = await getUserFromRequest();
-        requireRole(rawUser, "superadmin");
-
-        const body: unknown = await req.json();
-
-        assertCreateTenantDTO(body);
-
-        const tenant = createTenant(body);
-
+        const body = await req.json();
+        const tenant = await createTenantUseCase(body);
         return NextResponse.json(tenant);
     } catch (err: unknown) {
         return handleRouteError(err);

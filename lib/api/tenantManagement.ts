@@ -1,3 +1,5 @@
+// lib/api/tenantManagement.ts
+
 async function handle(res: Response) {
     if (!res.ok) {
         const body = await res.json();

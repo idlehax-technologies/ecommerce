@@ -2,9 +2,9 @@
 
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/jwt";
-import type { AuthUser, UserRole } from "@/types/auth";
+import type { AuthUser } from "@/types/auth";
 import type { SessionPayload } from "@/types/session";
-import { getUserById } from "@/lib/auth/storage";
+import { authStore } from "@/lib/auth/storage";
 
 /*
   Responsibility (system level):
@@ -52,14 +52,15 @@ export async function getUserFromRequest(): Promise<AuthUser | null> {
     if (!isTokenPayload(payload)) return null;
 
     // Always fetch from storage (never trust token fields directly)
-    const dbUser = getUserById(payload.userId);
-    if (!dbUser) return null;
+    const authUser = authStore.getById(payload.userId);
+    if (!authUser) return null;
 
     return {
-      userId: dbUser.userId,
-      phone: dbUser.phone,
-      role: dbUser.role,
-      tenantId: dbUser.tenantId ?? undefined,
+      userId: authUser.userId,
+      phone: authUser.phone,
+      role: authUser.role,
+      tenantId: authUser.tenantId ?? undefined,
+      impersonatedBy: authUser.impersonatedBy ?? undefined,
     };
   } catch {
     return null;

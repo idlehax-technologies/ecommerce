@@ -9,42 +9,31 @@ import {
     Typography,
     Button,
     Stack,
-    Badge,
     Divider,
     CircularProgress,
 } from "@mui/material";
 
-import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-
 import { useAuth } from "@/contexts/AuthContext";
-import { useCart } from "@/contexts/CartContext";
 
-export default function Navbar() {
+/**
+ * Global Navbar
+ * - Safe to render everywhere (admin + tenant + login).
+ * - Does NOT assume CartProvider exists.
+ * - Tenant features are injected via `rightSlot`.
+ */
+export default function Navbar({
+    rightSlot,
+}: {
+    rightSlot?: React.ReactNode;
+}) {
     const router = useRouter();
-
-    // Auth state (identity surface only — no business logic here)
     const { user, loading, logout } = useAuth();
-
-    // Cart is server-owned snapshot mirrored by context
-    const { cart } = useCart();
-
-    /**
-     * Derive cart count from authoritative cart snapshot.
-     * No local math, no optimistic state.
-     */
-    const cartCount =
-        cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 
     const role = user?.role;
 
-    const isCustomer = role === "customer";
     const isTenantOperator = role === "admin" || role === "staff";
     const isSuperadmin = role === "superadmin";
 
-    /**
-     * Logout is async but UI concern.
-     * Errors propagate upward if they occur.
-     */
     async function handleLogout() {
         await logout();
         router.replace("/login");
@@ -73,28 +62,22 @@ export default function Navbar() {
                         Products
                     </Button>
 
-                    {/* Customer Navigation */}
-                    {!loading && isCustomer && (
-                        <Button component={Link} href="/cart" color="inherit">
-                            <Badge badgeContent={cartCount} color="primary">
-                                <ShoppingCartIcon />
-                            </Badge>
-                        </Button>
-                    )}
-
-                    {/* Staff / Admin */}
+                    {/* Tenant/Admin Navigation */}
                     {!loading && isTenantOperator && (
                         <Button component={Link} href="/admin" color="inherit">
                             Admin
                         </Button>
                     )}
 
-                    {/* Superadmin */}
+                    {/* Platform Navigation */}
                     {!loading && isSuperadmin && (
                         <Button component={Link} href="/admin/tenants" color="inherit">
                             Tenants
                         </Button>
                     )}
+
+                    {/* Injected tenant runtime UI (cart, etc.) */}
+                    {rightSlot}
 
                     <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
 

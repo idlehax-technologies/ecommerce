@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import CustomStyles from "./theme";
 
-import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 import { AuthProvider } from "@/contexts/AuthContext";
-import { CartProvider } from "@/contexts/CartContext";
 
 export const metadata: Metadata = {
   title: "SchoolMart",
@@ -28,16 +26,13 @@ export default function RootLayout({
       >
         <CustomStyles>
           <AuthProvider>
-            <CartProvider>
-              <Navbar />
 
-              {/* main grows, footer sticks to bottom */}
-              <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                {children}
-              </main>
+            {/* main grows, footer sticks to bottom */}
+            <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+              {children}
+            </main>
 
-              <Footer />
-            </CartProvider>
+            <Footer />
           </AuthProvider>
         </CustomStyles>
       </body>
