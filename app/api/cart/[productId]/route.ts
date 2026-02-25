@@ -7,9 +7,11 @@ import { assertUpdateCartItemDTO } from "@/lib/cart/guards";
 
 export async function PATCH(
     req: Request,
-    { params }: { params: { productId: string } }
+    { params }: { params: Promise<{ productId: string }> }
 ) {
     try {
+        const { productId } = await params;
+
         const rawUser = await getUserFromRequest();
         const actor = requireTenant(rawUser);
 
@@ -17,7 +19,7 @@ export async function PATCH(
 
         assertUpdateCartItemDTO(body);
 
-        const cart = cartDomain.updateItem(actor, params.productId, body);
+        const cart = cartDomain.updateItem(actor, productId, body);
 
         return NextResponse.json(cart);
     } catch (err: unknown) {
@@ -27,13 +29,15 @@ export async function PATCH(
 
 export async function DELETE(
     _req: Request,
-    { params }: { params: { productId: string } }
+    { params }: { params: Promise<{ productId: string }> }
 ) {
     try {
+        const { productId } = await params;
+
         const rawUser = await getUserFromRequest();
         const actor = requireTenant(rawUser);
 
-        const cart = cartDomain.removeItem(actor, params.productId);
+        const cart = cartDomain.removeItem(actor, productId);
 
         return NextResponse.json(cart);
     } catch (err: unknown) {

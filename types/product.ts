@@ -8,7 +8,6 @@ export type Product = {
   currency: "INR";
 
   isActive: boolean;
-  isDeleted: boolean;
 
   sku?: string;
   images?: string[];
@@ -17,13 +16,8 @@ export type Product = {
 
   createdAt: string;
   updatedAt: string;
-  deletedAt?: string;
+  deletedAt?: string; // single source of deletion truth
 };
-
-export type PublicProduct = Omit<
-  Product,
-  "isDeleted" | "createdAt" | "updatedAt" | "deletedAt"
->;
 
 export type CreateProductDTO = {
   title: string;
@@ -37,6 +31,14 @@ export type CreateProductDTO = {
 
 export type UpdateProductDTO = Partial<CreateProductDTO>;
 
-export type ProductChanges = Partial<
-  Omit<Product, "productId" | "createdAt">
->;
+export type ProductChanges = {
+  title?: string;
+  description?: string;
+  price?: number;
+  sku?: string;
+  images?: string[];
+  category?: string;
+  tags?: string[];
+
+  updatedAt: string;
+};

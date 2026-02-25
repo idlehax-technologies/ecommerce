@@ -1,231 +1,352 @@
 # Multi-Tenant Transactional SaaS Platform
 
-A **tenant-scoped transactional commerce system** built with a strict layered architecture and server-authoritative state.
+A production-grade simulation of a tenant-isolated transactional system built with strict domain boundaries and server-authoritative state.
 
-This project is intentionally designed as a **production-grade system simulation**, not a tutorial project.
-Every feature is implemented to enforce real SaaS invariants such as tenant isolation, domain ownership, and server-controlled transactional flow.
+This project is intentionally engineered as a **correctness-first SaaS architecture**, not a feature tutorial.
 
----
-
-## Core Architectural Principles
-
-### 1. Tenant Context is a Non-Optional Invariant
-
-Every operation must execute within an authenticated tenant scope.
-
-No request, mutation, or domain operation can exist outside:
-
-```
-Identity → Tenant → Domain Execution
-```
-
-Tenant isolation is enforced structurally, not conditionally.
+The goal is structural integrity:
+- Tenant isolation by construction
+- Explicit domain ownership
+- Guard-driven authorization
+- No client-trusted transactional state
+- Layered responsibility enforcement
 
 ---
 
-### 2. Strict Layered Architecture
+# System Identity
 
-```
-UI
- ↓
-API Wrapper (client)
- ↓
-Route (transport only)
- ↓
-Validators / Guards
- ↓
-Domain (business logic)
- ↓
+This is **not** a marketplace.
+
+This is a **multi-tenant SaaS platform** where:
+
+- The platform owns the master product catalog
+- Tenants are provisioned products through entitlement records
+- Stock exists per tenant (not globally)
+- Users operate inside a tenant context
+- Cart and future checkout flows are strictly tenant-scoped
+- Cross-tenant leakage is structurally impossible
+
+---
+
+# Non-Negotiable Invariants
+
+## 1. Tenant Context Is Mandatory
+
+Every business operation derives from the authenticated actor.
+
+The client never provides `tenantId`.
+
+Execution model:
+
+Identity → Role → Tenant → Domain Execution
+
+If tenant context is missing, execution must fail.
+
+---
+
+## 2. Strict Layered Architecture
+
+All features follow this structure:
+
+UI  
+↓  
+API Route (transport only)  
+↓  
+Validators (shape checking)  
+↓  
+Mappers (DTO → domain shape)  
+↓  
+Guards (authorization + invariants)  
+↓  
+Domain (business logic)  
+↓  
 Storage (persistence)
-```
 
-Each layer has a single responsibility:
+### Responsibilities
 
-| Layer               | Responsibility                |
-| ------------------- | ----------------------------- |
-| UI                  | Express user intent           |
-| API Wrapper         | Transport abstraction         |
-| Route               | HTTP orchestration only       |
-| Validators / Guards | Input + invariant enforcement |
-| Domain              | All business logic            |
-| Storage             | Data persistence only         |
+| Layer | Responsibility |
+|-------|---------------|
+| UI | Express intent only |
+| Route | Orchestrate flow, never decide |
+| Validators | Validate external input shape |
+| Mappers | Transform DTOs |
+| Guards | Enforce permissions and invariants |
+| Domain | Own all business logic |
+| Storage | Persist and retrieve only |
 
-Routes never contain business rules.
-UI never owns state that belongs to the domain.
-
----
-
-### 3. Server is the Source of Truth
-
-The browser is never treated as authoritative.
-
-No client persistence (e.g., `localStorage`) is trusted for transactional data.
-
-All mutations must round-trip through the server and domain.
+Routes never contain business rules.  
+UI never owns transactional state.
 
 ---
 
-## Technology Stack
+## 3. Server Is Source of Truth
 
-* Next.js (App Router)
-* TypeScript
-* Material UI (MUI)
-* Cookie-based JWT Authentication
-* In-memory persistence (development simulation of DB)
-* Layered domain architecture
+- No localStorage cart
+- No client stock validation
+- No client-side tenant scoping
+- No trusting browser state
 
----
-
-## Implemented Features
-
-### Step 1 — Authentication & Role System
-
-* Cookie-based JWT session
-* Roles: `customer`, `staff`, `admin`, `superadmin`
-* Identity restored via `/api/auth/me`
-* Guards enforce identity and role invariants
+All mutations round-trip through the domain.
 
 ---
 
-### Step 2 — Tenant-Scoped Domain Model
+# Technology Stack
 
-* All entities bound to `tenantId`
-* Requests require authenticated tenant context
-* Cross-tenant access structurally impossible
+- Next.js (App Router)
+- TypeScript (strict mode)
+- Material UI (MUI)
+- Cookie-based JWT authentication (httpOnly)
+- In-memory storage (dev simulation of database)
+- Manual domain layering (no ORM abstraction)
 
----
-
-### Step 3 — Role Hardening
-
-* Guard-driven authorization model
-* Separation of:
-
-  * Identity
-  * Authority (role)
-  * Session mode
+The architecture is explicit by design.
 
 ---
 
-### Step 4 — Tenant-Scoped Product Catalog
+# Domain Overview
 
-* Products isolated per tenant
-* Domain guards prevent cross-tenant visibility
-* CRUD flows aligned to strict layering
+## Authentication
 
----
+- Cookie-based JWT
+- Roles:
+  - customer
+  - staff
+  - admin
+  - superadmin
+- Guard-driven authorization
+- No permission tables unless domain pressure requires it
 
-### Step 5 — Public + Admin Product Interfaces
-
-* Separate UI surfaces using the same domain
-* No duplication of business logic
-* UI only consumes safe projections
-
----
-
-### Step 6 — Cart System with Single-Tenant Enforcement
-
-This step introduces the **transactional cart model**.
-
-#### Key Decision: Cart is Server-Authoritative
-
-The cart is **not a client session artifact**.
-It is a tenant-bound domain entity.
-
-#### What Changed
-
-* Removed all client persistence (`localStorage` eliminated).
-* Cart stored server-side and keyed by `tenantId`.
-* Every cart mutation requires authenticated tenant context.
-* Cart cannot mix products across tenants.
-* UI expresses intent only; domain performs mutations.
-* Undo / delay behaviors implemented strictly in UI (no domain coupling).
-
-#### Why This Matters
-
-Client-side carts break tenant isolation and allow state drift.
-
-This system instead models:
-
-```
-Authenticated Tenant → Owns Exactly One Cart → Server Controlled Lifecycle
-```
-
-This prepares the platform for checkout reservation and order state enforcement.
+Authorization dimensions:
+1. Identity
+2. Role
+3. Session mode (direct vs assumed)
 
 ---
 
-## Domain Modules
+## Products (Platform-Owned)
 
-### Products Domain
+Products are platform entities.
 
-Handles catalog logic and tenant access enforcement.
+They:
+- Have no tenantId
+- Have no stock
+- Are created/updated only by superadmin
+- Represent the canonical catalog
 
-### Cart Domain
-
-Tenant-scoped transactional cart:
-
-* Add / update / remove items
-* Validates products through read-only dependency on Products domain
-* Persisted server-side only
-
----
-
-## Why No Global Client State Libraries?
-
-React Context is used sparingly and only where appropriate:
-
-| Context     | Purpose                                       |
-| ----------- | --------------------------------------------- |
-| AuthContext | Identity snapshot for UI                      |
-| CartContext | Thin coordination layer (not source of truth) |
-
-Contexts never contain business logic.
+Products answer:
+> What exists?
 
 ---
 
-## Development Data Seeding
+## TenantInventory (Entitlement Layer)
 
-The development environment includes **one-time seeded products** inside storage initialization to simulate a persistent catalog without duplication during hot reload.
+TenantInventory binds products to tenants.
+
+Each record contains:
+
+- tenantId
+- productId
+- enabled (boolean)
+- stock (number)
+- timestamps
+
+TenantInventory answers:
+> What can this tenant sell and how much?
+
+This layer replaces the old multi-vendor model entirely.
 
 ---
 
-## Current System Guarantees
+## Storefront Model
 
-* Tenant isolation is structurally enforced.
-* No domain rule can be bypassed by client behavior.
-* State cannot leak between tenants.
-* All transactional mutations are validated server-side.
+Storefront is tenant-scoped and SSR.
+
+The visible product list is:
+
+Product (platform)  
+JOIN  
+TenantInventory (enabled + stock)
+
+Only products that:
+- Are enabled for tenant
+- Have stock > 0
+
+are visible in storefront listing.
+
+There is **no separate PublicProduct abstraction** anymore.
+The storefront view is a derived join model.
 
 ---
 
-## Roadmap (Next Phases)
+## Cart Domain (Server Authoritative)
 
-Upcoming work builds on Step 6:
+Cart is:
+
+- Tenant-scoped
+- Server-stored
+- One cart per tenant
+- Never persisted in browser
+
+### Stock Enforcement
+
+When adding or updating quantity:
+
+1. Product existence validated
+2. TenantInventory record required
+3. enabled must be true
+4. quantity ≤ stock must hold
+
+If violated:
+- CartStockExceededError
+- CartProductNotProvisionedError (separate domain error)
+
+UI mirrors domain constraints but never replaces them.
+
+---
+
+# Architectural Guarantees
+
+- No cross-tenant access
+- No client-side stock manipulation
+- No bypass of domain rules
+- Domain errors are the single source of HTTP truth
+- Routes are orchestration only
+- All business logic is centralized
+
+---
+
+# Current Implemented Steps
+
+### Completed Foundations
+
+- Next.js + TypeScript scaffold
+- Strict layered architecture
+- Git workflow (main / dev / feature)
+- JWT auth with httpOnly cookies
+- Role system hardening
+- Tenant entity + isolation model
+- Platform-owned product catalog
+- TenantInventory entitlement model
+- SSR storefront
+- Server-authoritative cart
+- Stock enforcement in cart domain
+- Quantity controls with UI mirroring domain rules
+
+---
+
+# Upcoming Roadmap
 
 1. Tenant lifecycle management
-2. Checkout stock reservation
-3. Order state machine
-4. Payment recording
-5. Operational dashboards
-6. Audit logging and analytics
+2. Membership verification flow
+3. Checkout stock reservation logic
+4. Order state machine
+5. Atomic inventory deduction
+6. Payment recording
+7. Staff POS
+8. Fulfillment dashboard
+9. Audit logging
+10. Notifications
+11. Production readiness
 
-These depend on the server-authoritative cart introduced in Step 6.
+Each step builds on previously locked invariants.
 
 ---
 
-## Running the Project
+# Development Data
 
-```
+Storage uses globalThis maps to survive Next.js hot reload.
+
+Seed logic runs once at initialization.
+
+This simulates persistence without introducing database complexity yet.
+
+---
+
+# Project Structure (Conceptual)
+
+app/
+  (tenant)/
+    products/ → storefront SSR
+  admin/
+    products/ → platform management
+  api/
+    auth/
+    products/
+    cart/
+    tenantInventory/
+
+components/
+  products/
+  cart/
+  admin/
+
+lib/
+  auth/
+  products/
+  cart/
+  tenantInventory/
+  api/ (HTTP wrappers only)
+
+types/
+  product.ts
+  cart.ts
+  tenant.ts
+
+There is:
+- One products domain
+- One cart domain
+- One tenantInventory domain
+
+No duplication between admin and storefront.
+
+---
+
+# Running Locally
+
+``` bash
 npm install
 npm run dev
 ```
 
-Seed data loads automatically on first startup.
+App runs at:
+
+http://localhost:3000
+
+Seed data loads automatically.
 
 ---
 
-## Project Intent
+# Design Philosophy
 
-This repository is not meant to demonstrate UI techniques.
+- Structure before features
+- Invariants before UI polish
+- Server authority before convenience
+- Guards before permissions abstraction
+- Explicit domain ownership
+- No premature abstractions
 
-It is an exercise in designing **correct multi-tenant transactional architecture**, where business invariants are enforced by structure rather than convention.
+The system is designed to survive scale, not just function in demos.
+
+---
+
+# Why This Project Exists
+
+Most tutorials teach CRUD inside a single-organization context.
+
+Real SaaS systems fail when:
+- Tenancy is bolted on later
+- Stock logic lives in UI
+- Cart state lives in browser
+- Authorization is decorative
+
+This project solves those problems at the foundation layer.
+
+---
+
+# Status
+
+Actively evolving through staged architectural hardening.
+
+The focus is not speed of features.
+
+The focus is structural correctness.

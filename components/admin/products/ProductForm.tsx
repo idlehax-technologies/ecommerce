@@ -38,7 +38,6 @@ export default function ProductForm(props: Props) {
     title: initial?.title ?? "",
     description: initial?.description ?? "",
     price: initial?.price ?? 0,
-    stock: initial?.stock ?? 0,
     sku: initial?.sku ?? "",
     category: initial?.category ?? "",
     tags: initial?.tags ?? [],
@@ -89,16 +88,6 @@ export default function ProductForm(props: Props) {
           }}
           value={values.price}
           onChange={(e) => set("price", Number(e.target.value))}
-        />
-
-        <TextField
-          label="Stock"
-          type="number"
-          slotProps={{
-            htmlInput: { min: 0, step: 1 }
-          }}
-          value={values.stock}
-          onChange={(e) => set("stock", Number(e.target.value))}
         />
 
         <TextField

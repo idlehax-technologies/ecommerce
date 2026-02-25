@@ -6,8 +6,7 @@ import { Box, Typography, Paper, Divider } from "@mui/material";
 import TenantInventoryTable from "@/components/tenant-provisioning/TenantInventoryTable";
 
 import { getUserFromRequest } from "@/lib/auth";
-import { requireAnyRole, requireTenant } from "@/lib/auth/guards";
-import { assertTenantScope } from "@/lib/tenants/guards";
+import { requireRole } from "@/lib/auth/guards";
 
 import { getTenantProvisioningView } from "@/lib/tenantInventory/service";
 
@@ -26,14 +25,7 @@ export default async function TenantInventoryPage({ params }: PageProps) {
     const { tenantId } = await params;
 
     const rawUser = await getUserFromRequest();
-    const user = requireAnyRole(rawUser, ["admin", "superadmin"]);
-
-    if (user.role === "admin") {
-        const actor = requireTenant(user);
-        assertTenantScope(actor, tenantId);
-    }
-
-    const canEdit = user.role === "superadmin";
+    requireRole(rawUser, "superadmin");
 
     const view = await getTenantProvisioningView(tenantId);
 
@@ -47,9 +39,7 @@ export default async function TenantInventoryPage({ params }: PageProps) {
                 </Typography>
 
                 <Typography variant="body2" color="text.secondary">
-                    {canEdit
-                        ? "Configure which platform products this tenant can sell."
-                        : "Viewing tenant provisioning (read-only)."}
+                    Configure which platform products this tenant can sell.
                 </Typography>
             </Box>
 
@@ -59,7 +49,7 @@ export default async function TenantInventoryPage({ params }: PageProps) {
                 <TenantInventoryTable
                     tenantId={tenantId}
                     rows={view.rows}
-                    canEdit={canEdit}
+                    canEdit={true}
                 />
             </Paper>
         </Box>

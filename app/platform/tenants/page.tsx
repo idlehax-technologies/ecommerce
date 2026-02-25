@@ -31,7 +31,7 @@ export default async function TenantsPage() {
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                     <Typography variant="h4">Tenants</Typography>
 
-                    <Link href="/admin/tenants/new" style={{ textDecoration: "none" }}>
+                    <Link href="/platform/tenants/new" style={{ textDecoration: "none" }}>
                         <Button variant="contained">
                             New Tenant
                         </Button>
@@ -61,7 +61,7 @@ export default async function TenantsPage() {
 
                                 <Stack direction="row" spacing={1}>
                                     <Link
-                                        href={`/admin/tenants/${t.tenantId}`}
+                                        href={`/platform/tenants/${t.tenantId}`}
                                         style={{ textDecoration: "none" }}
                                     >
                                         <Button variant="outlined">

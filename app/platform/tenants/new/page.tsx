@@ -23,7 +23,7 @@ export default async function NewTenantPage() {
 
         await createTenantUseCase({ name });
 
-        redirect("/admin/tenants");
+        redirect("/platform/tenants");
     }
 
     return (
@@ -41,7 +41,7 @@ export default async function NewTenantPage() {
                                     Create
                                 </Button>
 
-                                <Button href="/admin/tenants">Cancel</Button>
+                                <Button href="/platform/tenants">Cancel</Button>
                             </Stack>
                         </Stack>
                     </form>

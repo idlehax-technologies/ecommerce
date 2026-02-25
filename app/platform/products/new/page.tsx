@@ -21,7 +21,7 @@ export default function NewProductPage() {
     try {
       const product = await createProduct(values);
 
-      router.push(`/admin/products/${product.productId}`);
+      router.push(`/platform/products/${product.productId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create product");
     } finally {

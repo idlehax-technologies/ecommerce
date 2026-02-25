@@ -32,7 +32,6 @@ export default function ProductTable({ products }: { products: Product[] }) {
           <TableRow>
             <TableCell>Title</TableCell>
             <TableCell>Price</TableCell>
-            <TableCell>Stock</TableCell>
             <TableCell>Category</TableCell>
             <TableCell align="right">Actions</TableCell>
           </TableRow>

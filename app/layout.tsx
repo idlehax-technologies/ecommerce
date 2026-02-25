@@ -1,8 +1,8 @@
+// app/layout.tsx
+
 import type { Metadata } from "next";
-import CustomStyles from "./theme";
-
+import ThemeRegistry from "./ThemeRegistry";
 import Footer from "@/components/Footer";
-
 import { AuthProvider } from "@/contexts/AuthContext";
 
 export const metadata: Metadata = {
@@ -24,17 +24,21 @@ export default function RootLayout({
           flexDirection: "column",
         }}
       >
-        <CustomStyles>
+        <ThemeRegistry>
           <AuthProvider>
-
-            {/* main grows, footer sticks to bottom */}
-            <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <main
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
               {children}
             </main>
 
             <Footer />
           </AuthProvider>
-        </CustomStyles>
+        </ThemeRegistry>
       </body>
     </html>
   );

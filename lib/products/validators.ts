@@ -1,3 +1,5 @@
+// lib/products/validators.ts
+
 import type {
   CreateProductDTO,
   UpdateProductDTO,
@@ -13,16 +15,21 @@ function isNonEmptyString(v: unknown): v is string {
   return typeof v === "string" && v.trim().length > 0;
 }
 
-function isPositiveInteger(v: unknown): v is number {
-  return typeof v === "number" && Number.isInteger(v) && v >= 0;
-}
-
 function isPositiveMoney(v: unknown): v is number {
-  return isPositiveInteger(v) && v > 0;
+  return typeof v === "number" && Number.isFinite(v) && v > 0;
 }
 
 function assertNoForbiddenFields(obj: Record<string, unknown>) {
-  const forbidden = ["productId", "tenantId", "createdAt", "updatedAt", "isDeleted"];
+  const forbidden = [
+    "productId",
+    "currency",
+    "isActive",
+    "isDeleted",
+    "createdAt",
+    "updatedAt",
+    "deletedAt",
+  ];
+
   for (const key of forbidden) {
     if (key in obj) {
       throw new ProductInvalidInputError(`Field "${key}" is not allowed`);
@@ -42,9 +49,6 @@ export function validateCreateProduct(
 
   if (!isPositiveMoney(body.price))
     throw new ProductInvalidInputError("Invalid price");
-
-  if (!isPositiveInteger(body.stock))
-    throw new ProductInvalidInputError("Invalid stock");
 }
 
 export function validateUpdateProduct(
