@@ -1,6 +1,6 @@
 # Multi-Tenant Transactional SaaS Platform
 
-A production-grade simulation of a tenant-isolated transactional system built with strict domain boundaries and server-authoritative state.
+A production-grade tenant-isolated transactional system built with strict domain boundaries and server-authoritative state.
 
 This project is intentionally engineered as a **correctness-first SaaS architecture**, not a feature tutorial.
 
@@ -123,7 +123,7 @@ Authorization dimensions:
 
 ---
 
-## Products (Platform-Owned)
+## Product Catalog (Platform-Owned)
 
 Products are platform entities.
 
@@ -163,7 +163,7 @@ Storefront is tenant-scoped and SSR.
 
 The visible product list is:
 
-Product (platform)  
+Product (platform catalog)  
 JOIN  
 TenantInventory (enabled + stock)
 
@@ -204,6 +204,49 @@ UI mirrors domain constraints but never replaces them.
 
 ---
 
+# Checkout Transaction
+
+Checkout converts a cart into an order.
+
+Execution flow:
+
+Cart  
+↓  
+Checkout Application Service  
+↓  
+Order Creation (`status = RESERVED`)  
+↓  
+TenantInventory Stock Reservation  
+↓  
+Cart Clearing
+
+---
+
+# Orders Domain
+
+Orders represent **tenant-scoped transactional records**.
+
+Each order contains:
+
+- `orderId`
+- `tenantId`
+- `userId`
+- items (snapshot of product name + price)
+- total
+- payment mode
+- order status
+- timestamps
+
+Order Status:
+
+- RESERVED
+- PAID
+- PICKED_UP
+- CANCELLED
+- EXPIRED
+
+---
+
 # Architectural Guarantees
 
 - No cross-tenant access
@@ -232,21 +275,48 @@ UI mirrors domain constraints but never replaces them.
 - Stock enforcement in cart domain
 - Quantity controls with UI mirroring domain rules
 
+## Step 1 — Checkout application service (tenant-scoped stock reservation + order creation from cart)
+
+Completed.
+
+Capabilities introduced:
+
+- Cart → Order transactional flow
+- Tenant-scoped order creation
+- Stock reservation through TenantInventory
+- Cart clearing after successful checkout
+- Orders domain and storage
+- Tenant-isolated order retrieval
+- Orders UI pages
+
+Transaction pipeline:
+
+Cart → Checkout Service → Create Order → Reserve Inventory → Clear Cart
+
 ---
 
 # Upcoming Roadmap
 
-1. Tenant lifecycle management
-2. Membership verification flow
-3. Checkout stock reservation logic
-4. Order state machine
-5. Atomic inventory deduction
-6. Payment recording
-7. Staff POS
-8. Fulfillment dashboard
-9. Audit logging
-10. Notifications
-11. Production readiness
+2. Order aggregate implementation (domain-level order model with strict tenant binding)
+3. Order state machine enforcement (RESERVED → PAID → FULFILLED → CLOSED / EXPIRED / CANCELLED)
+4. Atomic stock reservation + deduction inside TenantInventory domain
+5. Payment recording domain (mode tracking: CASH / UPI / ONLINE, immutable payment log)
+6. Staff POS module under (tenant) runtime (direct order creation bypassing cart)
+7. Staff fulfillment dashboard (tenant-scoped order lifecycle management)
+8. Customer order history (SSR, tenant-bound)
+9. Order receipt generation (server-rendered printable view)
+10. Manual cancel / refund / expire flows with state guard enforcement
+11. Daily reconciliation service (orders vs payments vs tenant inventory consistency)
+12. Low-stock detection service + restock adjustment flows (tenantInventory domain)
+13. Tenant analytics service (sales, revenue, inventory velocity projections)
+14. Audit logging layer (cross-domain write-event tracking with actor identity)
+15. Notification service abstraction (order events → email/SMS adapters)
+16. Security hardening pass (rate limiting, CSRF strategy, cookie tightening, guard audit)
+17. Background job runner (auto-expire unpaid RESERVED orders)
+18. Data export service (tenant-scoped CSV generation for accounting)
+19. Multi-tenant isolation test suite (structural cross-tenant leakage prevention)
+20. Performance pass (query optimization, pagination, projection refinement)
+21. Production readiness layer (structured logging, env validation, monitoring hooks, deployment config)
 
 Each step builds on previously locked invariants.
 
@@ -265,39 +335,85 @@ This simulates persistence without introducing database complexity yet.
 # Project Structure (Conceptual)
 
 app/
-  (tenant)/
-    products/ → storefront SSR
-  admin/
-    products/ → platform management
-  api/
-    auth/
-    products/
-    cart/
-    tenantInventory/
+  (tenant)/                    → Tenant-facing application UI
+    products/                  → Tenant storefront
+    cart/                      → Server-authoritative cart
+    checkout/                  → Checkout flow
+    orders/                    → Order history & detail
+    memberships/               → Tenant membership flows
+    inventory/                 → Tenant inventory view
+    profile/                   → User profile
+    layout.tsx
 
-components/
-  products/
-  cart/
-  admin/
+  platform/                    → Platform administration
+    products/                  → Platform product catalog
+    tenants/                   → Tenant management
 
-lib/
-  auth/
-  products/
-  cart/
-  tenantInventory/
-  api/ (HTTP wrappers only)
+  api/                         → HTTP transport layer
+    auth/                      → Authentication endpoints
+    cart/                      → Cart mutation routes
+    checkout/                  → Checkout transaction route
+    orders/                    → Order retrieval routes
+    memberships/               → Membership API
+    admin/                     → Platform admin APIs
 
-types/
-  product.ts
-  cart.ts
+components/                    → Reusable UI components
+  products/                    → Storefront product UI
+  cart/                        → Cart UI components
+  checkout/                    → Checkout UI
+  orders/                      → Order display components
+  memberships/                 → Membership UI
+  tenant-provisioning/         → Tenant inventory provisioning
+  auth/                        → Authentication UI
+  admin/                       → Admin dashboard UI
+  Navbar.tsx
+  Footer.tsx
+
+contexts/                      → React state containers
+  AuthContext.tsx              → Authentication state
+  CartContext.tsx              → Cart state
+
+lib/                           → Core application logic
+  api/                         → Client-side API wrappers
+
+  auth/                        → Authentication domain
+  tenants/                     → Tenant lifecycle domain
+  memberships/                 → Membership verification domain
+  products/                    → Platform product catalog
+  tenantInventory/             → Tenant product entitlement + stock
+  cart/                        → Cart domain
+  checkout/                    → Checkout application service
+  orders/                      → Order aggregate domain
+
+  http/                        → Shared HTTP utilities
+  mappers/                     → View projection helpers
+
+types/                         → Shared domain contracts
+  auth.ts
+  user.ts
   tenant.ts
+  membership.ts
+  product.ts
+  tenantInventory.ts
+  cart.ts
+  checkout.ts
+  order.ts
+  session.ts
+  otp.ts
 
-There is:
-- One products domain
-- One cart domain
-- One tenantInventory domain
+docs/                          → Architecture notes
+  checkout-api.md
 
-No duplication between admin and storefront.
+The domain modules represent the core business capabilities:
+
+- Auth
+- Tenants
+- Memberships
+- Products
+- TenantInventory
+- Cart
+- Checkout
+- Orders
 
 ---
 

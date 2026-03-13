@@ -1,7 +1,3 @@
-// ================================
-// Transport (client → server)
-// ================================
-
 export type CheckoutItem = {
   productId: string;
   quantity: number;
@@ -11,21 +7,11 @@ export type CheckoutRequest = {
   items: CheckoutItem[];
 };
 
-
-// ================================
-// Domain (internal use only)
-// ================================
-
 export type CheckoutInput = {
   userId: string;
   tenantId: string;
   items: CheckoutItem[];
 };
-
-
-// ================================
-// Responses
-// ================================
 
 export type CheckoutSuccessResponse = {
   success: true;
