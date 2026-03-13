@@ -6,9 +6,8 @@ import { ProvisionNotFoundError } from "./errors";
 export function requireProvision(
     record: TenantInventory | undefined,
     productId: string
-): TenantInventory {
+): asserts record is TenantInventory {
     if (!record) {
         throw new ProvisionNotFoundError(productId);
     }
-    return record;
 }
