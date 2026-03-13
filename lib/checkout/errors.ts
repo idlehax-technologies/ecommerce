@@ -1,28 +1,38 @@
 export abstract class CheckoutDomainError extends Error {
     readonly status: number;
-    readonly code: string;
+    readonly code:
+        | "UNAUTHORIZED"
+        | "INVALID_INPUT"
+        | "PRODUCT_NOT_FOUND"
+        | "OUT_OF_STOCK"
+        | "CHECKOUT_FAILED"
+        | "SERVER_ERROR";
 
-    constructor(message: string, status: number, code: string) {
+    constructor(
+        message: string,
+        code: CheckoutDomainError["code"],
+        status: number
+    ) {
         super(message);
-        this.status = status;
         this.code = code;
+        this.status = status;
     }
 }
 
 export class CheckoutInvalidInputError extends CheckoutDomainError {
     constructor(message = "Invalid checkout input") {
-        super(message, 400, "INVALID_INPUT");
+        super(message, "INVALID_INPUT", 400);
     }
 }
 
-export class OrderItemNotFoundError extends CheckoutDomainError {
-    constructor(message = "Order item no longer available") {
-        super(message, 404, "PRODUCT_NOT_FOUND");
+export class CheckoutOutOfStockError extends CheckoutDomainError {
+    constructor(message = "Item is out of stock") {
+        super(message, "OUT_OF_STOCK", 409);
     }
 }
 
-export class ProductOutOfStockError extends CheckoutDomainError {
-    constructor(message = "Insufficient stock") {
-        super(message, 409, "OUT_OF_STOCK");
+export class CheckoutFailedError extends CheckoutDomainError {
+    constructor(message = "Checkout failed") {
+        super(message, "CHECKOUT_FAILED", 500);
     }
 }

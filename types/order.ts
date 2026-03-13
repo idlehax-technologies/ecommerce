@@ -33,3 +33,8 @@ export type Order = {
     createdAt: string;
     updatedAt: string;
 };
+
+export type OrderListItem = Pick<
+    Order,
+    "orderId" | "total" | "status" | "createdAt"
+>;
