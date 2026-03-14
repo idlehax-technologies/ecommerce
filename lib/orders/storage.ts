@@ -1,5 +1,3 @@
-// lib/orders/storage.ts
-
 import type { Order } from "@/types/order";
 
 type GlobalOrders = typeof globalThis & {
@@ -25,16 +23,18 @@ globalForOrders.__ordersByTenant = ordersByTenant;
  */
 export function saveOrder(order: Order) {
 
-    ordersById.set(order.orderId, order);
+    const snapshot = { ...order };
 
-    let tenantBucket = ordersByTenant.get(order.tenantId);
+    ordersById.set(snapshot.orderId, snapshot);
+
+    let tenantBucket = ordersByTenant.get(snapshot.tenantId);
 
     if (!tenantBucket) {
         tenantBucket = new Map<string, Order>();
-        ordersByTenant.set(order.tenantId, tenantBucket);
+        ordersByTenant.set(snapshot.tenantId, tenantBucket);
     }
 
-    tenantBucket.set(order.orderId, order);
+    tenantBucket.set(snapshot.orderId, snapshot);
 }
 
 

@@ -1,31 +1,137 @@
 import * as cartDomain from "@/lib/cart/domain";
 import * as ordersDomain from "@/lib/orders/domain";
-import { reserveStock } from "@/lib/tenantInventory/domain";
+import * as tenantInventoryDomain from "@/lib/tenantInventory/domain";
+
 import { cartItemToOrderItem } from "@/lib/orders/mappers";
 import { requireCartNotEmpty } from "./guards";
+
 import type { CheckoutInput } from "@/types/checkout";
+import type { Order } from "@/types/order";
+import type { OrderEvent } from "@/types/orderEvent";
 
-export async function executeCheckout(input: CheckoutInput) {
+/**
+ * Checkout application service
+ *
+ * Orchestrates the transaction:
+ *
+ * Cart → Order Aggregate → Inventory Reservation → Cart Clear
+ */
+export async function executeCheckout(
+    input: CheckoutInput
+): Promise<Order> {
 
-    const actor = { tenantId: input.tenantId } as any
+    /**
+     * Actor context
+     * (kept consistent with existing cart domain API)
+     */
+    const actor = { tenantId: input.tenantId } as any;
 
-    const cart = cartDomain.getCart(actor)
+    /**
+     * Retrieve cart
+     */
+    const cart = cartDomain.getCart(actor);
 
-    requireCartNotEmpty(cart)
+    requireCartNotEmpty(cart);
 
-    const orderItems = cart.items.map(cartItemToOrderItem)
+    /**
+     * Convert cart items → order snapshot items
+     */
+    const orderItems = cart.items.map(cartItemToOrderItem);
 
-    const order = ordersDomain.createOrder(
+    /**
+     * Create order aggregate
+     */
+    const { order, event } = ordersDomain.createOrder(
         input.tenantId,
         input.userId,
         orderItems
-    )
+    );
 
+    /**
+     * React to domain event
+     */
+    await handleOrderEvent(event);
+
+    /**
+     * Reserve tenant inventory
+     *
+     * Domain invariant:
+     * inventory check + mutation must occur inside the domain
+     */
     for (const item of order.items) {
-        reserveStock(input.tenantId, item.productId, item.quantity)
+
+        tenantInventoryDomain.reserveStock(
+            input.tenantId,
+            item.productId,
+            item.quantity
+        );
+
     }
 
-    cartDomain.clearCart(actor)
+    /**
+     * Clear cart after successful checkout
+     */
+    cartDomain.clearCart(actor);
 
-    return order
+    return order;
+}
+
+
+/**
+ * Application-layer reactions to order events
+ *
+ * The orders domain emits events.
+ * Application services decide how to react.
+ *
+ * This prevents the order domain from depending on
+ * inventory, payments, notifications, etc.
+ */
+async function handleOrderEvent(
+    event: OrderEvent
+): Promise<void> {
+
+    switch (event.type) {
+
+        case "OrderCreated":
+            /**
+             * Future reactions:
+             *
+             * analytics
+             * audit logs
+             */
+            break;
+
+        case "OrderPaid":
+            /**
+             * Future reactions:
+             *
+             * commit inventory reservation
+             * payment recording
+             */
+            break;
+
+        case "OrderCancelled":
+            /**
+             * Future reactions:
+             *
+             * release inventory
+             */
+            break;
+
+        case "OrderExpired":
+            /**
+             * Future reactions:
+             *
+             * release reservation
+             */
+            break;
+
+        case "OrderPickedUp":
+            /**
+             * Future reactions:
+             *
+             * fulfillment completion
+             */
+            break;
+    }
 }
