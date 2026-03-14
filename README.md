@@ -258,6 +258,39 @@ Order Status:
 
 ---
 
+The system currently implements the core backbone of a transactional SaaS platform.
+
+# Implemented capabilities
+
+• Tenant-isolated execution model
+• Platform-owned catalog with tenant entitlement layer
+• Server-authoritative cart with domain stock enforcement
+• Checkout application service converting carts into transactional orders
+• Order aggregate with strict tenant binding and snapshot item model
+• Lifecycle-driven order state machine
+• Domain event emission for cross-domain reactions
+
+The platform now supports a complete transactional pipeline:
+
+Product Catalog
+↓
+TenantInventory (entitlement + stock)
+↓
+Cart (server authoritative)
+↓
+Checkout Service
+↓
+Order Aggregate
+↓
+Order State Machine
+↓
+Domain Events
+
+This structure allows future domains such as inventory reconciliation, payment recording,
+fulfillment workflows, and analytics to attach safely without violating domain boundaries.
+
+---
+
 # Current Implemented Steps
 
 ### Completed Foundations
@@ -275,7 +308,9 @@ Order Status:
 - Stock enforcement in cart domain
 - Quantity controls with UI mirroring domain rules
 
-## Step 1 — Checkout application service (tenant-scoped stock reservation + order creation from cart)
+---
+
+## Step 1 — Checkout Application Service
 
 Completed.
 
@@ -295,10 +330,99 @@ Cart → Checkout Service → Create Order → Reserve Inventory → Clear Cart
 
 ---
 
+## Step 2 — Order Aggregate Implementation
+
+Completed.
+
+The Order aggregate is now implemented as a tenant-bound transactional entity.
+
+Capabilities introduced:
+
+- Strict tenant binding for all orders
+- Order item snapshot model (price + name captured at order time)
+- Aggregate invariants enforced inside the domain
+- Order totals computed from item snapshots
+- Immutable transactional record structure
+
+Aggregate guarantees:
+
+- Orders cannot exist without items
+- Item quantity must be > 0
+- Order total must equal the sum of order items
+- Orders cannot be accessed outside their tenant
+
+The order domain now acts as the authoritative source of transactional truth.
+
+---
+
+## Step 3 — Order State Machine
+
+Completed.
+
+Orders now follow a lifecycle-driven state machine enforced inside the domain layer.
+
+Allowed transitions:
+
+RESERVED → PAID  
+RESERVED → CANCELLED  
+RESERVED → EXPIRED  
+PAID → PICKED_UP
+
+Capabilities introduced:
+
+- Centralized transition engine for lifecycle enforcement
+- Domain commands controlling all state changes
+- Invalid transition protection through `InvalidOrderTransitionError`
+
+Lifecycle commands introduced:
+
+- `markOrderPaid`
+- `cancelOrder`
+- `expireOrder`
+- `markOrderPickedUp`
+
+---
+
+### Domain Events
+
+Order lifecycle now emits domain events:
+
+- `OrderCreated`
+- `OrderPaid`
+- `OrderCancelled`
+- `OrderExpired`
+- `OrderPickedUp`
+
+These events decouple the order domain from other system domains and establish integration points for:
+
+- inventory reconciliation
+- payment recording
+- notifications
+- audit logging
+- analytics
+
+Application services now react to emitted domain events.
+
+---
+
+### Current Transaction Pipeline
+
+Cart  
+↓  
+Checkout Service  
+↓  
+Order Aggregate  
+↓  
+Order State Machine  
+↓  
+Domain Events  
+↓  
+Future reactions (inventory / payments / notifications)
+
+---
+
 # Upcoming Roadmap
 
-2. Order aggregate implementation (domain-level order model with strict tenant binding)
-3. Order state machine enforcement (RESERVED → PAID → FULFILLED → CLOSED / EXPIRED / CANCELLED)
 4. Atomic stock reservation + deduction inside TenantInventory domain
 5. Payment recording domain (mode tracking: CASH / UPI / ONLINE, immutable payment log)
 6. Staff POS module under (tenant) runtime (direct order creation bypassing cart)
@@ -398,6 +522,7 @@ types/                         → Shared domain contracts
   cart.ts
   checkout.ts
   order.ts
+  orderEvent.ts
   session.ts
   otp.ts
 
