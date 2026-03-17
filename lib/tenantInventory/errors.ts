@@ -1,5 +1,3 @@
-// lib/tenantInventory/errors.ts
-
 export class TenantInventoryError extends Error {
     constructor(message: string) {
         super(message);
@@ -21,6 +19,18 @@ export class ProvisionNotFoundError extends TenantInventoryError {
 
 export class InvalidProvisionInputError extends TenantInventoryError {
     constructor(message = "Invalid provisioning input") {
+        super(message);
+    }
+}
+
+export class OutOfStockError extends TenantInventoryError {
+    constructor(productId: string) {
+        super(`Product ${productId} is out of stock`);
+    }
+}
+
+export class ReservationStateError extends TenantInventoryError {
+    constructor(message: string) {
         super(message);
     }
 }

@@ -1,27 +1,28 @@
-// lib/tenantInventory/domain.ts
-
 import { tenantInventoryStore } from "./storage";
 import { toNewProvision, applyProvisionPatch } from "./mappers";
 import { requireProvision } from "./guards";
-import { ProvisionNotFoundError } from "./errors";
+import {
+    ProvisionNotFoundError,
+} from "./errors";
+
+import {
+    applyReservation,
+    commitReservation,
+    releaseReservation
+} from "./reservations";
 
 import { getProduct } from "@/lib/products/domain";
+
 import type {
     TenantInventory,
     ProvisionProductDTO,
 } from "@/types/tenantInventory";
 
-/**
- * Provision (create or update) a tenant-product relationship.
- * This does NOT mutate Product.
- * It only controls tenant participation.
- */
 export async function provisionProduct(
     tenantId: string,
     dto: ProvisionProductDTO
 ): Promise<TenantInventory> {
 
-    // Ensure product exists globally
     await getProduct(dto.productId);
 
     const existing = tenantInventoryStore.get(tenantId, dto.productId);
@@ -38,10 +39,6 @@ export async function provisionProduct(
     return updated;
 }
 
-
-/**
- * Remove provisioning (tenant can no longer sell product)
- */
 export function deprovisionProduct(
     tenantId: string,
     productId: string
@@ -54,10 +51,6 @@ export function deprovisionProduct(
     tenantInventoryStore.delete(tenantId, productId);
 }
 
-
-/**
- * Read tenant inventory only (no join)
- */
 export function listTenantInventory(
     tenantId: string
 ): TenantInventory[] {
@@ -65,10 +58,6 @@ export function listTenantInventory(
     return tenantInventoryStore.listByTenant(tenantId);
 }
 
-
-/**
- * Find a single tenant-product provisioning record
- */
 export function findTenantProvision(
     tenantId: string,
     productId: string
@@ -77,13 +66,8 @@ export function findTenantProvision(
     return tenantInventoryStore.get(tenantId, productId) ?? null;
 }
 
-
 /**
- * Checkout operation:
- * Reserve stock during order creation.
- *
- * This enforces the invariant:
- *   stock cannot go negative
+ * Step 4: Reserve stock during checkout
  */
 export function reserveStock(
     tenantId: string,
@@ -91,23 +75,57 @@ export function reserveStock(
     quantity: number
 ): TenantInventory {
 
-    const provision = tenantInventoryStore.get(tenantId, productId);
+    return tenantInventoryStore.update(
+        tenantId,
+        productId,
+        (record) => {
 
-    requireProvision(provision, productId);
+            requireProvision(record, productId);
 
-    if (!provision.enabled) {
-        throw new ProvisionNotFoundError(productId);
-    }
+            if (!record.enabled) {
+                throw new ProvisionNotFoundError(productId);
+            }
 
-    if (provision.stock < quantity) {
-        throw new ProvisionNotFoundError(productId);
-    }
+            return applyReservation(record, quantity);
+        }
+    );
 
-    const updated: TenantInventory = {
-        ...provision,
-        stock: provision.stock - quantity,
-        updatedAt: new Date().toISOString(),
-    };
+}
+
+/**
+ * Commit reservation when order becomes PAID
+ */
+export function commitStock(
+    tenantId: string,
+    productId: string,
+    quantity: number
+): TenantInventory {
+
+    const record = tenantInventoryStore.get(tenantId, productId);
+
+    requireProvision(record, productId);
+
+    const updated = commitReservation(record, quantity);
+
+    tenantInventoryStore.save(updated);
+
+    return updated;
+}
+
+/**
+ * Release reservation when order expires or is cancelled
+ */
+export function releaseStock(
+    tenantId: string,
+    productId: string,
+    quantity: number
+): TenantInventory {
+
+    const record = tenantInventoryStore.get(tenantId, productId);
+
+    requireProvision(record, productId);
+
+    const updated = releaseReservation(record, quantity);
 
     tenantInventoryStore.save(updated);
 

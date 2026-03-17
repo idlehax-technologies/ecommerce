@@ -6,10 +6,16 @@ import { requireItem } from "./guards";
 
 import { getProductForCart } from "@/lib/products/domain";
 import { findTenantProvision } from "../tenantInventory/domain";
-import { CartProductUnavailableError, CartStockExceededError, InvalidQuantityError } from "./errors";
+import { getAvailableStock } from "../tenantInventory/reservations";
+
+import {
+    CartProductUnavailableError,
+    CartStockExceededError,
+    InvalidQuantityError
+} from "./errors";
 
 /* =========================================================
-   Get cart (tenant-scoped aggregate)
+   Get cart
    ========================================================= */
 
 export function getCart(actor: TenantScopedActor): Cart {
@@ -18,13 +24,13 @@ export function getCart(actor: TenantScopedActor): Cart {
 
 /* =========================================================
    Add item
-   Product access is delegated to products domain.
    ========================================================= */
 
 export async function addItem(
     actor: TenantScopedActor,
     dto: AddToCartDTO
 ): Promise<Cart> {
+
     const cart = getCartForTenant(actor.tenantId);
 
     const product = await getProductForCart(dto.productId);
@@ -49,19 +55,30 @@ export async function addItem(
         ? existing.quantity + quantityToAdd
         : quantityToAdd;
 
-    if (newQuantity > provision.stock) {
+    /**
+     * Step-4 fix:
+     * validate against AVAILABLE stock
+     */
+
+    const available = getAvailableStock(provision);
+
+    if (newQuantity > available) {
         throw new CartStockExceededError();
     }
 
     if (existing) {
+
         existing.quantity = newQuantity;
+
     } else {
+
         cart.items.push({
             productId: product.productId,
             title: product.title,
             price: product.price,
             quantity: newQuantity,
         });
+
     }
 
     saveCart(cart);
@@ -77,6 +94,7 @@ export function updateItem(
     productId: string,
     dto: UpdateCartItemDTO
 ): Cart {
+
     const cart = getCartForTenant(actor.tenantId);
 
     const item = requireItem(cart, productId);
@@ -93,7 +111,14 @@ export function updateItem(
         throw new CartProductUnavailableError();
     }
 
-    if (dto.quantity > provision.stock) {
+    /**
+     * Step-4 fix:
+     * use available stock
+     */
+
+    const available = getAvailableStock(provision);
+
+    if (dto.quantity > available) {
         throw new CartStockExceededError();
     }
 
@@ -111,6 +136,7 @@ export function removeItem(
     actor: TenantScopedActor,
     productId: string
 ): Cart {
+
     const cart = getCartForTenant(actor.tenantId);
 
     cart.items = cart.items.filter((i) => i.productId !== productId);
