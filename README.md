@@ -140,7 +140,8 @@ Products answer:
 
 ## TenantInventory (Entitlement Layer)
 
-TenantInventory binds products to tenants.
+TenantInventory answers:
+> What products can this tenant sell and how much?
 
 Each record contains:
 
@@ -148,12 +149,31 @@ Each record contains:
 - productId
 - enabled (boolean)
 - stock (number)
+- reserved
 - timestamps
 
-TenantInventory answers:
-> What can this tenant sell and how much?
-
 This layer replaces the old multi-vendor model entirely.
+
+### Reservation Accounting
+
+TenantInventory now enforces atomic reservation accounting.
+
+Each record maintains two quantities:
+
+- `stock` — physical inventory owned by the tenant
+- `reserved` — quantity currently locked by open orders
+
+Derived invariant:
+
+available = stock − reserved
+
+Reservation lifecycle:
+
+OrderCreated → reserve stock  
+OrderPaid → commit reservation (deduct stock)  
+OrderCancelled / OrderExpired → release reservation
+
+This guarantees that stock cannot be oversold even during concurrent checkout attempts.
 
 ---
 
@@ -206,7 +226,8 @@ UI mirrors domain constraints but never replaces them.
 
 # Checkout Transaction
 
-Checkout converts a cart into an order.
+Checkout converts a cart into a transactional order while guaranteeing
+inventory consistency.
 
 Execution flow:
 
@@ -214,11 +235,17 @@ Cart
 ↓  
 Checkout Application Service  
 ↓  
-Order Creation (`status = RESERVED`)  
-↓  
 TenantInventory Stock Reservation  
 ↓  
+Order Creation (`status = RESERVED`)  
+↓  
 Cart Clearing
+
+Reservation occurs **before order creation**.
+
+This ensures the invariant:
+
+Every RESERVED order must already hold inventory.
 
 ---
 
@@ -383,6 +410,48 @@ Lifecycle commands introduced:
 
 ---
 
+## Step 4 — Atomic Inventory Reservation
+
+Completed.
+
+TenantInventory now enforces atomic reservation accounting
+to prevent overselling.
+
+Capabilities introduced:
+
+- `reserveStock` mutation enforcing `available = stock - reserved`
+- Reservation accounting through a `reserved` quantity
+- Lifecycle-driven stock settlement
+
+Inventory mutation model:
+
+reserveStock → increase reserved  
+commitStock → decrease reserved and deduct stock  
+releaseStock → decrease reserved
+
+Order lifecycle reactions:
+
+OrderCreated → reserve inventory  
+OrderPaid → commit reservation  
+OrderCancelled / OrderExpired → release reservation
+
+### Concurrency Safety
+
+Inventory mutations are executed through a single storage mutation boundary,
+ensuring read-modify-write operations remain atomic in the domain model.
+
+### Cart Validation Improvement
+
+Cart validation now respects **available stock** instead of raw stock.
+
+Validation rule:
+
+quantity ≤ (stock − reserved)
+
+This prevents carts from temporarily exceeding inventory availability.
+
+---
+
 ### Domain Events
 
 Order lifecycle now emits domain events:
@@ -411,19 +480,20 @@ Cart
 ↓  
 Checkout Service  
 ↓  
+Inventory Reservation  
+↓  
 Order Aggregate  
 ↓  
 Order State Machine  
 ↓  
-Domain Events  
+Inventory Commit / Release  
 ↓  
-Future reactions (inventory / payments / notifications)
+Domain Events
 
 ---
 
 # Upcoming Roadmap
 
-4. Atomic stock reservation + deduction inside TenantInventory domain
 5. Payment recording domain (mode tracking: CASH / UPI / ONLINE, immutable payment log)
 6. Staff POS module under (tenant) runtime (direct order creation bypassing cart)
 7. Staff fulfillment dashboard (tenant-scoped order lifecycle management)

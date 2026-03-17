@@ -1,5 +1,3 @@
-// lib/tenantInventory/mappers.ts
-
 import type {
     TenantInventory,
     ProvisionProductDTO,
@@ -9,6 +7,7 @@ export function toNewProvision(
     tenantId: string,
     dto: ProvisionProductDTO
 ): TenantInventory {
+
     const now = new Date().toISOString();
 
     return {
@@ -16,6 +15,7 @@ export function toNewProvision(
         productId: dto.productId,
         enabled: dto.enabled,
         stock: dto.stock,
+        reserved: 0,
         createdAt: now,
         updatedAt: now,
     };
@@ -25,6 +25,7 @@ export function applyProvisionPatch(
     existing: TenantInventory,
     dto: ProvisionProductDTO
 ): TenantInventory {
+
     return {
         ...existing,
         enabled: dto.enabled,
