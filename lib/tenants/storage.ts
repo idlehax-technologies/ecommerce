@@ -19,14 +19,14 @@ function seedTenants() {
         {
             tenantId: "tenant_alpha",
             name: "Alpha School",
-            status: "active",
+            status: "ACTIVE",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         },
         {
             tenantId: "tenant_mnsnhs",
             name: "Michaelnagar Shikshaniketan",
-            status: "active",
+            status: "ACTIVE",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         },

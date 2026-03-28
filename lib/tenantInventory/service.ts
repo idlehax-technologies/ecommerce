@@ -1,5 +1,3 @@
-// lib/tenantInventory/service.ts
-
 import { listProducts } from "@/lib/products/domain";
 import { listTenantInventory } from "./domain";
 

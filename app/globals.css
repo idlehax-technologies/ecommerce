@@ -40,3 +40,20 @@ a {
     color-scheme: dark;
   }
 }
+
+@media print {
+    body {
+        background: white !important;
+    }
+
+    /* Explicit control */
+    .no-print {
+        display: none !important;
+    }
+
+    /* Remove layout chrome */
+    nav,
+    footer {
+        display: none !important;
+    }
+}

@@ -1,5 +1,7 @@
 import type { AuthUser, UserRole } from "@/types/auth";
 import { ForbiddenError, NotInAssumedSessionError, TenantNotAssociatedError, UnauthorizedError } from "./errors";
+import { getTenant } from "../tenants/domain";
+import { TenantNotActiveError } from "../tenants/errors";
 
 /**
  * Type predicate.
@@ -59,6 +61,12 @@ export function requireTenant(
 
     if (!u.tenantId) {
         throw new TenantNotAssociatedError();
+    }
+
+    const tenant = getTenant(u.tenantId); // ✅ domain, not storage
+
+    if (tenant.status !== "ACTIVE") {
+        throw new TenantNotActiveError();
     }
 
     return u as AuthUser & { tenantId: string };

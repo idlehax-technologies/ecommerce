@@ -13,6 +13,12 @@ export class TenantNotFoundError extends TenantDomainError {
     }
 }
 
+export class TenantNotActiveError extends TenantDomainError {
+    constructor(message = "Tenant is not active") {
+        super(message, 403);
+    }
+}
+
 export class TenantAlreadyExistsError extends TenantDomainError {
     constructor(message = "Tenant already exists") {
         super(message, 409);
@@ -25,8 +31,20 @@ export class TenantAlreadyActiveError extends TenantDomainError {
     }
 }
 
-export class TenantAlreadyInactiveError extends TenantDomainError {
-    constructor(message = "Tenant already inactive") {
+export class TenantCannotActivateError extends TenantDomainError {
+    constructor(message = "Tenant cannot be activated") {
+        super(message, 409);
+    }
+}
+
+export class TenantCannotSuspendError extends TenantDomainError {
+    constructor(message = "Tenant cannot be suspended") {
+        super(message, 409);
+    }
+}
+
+export class TenantCannotArchiveError extends TenantDomainError {
+    constructor(message = "Tenant cannot be archived") {
         super(message, 409);
     }
 }

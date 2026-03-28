@@ -1,7 +1,7 @@
 import type { UserRole } from "@/types/auth";
 
 export const canManageProducts = (role: UserRole) =>
-    role === "staff";
+    role === "superadmin";
 
 export const canManageMemberships = (role: UserRole) =>
     role === "staff";

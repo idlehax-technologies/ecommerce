@@ -1,6 +1,6 @@
 import { UserRole } from "./auth";
 
-export type TenantStatus = "created" | "active" | "inactive";
+type TenantStatus = "PENDING" | "ACTIVE" | "SUSPENDED" | "ARCHIVED";
 
 export type Tenant = {
     tenantId: string;

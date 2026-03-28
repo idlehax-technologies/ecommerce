@@ -23,14 +23,45 @@ async function handle<T>(res: Response): Promise<T> {
     return data as T;
 }
 
-/**
- * Fetch all orders for current tenant
- */
 export const getOrders = () =>
     fetch("/api/orders").then(handle<Order[]>);
 
-/**
- * Fetch a single order
- */
 export const getOrder = (orderId: string) =>
     fetch(`/api/orders/${orderId}`).then(handle<Order>);
+
+export const payOrder = (orderId: string, method: string) =>
+    fetch(`/api/orders/${orderId}/pay`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method }),
+    }).then(handle);
+
+export const createPOSOrder = (payload: {
+    items: { productId: string; quantity: number }[];
+    paymentMethod?: string;
+}) =>
+    fetch(`/api/orders/pos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    }).then(handle);
+
+export const cancelOrder = (orderId: string) =>
+    fetch(`/api/orders/${orderId}/cancel`, {
+        method: "POST",
+    }).then(handle);
+
+export const pickupOrder = (orderId: string) =>
+    fetch(`/api/orders/${orderId}/pickup`, {
+        method: "POST",
+    }).then(handle);
+
+export const expireOrder = (orderId: string) =>
+    fetch(`/api/orders/${orderId}/expire`, {
+        method: "POST",
+    }).then(handle);
+
+export const refundOrder = (orderId: string) =>
+    fetch(`/api/orders/${orderId}/refund`, {
+        method: "POST",
+    }).then(handle);

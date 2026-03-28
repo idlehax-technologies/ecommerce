@@ -1,14 +1,12 @@
-// components/orders/OrderRow.tsx
-
 "use client";
 
-import Link from "next/link";
 import {
     Paper,
     Stack,
     Typography,
     Chip,
     Divider,
+    Button,
 } from "@mui/material";
 
 import type { OrderStatus, OrderListItem } from "@/types/order";
@@ -16,17 +14,18 @@ import type { OrderStatus, OrderListItem } from "@/types/order";
 function getStatusColor(status: OrderStatus) {
     switch (status) {
         case "PICKED_UP":
+        case "PAID":
             return "success";
 
-        case "PAID":
+        case "RESERVED":
             return "info";
 
-        case "RESERVED":
-            return "warning";
-
         case "CANCELLED":
-        case "EXPIRED":
             return "error";
+
+        case "EXPIRED":
+        case "REFUNDED":
+            return "warning";
 
         default:
             return "default";
@@ -36,7 +35,7 @@ function getStatusColor(status: OrderStatus) {
 export default function OrderRow({ order }: { order: OrderListItem }) {
     return (
         <Paper
-            component={Link}
+            component="a"
             href={`/orders/${order.orderId}`}
             sx={{
                 p: 2,
@@ -45,12 +44,12 @@ export default function OrderRow({ order }: { order: OrderListItem }) {
                 display: "block",
             }}
         >
-            <Stack spacing={1}>
+            <Stack direction="row" spacing={1} alignItems="center">
                 <Typography fontWeight={600}>
                     Order {order.orderId}
                 </Typography>
 
-                <Divider />
+                <Divider orientation="vertical" flexItem />
 
                 <Typography variant="body2" color="text.secondary">
                     {new Date(order.createdAt).toLocaleString()}
@@ -66,6 +65,13 @@ export default function OrderRow({ order }: { order: OrderListItem }) {
                     size="small"
                     sx={{ width: "fit-content" }}
                 />
+
+                <Button
+                    href={`/orders/${order.orderId}/receipt`}
+                    size="small"
+                >
+                    Receipt
+                </Button>
             </Stack>
         </Paper>
     );

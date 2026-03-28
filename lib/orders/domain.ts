@@ -53,7 +53,7 @@ export function createOrder(
         items: [...items],   // snapshot protection
         total: computedTotal,
         currency: "INR",
-        paymentMode: "CASH",
+        paymentMethod: "CASH",
         status: "RESERVED",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -88,6 +88,15 @@ export function listTenantOrders(
     return listOrdersByTenant(tenantId);
 }
 
+export function listTenantOrdersForUser(
+    tenantId: string,
+    userId: string
+): Order[] {
+    return listOrdersByTenant(tenantId).filter(
+        (o) => o.userId === userId
+    );
+}
+
 /**
  * Lifecycle transition engine
  */
@@ -104,10 +113,11 @@ function transition(
 
     const allowed: Record<Order["status"], Order["status"][]> = {
         RESERVED: ["PAID", "CANCELLED", "EXPIRED"],
-        PAID: ["PICKED_UP"],
+        PAID: ["PICKED_UP", "REFUNDED"], // ✅ NEW
         PICKED_UP: [],
         CANCELLED: [],
         EXPIRED: [],
+        REFUNDED: [], // ✅ NEW
     };
 
     if (!allowed[expected].includes(to)) {
@@ -122,16 +132,18 @@ function transition(
 
 export function markOrderPaid(
     tenantId: string,
-    orderId: string
+    orderId: string,
+    method: Order["paymentMethod"]
 ) {
-
     const order = getTenantOrder(tenantId, orderId);
+
+    order.paymentMethod = method;
 
     transition(order, "RESERVED", "PAID");
 
     return {
         order,
-        event: { type: "OrderPaid", order }
+        event: undefined, // ✅ NO EVENT HERE
     };
 }
 
@@ -177,5 +189,19 @@ export function markOrderPickedUp(
     return {
         order,
         event: { type: "OrderPickedUp", order }
+    };
+}
+
+export function refundOrder(
+    tenantId: string,
+    orderId: string
+) {
+    const order = getTenantOrder(tenantId, orderId);
+
+    transition(order, "PAID", "REFUNDED");
+
+    return {
+        order,
+        event: { type: "OrderRefunded", order }
     };
 }
