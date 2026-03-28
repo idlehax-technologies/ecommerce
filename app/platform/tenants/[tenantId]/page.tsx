@@ -6,7 +6,8 @@ import { Container, Stack, Card, CardContent, Typography, Button, Chip } from "@
 import {
     getTenantById,
     activateTenantUseCase,
-    deactivateTenantUseCase,
+    suspendTenantUseCase,
+    archiveTenantUseCase,
     assumeTenantAdminUseCase,
 } from "@/lib/tenants/service";
 import { getUserFromRequest } from "@/lib/auth";
@@ -33,9 +34,14 @@ export default async function TenantDetailPage({ params }: PageProps) {
         await activateTenantUseCase(tenantId);
     }
 
-    async function deactivate() {
+    async function suspend() {
         "use server";
-        await deactivateTenantUseCase(tenantId);
+        await suspendTenantUseCase(tenantId);
+    }
+
+    async function archive() {
+        "use server";
+        await archiveTenantUseCase(tenantId);
     }
 
     async function assume() {
@@ -53,17 +59,20 @@ export default async function TenantDetailPage({ params }: PageProps) {
                         <Chip
                             label={tenant.status}
                             color={
-                                tenant.status === "active"
+                                tenant.status === "ACTIVE"
                                     ? "success"
-                                    : tenant.status === "inactive"
-                                        ? "error"
-                                        : "default"
+                                    : tenant.status === "SUSPENDED"
+                                        ? "warning"
+                                        : tenant.status === "ARCHIVED"
+                                            ? "default"
+                                            : "default" // PENDING
                             }
                             sx={{ width: "fit-content" }}
                         />
 
                         <Stack direction="row" spacing={2}>
-                            {tenant.status !== "active" && (
+                            {/* Activate: allowed from PENDING & SUSPENDED */}
+                            {(tenant.status === "PENDING" || tenant.status === "SUSPENDED") && (
                                 <form action={activate}>
                                     <Button type="submit" variant="contained">
                                         Activate
@@ -71,10 +80,20 @@ export default async function TenantDetailPage({ params }: PageProps) {
                                 </form>
                             )}
 
-                            {tenant.status === "active" && (
-                                <form action={deactivate}>
-                                    <Button type="submit" color="error" variant="contained">
-                                        Deactivate
+                            {/* Suspend: only from ACTIVE */}
+                            {tenant.status === "ACTIVE" && (
+                                <form action={suspend}>
+                                    <Button type="submit" color="warning" variant="contained">
+                                        Suspend
+                                    </Button>
+                                </form>
+                            )}
+
+                            {/* Archive: allowed from anything except ARCHIVED */}
+                            {tenant.status !== "ARCHIVED" && (
+                                <form action={archive}>
+                                    <Button type="submit" color="error" variant="outlined">
+                                        Archive
                                     </Button>
                                 </form>
                             )}

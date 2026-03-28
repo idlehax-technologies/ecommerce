@@ -49,11 +49,13 @@ export default async function TenantsPage() {
                                         size="small"
                                         label={t.status}
                                         color={
-                                            t.status === "active"
+                                            t.status === "ACTIVE"
                                                 ? "success"
-                                                : t.status === "inactive"
-                                                    ? "error"
-                                                    : "default"
+                                                : t.status === "SUSPENDED"
+                                                    ? "warning"
+                                                    : t.status === "ARCHIVED"
+                                                        ? "default"
+                                                        : "default" // PENDING
                                         }
                                         sx={{ width: "fit-content", mt: 1 }}
                                     />

@@ -154,7 +154,7 @@ Each record contains:
 
 This layer replaces the old multi-vendor model entirely.
 
-### Reservation Accounting
+## Reservation Accounting
 
 TenantInventory now enforces atomic reservation accounting.
 
@@ -207,7 +207,7 @@ Cart is:
 - One cart per tenant
 - Never persisted in browser
 
-### Stock Enforcement
+## Stock Enforcement
 
 When adding or updating quantity:
 
@@ -224,7 +224,7 @@ UI mirrors domain constraints but never replaces them.
 
 ---
 
-# Checkout Transaction
+## Checkout Transaction
 
 Checkout converts a cart into a transactional order while guaranteeing
 inventory consistency.
@@ -249,7 +249,7 @@ Every RESERVED order must already hold inventory.
 
 ---
 
-# Orders Domain
+## Orders Domain
 
 Orders represent **tenant-scoped transactional records**.
 
@@ -271,6 +271,31 @@ Order Status:
 - PICKED_UP
 - CANCELLED
 - EXPIRED
+- REFUNDED
+
+---
+
+## Payment Lifecycle
+
+Payments are now modeled as a separate domain with an asynchronous confirmation boundary.
+
+Flow:
+
+Payment Recorded (PENDING)  
+↓  
+Payment Confirmed (CONFIRMED)  
+↓  
+Order transitions to PAID
+
+Order state changes are strictly triggered by confirmed payments.
+
+The system guarantees:
+
+- Orders cannot become PAID without confirmed payment
+- Payment and order lifecycles are decoupled but consistent
+- Payment records are immutable once created (status may transition)
+
+This enables support for real-world payment delays (UPI, card processing, etc.).
 
 ---
 
@@ -287,6 +312,9 @@ Order Status:
 
 The system currently implements the core backbone of a transactional SaaS platform.
 
+The system now supports asynchronous payment processing and full order lifecycle control,
+bringing it closer to real-world transactional systems where payment confirmation is not instantaneous.
+
 # Implemented capabilities
 
 • Tenant-isolated execution model
@@ -296,6 +324,13 @@ The system currently implements the core backbone of a transactional SaaS platfo
 • Order aggregate with strict tenant binding and snapshot item model
 • Lifecycle-driven order state machine
 • Domain event emission for cross-domain reactions
+• Payment domain with asynchronous confirmation boundary
+• Immutable payment recording with method tracking (CASH / UPI / CARD / NET_BANKING)
+• Manual cancel / expire / refund flows with strict state guard enforcement
+• Staff POS module supporting direct order creation (cart bypass)
+• Staff fulfillment dashboard for lifecycle management
+• Customer order history (SSR, tenant-bound)
+• Server-rendered receipt system (printable view)
 
 The platform now supports a complete transactional pipeline:
 
@@ -393,7 +428,8 @@ Allowed transitions:
 RESERVED → PAID  
 RESERVED → CANCELLED  
 RESERVED → EXPIRED  
-PAID → PICKED_UP
+PAID → PICKED_UP  
+PAID → REFUNDED
 
 Capabilities introduced:
 
@@ -435,6 +471,187 @@ OrderCreated → reserve inventory
 OrderPaid → commit reservation  
 OrderCancelled / OrderExpired → release reservation
 
+---
+
+## Step 5 — Payment Recording Domain
+
+Completed.
+
+A dedicated payment domain is now introduced with an asynchronous confirmation boundary.
+
+Capabilities introduced:
+
+- Immutable payment record creation
+- Payment method tracking (CASH, UPI, CARD, NET_BANKING)
+- Separation of payment lifecycle from order lifecycle
+- Idempotent payment confirmation flow
+- Order state transition triggered only after confirmed payment
+
+Payment lifecycle:
+
+Payment Recorded (PENDING)
+↓
+Payment Confirmed (CONFIRMED)
+↓
+Order transitions to PAID
+
+System guarantees:
+
+- Orders cannot become PAID without confirmed payment
+- Payment records are immutable once created
+- Duplicate confirmations are safely ignored (idempotency)
+- Payment domain owns all payment-related data and events
+
+---
+
+## Step 6 — Staff POS Module
+
+Completed.
+
+A tenant-scoped POS system is introduced for staff-driven order creation.
+
+Capabilities introduced:
+
+- Direct order creation bypassing cart
+- Tenant-bound POS interface under (tenant)/pos
+- Real-time stock validation using TenantInventory
+- Server-authoritative order creation from POS flows
+- Staff-only access enforced via role guards
+
+Execution model:
+
+POS Selection
+↓
+Direct Order Creation (RESERVED)
+↓
+Inventory Reservation
+↓
+Optional Payment Flow
+
+System guarantees:
+
+- POS cannot bypass inventory constraints
+- All orders remain tenant-scoped
+- POS follows the same domain invariants as checkout
+
+---
+
+## Step 7 — Staff Fulfillment Dashboard
+
+Completed.
+
+A tenant-scoped fulfillment interface is introduced for managing order lifecycle.
+
+Capabilities introduced:
+
+- Centralized order lifecycle management UI
+- Staff-controlled transitions (PICKED_UP, etc.)
+- State-aware action rendering (UI reflects allowed transitions)
+- Integration with order domain state machine
+
+Supported operations:
+
+- Mark order as picked up
+- View order details and status
+- Execute lifecycle transitions safely
+
+System guarantees:
+
+- UI does not control state transitions
+- Domain enforces all lifecycle rules
+- Invalid transitions are structurally blocked
+
+---
+
+## Step 8 — Customer Order History (SSR)
+
+Completed.
+
+A tenant-bound SSR order history system is implemented.
+
+Capabilities introduced:
+
+- Server-rendered order listing per user
+- Tenant-scoped order access
+- Direct domain access from SSR (no client mediation)
+- Clean separation of read vs write concerns
+
+Execution model:
+
+SSR Page
+↓
+Service / Domain
+↓
+Tenant-scoped order retrieval
+
+System guarantees:
+
+- Users can only access their own orders
+- Tenant isolation enforced at domain level
+- No client-side data manipulation
+
+---
+
+## Step 9 — Order Receipt Generation
+
+Completed.
+
+A server-rendered, printable receipt system is implemented.
+
+Capabilities introduced:
+
+- SSR receipt view (/orders/[orderId]/receipt)
+- Snapshot-based pricing (priceAtPurchase)
+- Print-optimized layout (CSS print handling)
+- Clean separation from application layout (no nav/UI noise)
+
+Receipt model:
+
+Order Snapshot
+↓
+SSR Rendering
+↓
+Print / Export (browser-driven)
+
+System guarantees:
+
+- Receipts reflect historical truth (not live data)
+- Pricing is immutable and reproducible
+- Output is deterministic and audit-friendly
+
+---
+
+## Step 10 — Cancel / Refund / Expire Flows
+
+Completed.
+
+Full lifecycle control is implemented with strict state guard enforcement.
+
+Capabilities introduced:
+
+- Manual order cancellation (RESERVED → CANCELLED)
+- Order expiration (RESERVED → EXPIRED)
+- Refund flow (PAID → REFUNDED)
+- Guard-driven state transition enforcement
+- State-aware UI actions
+
+Extended state machine:
+
+RESERVED → PAID
+RESERVED → CANCELLED
+RESERVED → EXPIRED
+PAID → PICKED_UP
+PAID → REFUNDED
+
+System guarantees:
+
+- Invalid transitions are impossible
+- Refunds cannot occur before payment
+- Expired/cancelled orders correctly release inventory
+- All transitions go through domain guards
+
+---
+
 ### Concurrency Safety
 
 Inventory mutations are executed through a single storage mutation boundary,
@@ -461,6 +678,7 @@ Order lifecycle now emits domain events:
 - `OrderCancelled`
 - `OrderExpired`
 - `OrderPickedUp`
+- `OrderRefunded`
 
 These events decouple the order domain from other system domains and establish integration points for:
 
@@ -474,6 +692,17 @@ Application services now react to emitted domain events.
 
 ---
 
+### Event Ownership
+
+Events are constructed only by the domain that owns the relevant data:
+
+- Orders domain emits structural lifecycle events
+- Payments domain emits `OrderPaid` (because it owns payment data)
+
+This prevents invalid event construction and ensures type-safe domain boundaries.
+
+---
+
 ### Current Transaction Pipeline
 
 Cart  
@@ -482,9 +711,13 @@ Checkout Service
 ↓  
 Inventory Reservation  
 ↓  
-Order Aggregate  
+Order Aggregate (RESERVED)  
 ↓  
-Order State Machine  
+Payment Recorded (PENDING)  
+↓  
+Payment Confirmation  
+↓  
+Order State Machine (PAID / REFUNDED / etc.)  
 ↓  
 Inventory Commit / Release  
 ↓  
@@ -494,23 +727,19 @@ Domain Events
 
 # Upcoming Roadmap
 
-5. Payment recording domain (mode tracking: CASH / UPI / ONLINE, immutable payment log)
-6. Staff POS module under (tenant) runtime (direct order creation bypassing cart)
-7. Staff fulfillment dashboard (tenant-scoped order lifecycle management)
-8. Customer order history (SSR, tenant-bound)
-9. Order receipt generation (server-rendered printable view)
-10. Manual cancel / refund / expire flows with state guard enforcement
-11. Daily reconciliation service (orders vs payments vs tenant inventory consistency)
-12. Low-stock detection service + restock adjustment flows (tenantInventory domain)
-13. Tenant analytics service (sales, revenue, inventory velocity projections)
-14. Audit logging layer (cross-domain write-event tracking with actor identity)
-15. Notification service abstraction (order events → email/SMS adapters)
-16. Security hardening pass (rate limiting, CSRF strategy, cookie tightening, guard audit)
-17. Background job runner (auto-expire unpaid RESERVED orders)
-18. Data export service (tenant-scoped CSV generation for accounting)
-19. Multi-tenant isolation test suite (structural cross-tenant leakage prevention)
-20. Performance pass (query optimization, pagination, projection refinement)
-21. Production readiness layer (structured logging, env validation, monitoring hooks, deployment config)
+11A. Reconciliation detection engine (read-only, tenant-scoped mismatch detection across orders, payments, and inventory with idempotent scans and deterministic reporting)
+11B. Reconciliation resolution layer (manual/controlled correction flows for mismatches with invariant-safe adjustments and audit traceability)
+12A. Low-stock detection service (threshold-based, tenant-scoped monitoring using consistent inventory snapshots without mutating state)
+12B. Stock adjustment flows (admin-triggered, idempotent stock corrections within TenantInventory domain enforcing stock ≥ reserved invariants)
+13. Tenant analytics service (snapshot-based read model for sales, revenue, and inventory metrics strictly using historical order data, never live product data)
+14. Audit logging layer (append-only, cross-domain event logging with actor identity, tenant context, and immutable write-event tracking aligned with domain actions)
+15. Notification service abstraction (event-driven notifications triggered strictly from domain events with idempotent dispatch and adapter-based delivery design)
+16. Security hardening pass (request-level protection via CSRF, cookies, rate limiting + authorization audit ensuring strict guard-driven role and tenant enforcement)
+17. Background job runner (idempotent, state-machine-safe scheduled execution for tasks like auto-expire of unpaid RESERVED orders with retry-safe design)
+18. Data export service (tenant-scoped deterministic CSV generation aligned with reconciliation data ensuring snapshot correctness and pagination readiness)
+19. Multi-tenant isolation test suite (systematic validation of tenant boundaries including cross-tenant access attempts, concurrent operations, and leakage prevention)
+20. Performance pass (query-shape optimization, pagination enforcement, and projection safety to prepare for DB-backed execution without data over-fetching)
+21. Production readiness layer (Map → DB migration with transaction support, DB constraints, concurrency control, structured logging, observability, and deployment readiness)
 
 Each step builds on previously locked invariants.
 
@@ -526,78 +755,90 @@ This simulates persistence without introducing database complexity yet.
 
 ---
 
-# Project Structure (Conceptual)
+# Project Structure (Actual)
 
-app/
-  (tenant)/                    → Tenant-facing application UI
-    products/                  → Tenant storefront
-    cart/                      → Server-authoritative cart
-    checkout/                  → Checkout flow
-    orders/                    → Order history & detail
-    memberships/               → Tenant membership flows
-    inventory/                 → Tenant inventory view
-    profile/                   → User profile
-    layout.tsx
-
-  platform/                    → Platform administration
-    products/                  → Platform product catalog
-    tenants/                   → Tenant management
-
-  api/                         → HTTP transport layer
-    auth/                      → Authentication endpoints
-    cart/                      → Cart mutation routes
-    checkout/                  → Checkout transaction route
-    orders/                    → Order retrieval routes
-    memberships/               → Membership API
-    admin/                     → Platform admin APIs
-
-components/                    → Reusable UI components
-  products/                    → Storefront product UI
-  cart/                        → Cart UI components
-  checkout/                    → Checkout UI
-  orders/                      → Order display components
-  memberships/                 → Membership UI
-  tenant-provisioning/         → Tenant inventory provisioning
-  auth/                        → Authentication UI
-  admin/                       → Admin dashboard UI
-  Navbar.tsx
-  Footer.tsx
-
-contexts/                      → React state containers
-  AuthContext.tsx              → Authentication state
-  CartContext.tsx              → Cart state
-
-lib/                           → Core application logic
-  api/                         → Client-side API wrappers
-
-  auth/                        → Authentication domain
-  tenants/                     → Tenant lifecycle domain
-  memberships/                 → Membership verification domain
-  products/                    → Platform product catalog
-  tenantInventory/             → Tenant product entitlement + stock
-  cart/                        → Cart domain
-  checkout/                    → Checkout application service
-  orders/                      → Order aggregate domain
-
-  http/                        → Shared HTTP utilities
-  mappers/                     → View projection helpers
-
-types/                         → Shared domain contracts
-  auth.ts
-  user.ts
-  tenant.ts
-  membership.ts
-  product.ts
-  tenantInventory.ts
-  cart.ts
-  checkout.ts
-  order.ts
-  orderEvent.ts
-  session.ts
-  otp.ts
-
-docs/                          → Architecture notes
-  checkout-api.md
+.
+├── app
+│   ├── (tenant)                    # Tenant runtime (core user-facing app)
+│   │   ├── cart/                  # Server-authoritative cart
+│   │   ├── checkout/              # Checkout flow
+│   │   ├── fulfillment/           # Staff fulfillment dashboard
+│   │   ├── inventory/             # Tenant inventory view
+│   │   ├── memberships/           # Membership flows
+│   │   ├── orders/                # Order history + detail + receipt (SSR)
+│   │   ├── pos/                   # Staff POS interface
+│   │   ├── products/              # Storefront (SSR)
+│   │   ├── profile/               # User profile
+│   │   └── layout.tsx             # Tenant layout boundary
+│   │
+│   ├── api                        # Transport layer (routes only)
+│   │   ├── auth/                  # Authentication endpoints
+│   │   ├── cart/                  # Cart mutations
+│   │   ├── checkout/              # Checkout service route
+│   │   ├── orders/                # Order lifecycle routes
+│   │   │   └── [orderId]/
+│   │   │       ├── cancel/
+│   │   │       ├── expire/
+│   │   │       ├── pay/
+│   │   │       ├── pickup/
+│   │   │       ├── receipt/
+│   │   │       └── refund/
+│   │   ├── payments/              # Async payment confirmation
+│   │   └── admin/                 # Platform-level APIs
+│   │
+│   ├── platform                   # Platform (superadmin) runtime
+│   │   ├── products/              # Master catalog
+│   │   └── tenants/               # Tenant management
+│   │
+│   └── layout.tsx                 # Root layout
+│
+├── components                     # UI components (pure, no business logic)
+│   ├── auth/
+│   ├── cart/
+│   ├── checkout/
+│   ├── orders/                   # Order UI + payment + receipt
+│   ├── pos/                      # POS UI components
+│   ├── products/
+│   ├── memberships/
+│   ├── tenant-provisioning/
+│   ├── admin/
+│   ├── guards/                   # UI-level guards (not auth enforcement)
+│   ├── Navbar.tsx
+│   └── Footer.tsx
+│
+├── contexts                      # Client-side state (non-authoritative)
+│   ├── AuthContext.tsx
+│   └── CartContext.tsx
+│
+├── lib                           # Core system (ALL business logic lives here)
+│   ├── api/                      # Client-side API wrappers
+│   │
+│   ├── auth/                     # Authentication domain
+│   ├── tenants/                  # Tenant lifecycle domain
+│   ├── memberships/              # Membership domain
+│   ├── products/                 # Platform catalog domain
+│   ├── tenantInventory/          # Entitlement + stock domain
+│   ├── cart/                     # Cart domain (server-authoritative)
+│   ├── checkout/                 # Checkout application service
+│   ├── orders/                   # Order aggregate + state machine
+│   ├── payments/                 # Payment domain (async confirmation)
+│   ├── pos/                      # POS application service
+│   │
+│   ├── mappers/                  # View projections
+│   ├── http/                     # Route error handling
+│   └── jwt.ts                    # JWT utilities
+│
+├── types                         # Shared domain contracts
+│   ├── order.ts
+│   ├── orderEvent.ts
+│   ├── payment.ts
+│   ├── tenantInventory.ts
+│   └── ...
+│
+├── docs                          # Architecture notes
+│   └── checkout-api.md
+│
+└── README.md
 
 The domain modules represent the core business capabilities:
 

@@ -7,7 +7,7 @@ export function toNewTenant(dto: CreateTenantDTO): Tenant {
     return {
         tenantId: crypto.randomUUID(),
         name: dto.name.trim(),
-        status: "created",
+        status: "PENDING", // ✅ FIXED (was "created")
         createdAt: now,
         updatedAt: now,
     };

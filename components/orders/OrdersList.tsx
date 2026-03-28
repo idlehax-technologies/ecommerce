@@ -1,5 +1,3 @@
-// components/orders/OrdersList.tsx
-
 "use client";
 
 import { Stack, Typography } from "@mui/material";
