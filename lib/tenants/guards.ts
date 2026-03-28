@@ -1,39 +1,65 @@
 import { Tenant } from "@/types/tenant";
 import {
-    TenantAlreadyActiveError,
     TenantAlreadyExistsError,
-    TenantAlreadyInactiveError,
     TenantNotFoundError,
     TenantScopeError,
+    TenantAlreadyActiveError,
+    TenantCannotActivateError,
+    TenantCannotSuspendError,
+    TenantCannotArchiveError,
 } from "./errors";
-import { AuthUser, UserRole } from "@/types/auth";
-import { requireAuth, requireTenant } from "../auth/guards";
+
+/**
+ * Existence
+ */
 
 export function assertExists(t: Tenant | null): asserts t is Tenant {
-    if (!t) throw new TenantNotFoundError("Tenant not found");
+    if (!t) throw new TenantNotFoundError();
 }
 
 export function assertDoesNotExist(t: Tenant | null): asserts t is null {
-    if (t) throw new TenantAlreadyExistsError("Tenant already exists");
+    if (t) throw new TenantAlreadyExistsError();
 }
+
+/**
+ * Lifecycle rules
+ */
 
 export function assertCanActivate(t: Tenant) {
-    if (t.status === "active") {
-        throw new TenantAlreadyActiveError("Already active");
+    if (t.status === "ACTIVE") {
+        throw new TenantAlreadyActiveError();
+    }
+
+    if (t.status === "ARCHIVED") {
+        throw new TenantCannotActivateError(
+            "Cannot activate archived tenant"
+        );
     }
 }
 
-export function assertCanDeactivate(t: Tenant) {
-    if (t.status === "inactive") {
-        throw new TenantAlreadyInactiveError("Already inactive");
+export function assertCanSuspend(t: Tenant) {
+    if (t.status !== "ACTIVE") {
+        throw new TenantCannotSuspendError(
+            "Only ACTIVE tenants can be suspended"
+        );
     }
 }
+
+export function assertCanArchive(t: Tenant) {
+    if (t.status === "ARCHIVED") {
+        throw new TenantCannotArchiveError();
+    }
+}
+
+/**
+ * Scope
+ */
 
 export function assertTenantScope(
-    user: AuthUser & { tenantId: string },
+    user: { tenantId: string },
     tenantId: string
-): void {
+) {
     if (user.tenantId !== tenantId) {
-        throw new TenantScopeError("Cross-tenant access denied");
+        throw new TenantScopeError();
     }
 }

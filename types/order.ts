@@ -3,9 +3,10 @@ export type OrderStatus =
     | "PAID"
     | "PICKED_UP"
     | "CANCELLED"
-    | "EXPIRED";
+    | "EXPIRED"
+    | "REFUNDED"; // ✅ NEW
 
-export type PaymentMode = "CASH" | "DIGITAL";
+export type PaymentMethod = "CASH" | "UPI" | "CARD" | "NET_BANKING";
 
 export type OrderItem = {
     productId: string;
@@ -27,7 +28,7 @@ export type Order = {
     total: number;
     currency: "INR";
 
-    paymentMode: PaymentMode;
+    paymentMethod: PaymentMethod;
     status: OrderStatus;
 
     createdAt: string;

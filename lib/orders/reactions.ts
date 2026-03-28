@@ -39,5 +39,18 @@ export async function handleOrderEvent(
 
         case "OrderPickedUp":
             break;
+
+        case "OrderRefunded":
+
+            for (const item of event.order.items) {
+
+                tenantInventoryDomain.releaseStock(
+                    event.order.tenantId,
+                    item.productId,
+                    item.quantity
+                );
+            }
+
+            break;
     }
 }

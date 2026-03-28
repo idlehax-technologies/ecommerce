@@ -24,6 +24,9 @@ export const tenantAdminApi = {
     activate: (tenantId: string) =>
         fetch(`/api/admin/tenants/${tenantId}/activate`, { method: "POST" }).then(handle),
 
-    deactivate: (tenantId: string) =>
-        fetch(`/api/admin/tenants/${tenantId}/deactivate`, { method: "POST" }).then(handle),
+    suspend: (tenantId: string) =>
+        fetch(`/api/admin/tenants/${tenantId}/suspend`, { method: "POST" }).then(handle),
+
+    archive: (tenantId: string) =>
+        fetch(`/api/admin/tenants/${tenantId}/archive`, { method: "POST" }).then(handle),
 };
