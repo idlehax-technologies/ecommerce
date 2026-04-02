@@ -150,7 +150,7 @@ export function markOrderPaid(
 export function cancelOrder(
     tenantId: string,
     orderId: string
-) {
+): { order: Order; event: OrderEvent } {
 
     const order = getTenantOrder(tenantId, orderId);
 
