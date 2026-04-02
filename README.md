@@ -307,6 +307,7 @@ This enables support for real-world payment delays (UPI, card processing, etc.).
 - Domain errors are the single source of HTTP truth
 - Routes are orchestration only
 - All business logic is centralized
+- All cross-aggregate inconsistencies are detectable and recoverable through reconciliation
 
 ---
 
@@ -348,8 +349,8 @@ Order State Machine
 ↓
 Domain Events
 
-This structure allows future domains such as inventory reconciliation, payment recording,
-fulfillment workflows, and analytics to attach safely without violating domain boundaries.
+This structure now safely supports cross-aggregate consistency mechanisms such as reconciliation,
+audit logging, and future analytics without violating domain boundaries.
 
 ---
 
@@ -652,6 +653,121 @@ System guarantees:
 
 ---
 
+## Step 11 — Reconciliation System (Detection + Resolution + Idempotency)
+
+Completed.
+
+A tenant-scoped reconciliation system is implemented to detect and safely resolve
+inconsistencies across Orders, Payments, and TenantInventory.
+
+This introduces controlled system introspection and correction capabilities,
+marking the transition from correctness-only design to resilience-aware design.
+
+### 11A — Reconciliation Detection Engine
+
+Capabilities introduced:
+
+- Deterministic, read-only mismatch detection across:
+  - Orders ↔ Payments
+  - Payments without Orders
+  - Inventory reservation correctness
+- Tenant-scoped scanning
+- Idempotent execution (pure function, no side effects)
+- Structured mismatch reporting with expected vs actual state
+
+Mismatch types:
+
+- ORDER_PAYMENT_MISSING
+- PAYMENT_WITHOUT_ORDER
+- ORDER_PAYMENT_AMOUNT_MISMATCH
+- ORDER_PAID_BUT_PAYMENT_NOT_CONFIRMED
+- INVENTORY_NEGATIVE_RESERVED
+- INVENTORY_RESERVED_EXCEEDS_STOCK
+- INVENTORY_RESERVATION_MISMATCH
+
+---
+
+### 11B — Reconciliation Resolution Layer
+
+Capabilities introduced:
+
+- Manual, controlled correction flows for mismatches
+- Strict policy-driven action enforcement (allowed actions per mismatch type)
+- Domain-safe mutations (no direct storage patching except controlled override)
+- Reuse of domain commands and lifecycle reactions
+- Full audit traceability for every correction
+
+Resolution actions:
+
+- CONFIRM_PAYMENT
+- CREATE_PAYMENT
+- CANCEL_ORDER
+- ADJUST_INVENTORY
+
+---
+
+### Inventory Correction Model (Critical Improvement)
+
+Inventory reconciliation is implemented as a **non-destructive recomputation**:
+
+reserved = Σ (quantities from RESERVED orders)
+
+This guarantees:
+
+- No data loss from manual fixes
+- Alignment with actual order state
+- Deterministic recovery from inconsistencies
+
+---
+
+### Idempotency Layer (Execution Safety)
+
+Resolution operations are idempotent using an idempotency key:
+
+- Duplicate execution is safely ignored
+- Protects against retries, double-clicks, and network replays
+- Ensures "effectively-once" mutation behavior
+
+---
+
+### Audit Logging
+
+All reconciliation actions are recorded with:
+
+- actor identity
+- tenant context
+- action type
+- entity reference
+- metadata (before/after state, reason)
+
+This enables traceability, debugging, and future compliance layers.
+
+---
+
+### System Guarantees Introduced
+
+- Detection is deterministic and side-effect free
+- Resolution is policy-controlled and invariant-safe
+- Inventory consistency can always be recomputed
+- Duplicate resolution attempts do not corrupt state
+- All corrections are auditable
+
+---
+
+### Architectural Impact
+
+Step 11 introduces:
+
+- Cross-aggregate validation (Orders ↔ Payments ↔ Inventory)
+- Controlled override paths under strict domain boundaries
+- First-class execution safety (idempotency)
+- Foundation for future:
+  - automated reconciliation (Step 11C evolution)
+  - analytics correctness (Step 13)
+  - audit-driven observability (Step 14)
+
+---
+
 ### Concurrency Safety
 
 Inventory mutations are executed through a single storage mutation boundary,
@@ -722,13 +838,15 @@ Order State Machine (PAID / REFUNDED / etc.)
 Inventory Commit / Release  
 ↓  
 Domain Events
+↓
+Reconciliation System (detect + resolve inconsistencies across aggregates)
+↓
+Audit Logging (immutable trace of all corrective actions)
 
 ---
 
 # Upcoming Roadmap
 
-11A. Reconciliation detection engine (read-only, tenant-scoped mismatch detection across orders, payments, and inventory with idempotent scans and deterministic reporting)
-11B. Reconciliation resolution layer (manual/controlled correction flows for mismatches with invariant-safe adjustments and audit traceability)
 12A. Low-stock detection service (threshold-based, tenant-scoped monitoring using consistent inventory snapshots without mutating state)
 12B. Stock adjustment flows (admin-triggered, idempotent stock corrections within TenantInventory domain enforcing stock ≥ reserved invariants)
 13. Tenant analytics service (snapshot-based read model for sales, revenue, and inventory metrics strictly using historical order data, never live product data)
@@ -760,82 +878,104 @@ This simulates persistence without introducing database complexity yet.
 .
 ├── app
 │   ├── (tenant)                    # Tenant runtime (core user-facing app)
-│   │   ├── cart/                  # Server-authoritative cart
-│   │   ├── checkout/              # Checkout flow
-│   │   ├── fulfillment/           # Staff fulfillment dashboard
-│   │   ├── inventory/             # Tenant inventory view
-│   │   ├── memberships/           # Membership flows
-│   │   ├── orders/                # Order history + detail + receipt (SSR)
-│   │   ├── pos/                   # Staff POS interface
-│   │   ├── products/              # Storefront (SSR)
-│   │   ├── profile/               # User profile
-│   │   └── layout.tsx             # Tenant layout boundary
+│   │   ├── cart/
+│   │   ├── checkout/
+│   │   ├── fulfillment/
+│   │   ├── inventory/
+│   │   ├── memberships/
+│   │   ├── orders/                 # Order history + detail + receipt (SSR)
+│   │   ├── pos/
+│   │   ├── products/               # Storefront (SSR)
+│   │   ├── profile/
+│   │   ├── reconciliation/         # Reconciliation UI (Step 11)
+│   │   └── layout.tsx
 │   │
-│   ├── api                        # Transport layer (routes only)
-│   │   ├── auth/                  # Authentication endpoints
-│   │   ├── cart/                  # Cart mutations
-│   │   ├── checkout/              # Checkout service route
-│   │   ├── orders/                # Order lifecycle routes
-│   │   │   └── [orderId]/
-│   │   │       ├── cancel/
-│   │   │       ├── expire/
-│   │   │       ├── pay/
-│   │   │       ├── pickup/
-│   │   │       ├── receipt/
-│   │   │       └── refund/
-│   │   ├── payments/              # Async payment confirmation
-│   │   └── admin/                 # Platform-level APIs
+│   ├── api                         # Transport layer (routes only)
+│   │   ├── auth/
+│   │   ├── cart/
+│   │   ├── checkout/
+│   │   ├── memberships/
+│   │   ├── orders/
+│   │   ├── payments/
+│   │   ├── reconciliation/         # Detection + resolution endpoints (Step 11)
+│   │   └── admin/
 │   │
-│   ├── platform                   # Platform (superadmin) runtime
-│   │   ├── products/              # Master catalog
-│   │   └── tenants/               # Tenant management
+│   ├── platform                    # Platform (superadmin) runtime
+│   │   ├── products/
+│   │   └── tenants/
 │   │
-│   └── layout.tsx                 # Root layout
+│   └── layout.tsx
 │
-├── components                     # UI components (pure, no business logic)
+├── components                      # UI components (pure, no business logic)
 │   ├── auth/
 │   ├── cart/
 │   ├── checkout/
-│   ├── orders/                   # Order UI + payment + receipt
-│   ├── pos/                      # POS UI components
+│   ├── orders/
+│   ├── pos/
 │   ├── products/
 │   ├── memberships/
+│   ├── reconciliation/            # Reconciliation UI components (Step 11)
+│   ├── tenant/
 │   ├── tenant-provisioning/
 │   ├── admin/
-│   ├── guards/                   # UI-level guards (not auth enforcement)
+│   ├── guards/
 │   ├── Navbar.tsx
 │   └── Footer.tsx
 │
-├── contexts                      # Client-side state (non-authoritative)
+├── contexts
 │   ├── AuthContext.tsx
 │   └── CartContext.tsx
 │
-├── lib                           # Core system (ALL business logic lives here)
-│   ├── api/                      # Client-side API wrappers
+├── lib                            # Core system (ALL business logic lives here)
+│   ├── api/                       # Client-side API wrappers
+│   │   ├── auth.ts
+│   │   ├── cart.ts
+│   │   ├── checkout.ts
+│   │   ├── memberships.ts
+│   │   ├── orders.ts
+│   │   ├── productManagement.ts
+│   │   ├── reconciliation.ts     # Reconciliation client API
+│   │   ├── tenantInventory.ts
+│   │   └── tenantManagement.ts
 │   │
-│   ├── auth/                     # Authentication domain
-│   ├── tenants/                  # Tenant lifecycle domain
-│   ├── memberships/              # Membership domain
-│   ├── products/                 # Platform catalog domain
-│   ├── tenantInventory/          # Entitlement + stock domain
-│   ├── cart/                     # Cart domain (server-authoritative)
-│   ├── checkout/                 # Checkout application service
-│   ├── orders/                   # Order aggregate + state machine
-│   ├── payments/                 # Payment domain (async confirmation)
-│   ├── pos/                      # POS application service
+│   ├── audit/                     # Audit logging (Step 11)
+│   │   ├── domain.ts
+│   │   └── storage.ts
 │   │
-│   ├── mappers/                  # View projections
-│   ├── http/                     # Route error handling
-│   └── jwt.ts                    # JWT utilities
+│   ├── auth/
+│   ├── cart/
+│   ├── checkout/
+│   ├── memberships/
+│   ├── orders/
+│   ├── payments/
+│   ├── pos/
+│   ├── products/
+│   ├── tenantInventory/
+│   ├── tenants/
+│   │
+│   ├── reconciliation/           # Reconciliation system (Step 11)
+│   │   ├── domain.ts             # Detection engine
+│   │   ├── policy.ts             # Resolution policy rules
+│   │   ├── resolution.ts         # Controlled mutation layer
+│   │   ├── idempotency.ts        # Execution safety (idempotency)
+│   │   └── service.ts            # Read service (report generation)
+│   │
+│   ├── mappers/
+│   ├── http/
+│   └── jwt.ts
 │
-├── types                         # Shared domain contracts
+├── types                          # Shared domain contracts
+│   ├── audit.ts                  # Audit log model (Step 11)
+│   ├── reconciliation.ts         # Mismatch + report types
+│   ├── reconciliationPolicy.ts   # Policy definitions
+│   ├── reconciliationResolution.ts # Resolution actions + request model
 │   ├── order.ts
 │   ├── orderEvent.ts
 │   ├── payment.ts
 │   ├── tenantInventory.ts
 │   └── ...
 │
-├── docs                          # Architecture notes
+├── docs
 │   └── checkout-api.md
 │
 └── README.md
