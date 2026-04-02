@@ -16,6 +16,12 @@ const paymentsByOrder =
 globalForPayments.__paymentsById = paymentsById;
 globalForPayments.__paymentsByOrder = paymentsByOrder;
 
+export function listPaymentsByTenant(tenantId: string): Payment[] {
+    return Array.from(paymentsById.values())
+        .filter(p => p.tenantId === tenantId)
+        .map(p => ({ ...p }));
+}
+
 export function getPaymentByOrder(orderId: string): Payment | null {
     return paymentsByOrder.get(orderId) ?? null;
 }
