@@ -768,6 +768,115 @@ Step 11 introduces:
 
 ---
 
+## Step 12 — Inventory Monitoring & Controlled Adjustment
+
+Completed.
+
+Step 12 introduces platform-level inventory observability and correction,
+extending the system from inconsistency detection (Step 11) to controlled
+inventory management under strict domain invariants.
+
+---
+
+### 12A — Low-Stock Detection Service
+
+A deterministic, read-only monitoring layer derived from TenantInventory.
+
+Capabilities introduced:
+
+- Tenant-scoped low-stock detection using consistent inventory snapshots
+- Derived invariant: available = stock − reserved
+- Threshold-based detection: available ≤ LOW_STOCK_THRESHOLD
+- No mutation or side-effects (pure read model)
+- Fully deterministic output
+
+This follows the same principle as reconciliation:
+
+detect → do not mutate
+
+---
+
+### 12B — Stock Adjustment Flows
+
+A controlled, platform-level mutation layer for correcting tenant inventory.
+
+Capabilities introduced:
+
+- Superadmin-triggered stock adjustments (platform control plane)
+- Explicit tenant-scoped execution via route parameters
+- Idempotent execution using idempotency keys
+- Strict domain enforcement:
+- stock ≥ 0
+- stock ≥ reserved
+- Explicit input requirement (no implicit increments)
+- Full audit logging of all adjustments
+
+---
+
+### Execution Safety
+
+- Idempotency:
+- enforced via idempotency key tracking
+- duplicate execution safely ignored
+- Concurrency:
+- handled via atomic update pattern (domain-level)
+- Retry safety:
+- operations are idempotent and safe to re-execute
+
+---
+
+### System Reliability
+
+- Observability:
+- audit logs capture all corrective actions
+- Reconciliation integration:
+- Step 11 detects inconsistencies
+- Step 12 enables safe correction
+- Deterministic behavior:
+- no hidden or implicit mutations
+
+---
+
+### Data Integrity
+
+- Domain-level invariant enforcement:
+- stock cannot be negative
+- stock cannot fall below reserved
+- Runtime input validation (not only TypeScript)
+- No direct storage mutation outside domain layer
+
+---
+
+### UI / UX Principles
+
+- No implicit mutation (default increment removed)
+- Explicit admin input required for stock updates
+- Inline validation instead of runtime exceptions
+- Domain errors surfaced as user-facing feedback
+- Platform-scoped UI (inventory managed by superadmin)
+
+---
+
+### System Boundary Clarification
+
+Inventory is a platform-managed allocation, not a tenant-owned resource.
+
+Implications:
+
+- Stock control belongs to platform (superadmin)
+- Tenant-facing UI remains read-oriented
+- All inventory mutations occur in platform execution plane
+
+---
+
+### Architectural Position
+
+Step 11 → Detect inconsistencies  
+Step 12 → Monitor + Correct inventory safely  
+Step 13 → Analytics (read models on stable data)
+
+---
+
 ### Concurrency Safety
 
 Inventory mutations are executed through a single storage mutation boundary,
@@ -841,14 +950,16 @@ Domain Events
 ↓
 Reconciliation System (detect + resolve inconsistencies across aggregates)
 ↓
+Inventory Monitoring (low-stock detection)
+↓
+Controlled Inventory Adjustment (platform-driven, invariant-safe corrections)
+↓
 Audit Logging (immutable trace of all corrective actions)
 
 ---
 
 # Upcoming Roadmap
 
-12A. Low-stock detection service (threshold-based, tenant-scoped monitoring using consistent inventory snapshots without mutating state)
-12B. Stock adjustment flows (admin-triggered, idempotent stock corrections within TenantInventory domain enforcing stock ≥ reserved invariants)
 13. Tenant analytics service (snapshot-based read model for sales, revenue, and inventory metrics strictly using historical order data, never live product data)
 14. Audit logging layer (append-only, cross-domain event logging with actor identity, tenant context, and immutable write-event tracking aligned with domain actions)
 15. Notification service abstraction (event-driven notifications triggered strictly from domain events with idempotent dispatch and adapter-based delivery design)
@@ -873,11 +984,242 @@ This simulates persistence without introducing database complexity yet.
 
 ---
 
+# Project Structure (Conceptual)
+
+The system is organized around **execution planes**, **domain ownership**, and **strict layering boundaries**.
+
+---
+
+## 1. Execution Planes
+
+### Tenant Runtime (User-facing)
+
+Handles all tenant-scoped operations.
+
+- Cart
+- Checkout
+- Orders (history, receipt)
+- POS (staff)
+- Fulfillment
+- Storefront (SSR products)
+- Memberships
+- Profile
+- Reconciliation (read + resolution UI)
+
+```
+app/(tenant)/*
+```
+
+---
+
+### Platform Runtime (Superadmin)
+
+Handles platform-level control and cross-tenant operations.
+
+- Product catalog management
+- Tenant lifecycle management
+- Tenant inventory provisioning
+- Low-stock monitoring
+- Stock adjustment
+
+```
+app/platform/*
+```
+
+---
+
+### API Layer (Transport Only)
+
+All routes are transport-level adapters:
+
+- No business logic
+- No invariant enforcement
+- Only orchestration + delegation
+
+```
+app/api/*
+```
+
+Includes:
+
+- Tenant APIs (cart, orders, checkout, payments)
+- Platform APIs (admin/tenants/*, inventory control)
+- Reconciliation APIs (detect + resolve)
+
+---
+
+## 2. Core System (Domain Layer)
+
+All business logic lives inside `lib/`.
+
+Each module is a **self-contained domain boundary**.
+
+### Domain Modules
+
+- auth
+- tenants
+- memberships
+- products (platform-owned)
+- tenantInventory (entitlement + stock)
+- cart
+- checkout
+- orders
+- payments
+- reconciliation
+- audit
+
+---
+
+### TenantInventory (Critical Aggregate)
+
+Handles:
+
+- stock
+- reserved quantities
+- reservation lifecycle
+- low-stock detection (read model)
+- stock adjustment (controlled mutation)
+
+Submodules:
+
+- domain (core invariants)
+- reservations (lifecycle mutations)
+- adjustment (admin mutation flow)
+- lowStock (read-only detection)
+- idempotency (execution safety)
+- guards / validators / mappers
+- storage
+
+---
+
+### Reconciliation System
+
+Cross-aggregate consistency layer:
+
+- detection (read-only)
+- resolution (controlled mutation)
+- policy enforcement
+- idempotency
+
+---
+
+### Audit System
+
+- append-only logging
+- actor + tenant context
+- mutation traceability
+
+---
+
+## 3. Client API Layer
+
+Typed client wrappers for API calls:
+
+```
+lib/api/*
+```
+
+- No business logic
+- Mirrors server routes
+- Enforces request/response contracts
+
+---
+
+## 4. UI Layer (Components)
+
+Pure UI components:
+
+```
+components/*
+```
+
+- No business logic
+- No domain decisions
+- Express user intent only
+
+Grouped by domain:
+
+- cart
+- orders
+- products
+- pos
+- reconciliation
+- lowStock
+- tenant-provisioning
+- admin
+
+---
+
+## 5. Shared Types
+
+Global contracts across layers:
+
+```
+types/*
+```
+
+Includes:
+
+- domain entities (order, payment, tenantInventory)
+- event types (orderEvent)
+- reconciliation models
+- stock adjustment + low-stock types
+- auth/session types
+
+---
+
+## 6. Cross-Cutting Infrastructure
+
+### Auth & Guards
+
+- identity resolution
+- role enforcement
+- tenant derivation
+- permission checks
+
+### HTTP Layer
+
+- centralized error handling
+- domain error → HTTP mapping
+
+### Contexts
+
+- AuthContext
+- CartContext (UI state only, not source of truth)
+
+---
+
+## 7. Data Layer (Current State)
+
+- In-memory storage (Map-based)
+- Domain-controlled mutation only
+- No ORM abstraction
+
+Future (Step 21):
+
+- DB-backed persistence
+- constraints + transactions
+- concurrency control
+
+---
+
+## Structural Principles
+
+- Domain owns all invariants
+- Storage is passive
+- Routes are transport-only
+- UI expresses intent only
+- No cross-domain leakage
+- Read and write paths are separated
+- Platform and tenant execution planes are isolated
+
+---
+
 # Project Structure (Actual)
 
 .
 ├── app
-│   ├── (tenant)                    # Tenant runtime (core user-facing app)
+│   ├── (tenant)                    # Tenant runtime (user-facing)
 │   │   ├── cart/
 │   │   ├── checkout/
 │   │   ├── fulfillment/
@@ -887,93 +1229,92 @@ This simulates persistence without introducing database complexity yet.
 │   │   ├── pos/
 │   │   ├── products/               # Storefront (SSR)
 │   │   ├── profile/
-│   │   ├── reconciliation/         # Reconciliation UI (Step 11)
+│   │   ├── reconciliation/         # Step 11
 │   │   └── layout.tsx
 │   │
-│   ├── api                         # Transport layer (routes only)
-│   │   ├── auth/
-│   │   ├── cart/
-│   │   ├── checkout/
-│   │   ├── memberships/
-│   │   ├── orders/
-│   │   ├── payments/
-│   │   ├── reconciliation/         # Detection + resolution endpoints (Step 11)
-│   │   └── admin/
-│   │
-│   ├── platform                    # Platform (superadmin) runtime
+│   ├── platform                    # Superadmin runtime
 │   │   ├── products/
 │   │   └── tenants/
+│   │       └── [tenantId]/
+│   │           ├── inventory/
+│   │           │   ├── page.tsx
+│   │           │   └── low-stock/  # Step 12
+│   │           │       └── page.tsx
+│   │           └── page.tsx
+│   │
+│   ├── api                         # Transport layer (routes only)
+│   │   ├── admin/
+│   │   │   └── tenants/[tenantId]/inventory/
+│   │   │       ├── route.ts        # provisioning
+│   │   │       ├── low-stock/      # Step 12A
+│   │   │       │   └── route.ts
+│   │   │       └── adjust/         # Step 12B
+│   │   │           └── route.ts
+│   │   │
+│   │   ├── cart/
+│   │   ├── checkout/
+│   │   ├── orders/
+│   │   ├── payments/
+│   │   └── reconciliation/         # Step 11
 │   │
 │   └── layout.tsx
 │
-├── components                      # UI components (pure, no business logic)
-│   ├── auth/
+├── components                      # Pure UI (no business logic)
 │   ├── cart/
 │   ├── checkout/
 │   ├── orders/
 │   ├── pos/
 │   ├── products/
-│   ├── memberships/
-│   ├── reconciliation/            # Reconciliation UI components (Step 11)
-│   ├── tenant/
+│   ├── reconciliation/             # Step 11 UI
+│   ├── lowStock/                   # Step 12 UI
+│   │   └── LowStockTable.tsx
 │   ├── tenant-provisioning/
 │   ├── admin/
 │   ├── guards/
 │   ├── Navbar.tsx
 │   └── Footer.tsx
 │
-├── contexts
-│   ├── AuthContext.tsx
-│   └── CartContext.tsx
-│
-├── lib                            # Core system (ALL business logic lives here)
-│   ├── api/                       # Client-side API wrappers
-│   │   ├── auth.ts
-│   │   ├── cart.ts
-│   │   ├── checkout.ts
-│   │   ├── memberships.ts
-│   │   ├── orders.ts
-│   │   ├── productManagement.ts
-│   │   ├── reconciliation.ts     # Reconciliation client API
-│   │   ├── tenantInventory.ts
-│   │   └── tenantManagement.ts
+├── lib                             # Core system (ALL domain logic)
+│   ├── api/                        # Client API wrappers
+│   │   ├── lowStock.ts             # Step 12A client
+│   │   ├── stockAdjustment.ts      # Step 12B client
+│   │   └── ...
 │   │
-│   ├── audit/                     # Audit logging (Step 11)
+│   ├── tenantInventory/            # Inventory domain (critical)
+│   │   ├── domain.ts
+│   │   ├── reservations.ts
+│   │   ├── adjustment.ts           # Step 12B
+│   │   ├── lowStock.ts             # Step 12A
+│   │   ├── lowStockService.ts
+│   │   ├── idempotency.ts
+│   │   ├── errors.ts
+│   │   ├── guards.ts
+│   │   ├── validators.ts
+│   │   └── storage.ts
+│   │
+│   ├── reconciliation/             # Step 11 system
+│   │   ├── domain.ts
+│   │   ├── resolution.ts
+│   │   ├── policy.ts
+│   │   ├── idempotency.ts
+│   │   └── service.ts
+│   │
+│   ├── audit/                      # Audit logging
 │   │   ├── domain.ts
 │   │   └── storage.ts
 │   │
-│   ├── auth/
-│   ├── cart/
-│   ├── checkout/
-│   ├── memberships/
-│   ├── orders/
-│   ├── payments/
-│   ├── pos/
-│   ├── products/
-│   ├── tenantInventory/
-│   ├── tenants/
-│   │
-│   ├── reconciliation/           # Reconciliation system (Step 11)
-│   │   ├── domain.ts             # Detection engine
-│   │   ├── policy.ts             # Resolution policy rules
-│   │   ├── resolution.ts         # Controlled mutation layer
-│   │   ├── idempotency.ts        # Execution safety (idempotency)
-│   │   └── service.ts            # Read service (report generation)
-│   │
-│   ├── mappers/
-│   ├── http/
-│   └── jwt.ts
+│   └── ... (auth, cart, orders, payments, etc.)
 │
-├── types                          # Shared domain contracts
-│   ├── audit.ts                  # Audit log model (Step 11)
-│   ├── reconciliation.ts         # Mismatch + report types
-│   ├── reconciliationPolicy.ts   # Policy definitions
-│   ├── reconciliationResolution.ts # Resolution actions + request model
-│   ├── order.ts
-│   ├── orderEvent.ts
-│   ├── payment.ts
+├── types                           # Shared contracts
+│   ├── lowStock.ts                 # Step 12A types
+│   ├── stockAdjustment.ts          # Step 12B types
 │   ├── tenantInventory.ts
+│   ├── reconciliation.ts
 │   └── ...
+│
+├── contexts
+│   ├── AuthContext.tsx
+│   └── CartContext.tsx
 │
 ├── docs
 │   └── checkout-api.md

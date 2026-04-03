@@ -5,20 +5,14 @@ export class TenantInventoryError extends Error {
     }
 }
 
-export class ProvisionConflictError extends TenantInventoryError {
-    constructor(productId: string) {
-        super(`Product ${productId} is already provisioned for this tenant`);
+export class InvalidInventoryInputError extends TenantInventoryError {
+    constructor(message = "Invalid inventory input") {
+        super(message);
     }
 }
 
-export class ProvisionNotFoundError extends TenantInventoryError {
-    constructor(productId: string) {
-        super(`Product ${productId} is not provisioned for this tenant`);
-    }
-}
-
-export class InvalidProvisionInputError extends TenantInventoryError {
-    constructor(message = "Invalid provisioning input") {
+export class InvalidQuantityError extends TenantInventoryError {
+    constructor(message = "Invalid quantity") {
         super(message);
     }
 }
@@ -31,6 +25,24 @@ export class OutOfStockError extends TenantInventoryError {
 
 export class ReservationStateError extends TenantInventoryError {
     constructor(message: string) {
+        super(message);
+    }
+}
+
+export class ProvisionNotFoundError extends TenantInventoryError {
+    constructor(productId: string) {
+        super(`Product ${productId} is not provisioned for this tenant`);
+    }
+}
+
+export class ProvisionConflictError extends TenantInventoryError {
+    constructor(productId: string) {
+        super(`Product ${productId} is already provisioned for this tenant`);
+    }
+}
+
+export class InventoryInvariantViolationError extends TenantInventoryError {
+    constructor(message = "Inventory invariant violated") {
         super(message);
     }
 }
