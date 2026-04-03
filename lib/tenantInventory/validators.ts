@@ -1,23 +1,23 @@
 // lib/tenantInventory/validators.ts
 
 import type { ProvisionProductDTO } from "@/types/tenantInventory";
-import { InvalidProvisionInputError } from "./errors";
+import { InvalidInventoryInputError } from "./errors";
 
 export function validateProvisionInput(
     body: unknown
 ): asserts body is ProvisionProductDTO {
     if (typeof body !== "object" || body === null) {
-        throw new InvalidProvisionInputError();
+        throw new InvalidInventoryInputError();
     }
 
     const dto = body as ProvisionProductDTO;
 
     if (typeof dto.productId !== "string" || dto.productId.length === 0) {
-        throw new InvalidProvisionInputError("productId is required");
+        throw new InvalidInventoryInputError("productId is required");
     }
 
     if (typeof dto.enabled !== "boolean") {
-        throw new InvalidProvisionInputError("enabled must be boolean");
+        throw new InvalidInventoryInputError("enabled must be boolean");
     }
 
     if (
@@ -25,6 +25,6 @@ export function validateProvisionInput(
         !Number.isFinite(dto.stock) ||
         dto.stock < 0
     ) {
-        throw new InvalidProvisionInputError("stock must be a non-negative number");
+        throw new InvalidInventoryInputError("stock must be a non-negative number");
     }
 }

@@ -1,4 +1,4 @@
-// app/admin/tenants/[tenantId]/page.tsx
+// app/platform/tenants/[tenantId]/page.tsx
 
 import Link from "next/link";
 import { Container, Stack, Card, CardContent, Typography, Button, Chip } from "@mui/material";
@@ -54,7 +54,24 @@ export default async function TenantDetailPage({ params }: PageProps) {
             <Card>
                 <CardContent>
                     <Stack spacing={3}>
-                        <Typography variant="h5">{tenant.name}</Typography>
+
+                        {/* Header + Action */}
+                        <Stack
+                            direction="row"
+                            justifyContent="space-between"
+                            alignItems="center"
+                        >
+                            <Typography variant="h5">
+                                {tenant.name}
+                            </Typography>
+
+                            <Button
+                                component={Link}
+                                href={`/platform/tenants/${tenantId}/inventory/low-stock`}
+                            >
+                                Low Stock
+                            </Button>
+                        </Stack>
 
                         <Chip
                             label={tenant.status}
@@ -65,7 +82,7 @@ export default async function TenantDetailPage({ params }: PageProps) {
                                         ? "warning"
                                         : tenant.status === "ARCHIVED"
                                             ? "default"
-                                            : "default" // PENDING
+                                            : "default"
                             }
                             sx={{ width: "fit-content" }}
                         />
