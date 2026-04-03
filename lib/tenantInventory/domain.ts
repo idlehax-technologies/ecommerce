@@ -2,6 +2,7 @@ import { tenantInventoryStore } from "./storage";
 import { toNewProvision, applyProvisionPatch } from "./mappers";
 import { requireProvision } from "./guards";
 import {
+    InvalidQuantityError,
     ProvisionNotFoundError,
 } from "./errors";
 
@@ -75,6 +76,14 @@ export function reserveStock(
     quantity: number
 ): TenantInventory {
 
+    if (typeof quantity !== "number" || Number.isNaN(quantity)) {
+        throw new InvalidQuantityError("quantity must be a valid number");
+    }
+
+    if (quantity <= 0) {
+        throw new InvalidQuantityError("quantity must be greater than 0");
+    }
+
     return tenantInventoryStore.update(
         tenantId,
         productId,
@@ -89,7 +98,6 @@ export function reserveStock(
             return applyReservation(record, quantity);
         }
     );
-
 }
 
 /**
@@ -100,6 +108,14 @@ export function commitStock(
     productId: string,
     quantity: number
 ): TenantInventory {
+
+    if (typeof quantity !== "number" || Number.isNaN(quantity)) {
+        throw new InvalidQuantityError("quantity must be a valid number");
+    }
+
+    if (quantity <= 0) {
+        throw new InvalidQuantityError("quantity must be greater than 0");
+    }
 
     const record = tenantInventoryStore.get(tenantId, productId);
 
@@ -120,6 +136,14 @@ export function releaseStock(
     productId: string,
     quantity: number
 ): TenantInventory {
+
+    if (typeof quantity !== "number" || Number.isNaN(quantity)) {
+        throw new InvalidQuantityError("quantity must be a valid number");
+    }
+
+    if (quantity <= 0) {
+        throw new InvalidQuantityError("quantity must be greater than 0");
+    }
 
     const record = tenantInventoryStore.get(tenantId, productId);
 
