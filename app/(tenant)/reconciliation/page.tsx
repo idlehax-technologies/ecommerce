@@ -1,17 +1,16 @@
 import { Container, Typography, Box } from "@mui/material";
 
 import { getUserFromRequest } from "@/lib/auth";
-import { requireTenant, requireRole } from "@/lib/auth/guards";
+import { requireMembershipRole, requireTenant } from "@/lib/auth/guards";
 
 import { getReconciliationReport } from "@/lib/reconciliation/service";
 
 import ReconciliationReportView from "@/components/reconciliation/ReconciliationReportView";
 
 export default async function ReconciliationPage() {
-
     const rawUser = await getUserFromRequest();
 
-    requireRole(rawUser, "staff");
+    requireMembershipRole(rawUser, ["staff"]);
     const actor = requireTenant(rawUser);
 
     const report = getReconciliationReport(actor.tenantId);

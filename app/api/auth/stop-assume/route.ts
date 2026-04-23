@@ -5,7 +5,7 @@ import { getUserFromRequest } from "@/lib/auth";
 import { signToken } from "@/lib/jwt";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
-import { requireAssumedSession, requireAuth } from "@/lib/auth/guards";
+import { requireAssumedSession } from "@/lib/auth/guards";
 
 const SEVEN_DAYS = 60 * 60 * 24 * 7;
 
@@ -17,7 +17,8 @@ export async function POST() {
         const token = signToken({
             userId: user.impersonatedBy,
             phone: user.phone,
-            role: "superadmin",
+            isSuperadmin: true,
+            activeMembershipId: undefined,
         });
 
         const cookieStore = await cookies();

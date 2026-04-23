@@ -1,27 +1,46 @@
 export type MembershipStatus =
-    | "pending"
-    | "approved"
-    | "rejected";
+    | "PENDING"
+    | "APPROVED"
+    | "REJECTED"
+    | "REVOKED"
+    | "EXPIRED"; // ✅ NEW
+
+export type MembershipRole = "customer" | "staff" | "admin";
 
 export type Membership = {
     membershipId: string;
     userId: string;
     tenantId: string;
+    role: MembershipRole;
     status: MembershipStatus;
     createdAt: string;
     updatedAt: string;
 };
 
-export type PublicMembership = Omit<Membership, "userId">;
-
-export type RequestMembershipDTO = {
+export type RequestMembershipInput = {
     tenantId: string;
 };
 
-export type ApproveMembershipDTO = {
+export type SelectMembershipInput = {
     membershipId: string;
 };
 
-export type RejectMembershipDTO = {
+export type UpdateMembershipRoleInput = {
+    role: MembershipRole;
+};
+
+export type MembershipView = {
     membershipId: string;
+    status: MembershipStatus;
+    role: MembershipRole;
+    createdAt: string,
+    updatedAt: string,
+    tenant: { tenantId: string; name: string };
+    user: {
+        userId: string;
+        fullName: string;
+        phone: string;
+        email: string;
+        addressText: string;
+    };
 };

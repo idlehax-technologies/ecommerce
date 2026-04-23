@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getUserFromRequest } from "@/lib/auth";
-import { requireAuth, requireRole } from "@/lib/auth/guards";
+import { requireSuperadmin } from "@/lib/auth/guards";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 import { getLowStockReport } from "@/lib/tenantInventory/lowStockService";
@@ -14,13 +14,11 @@ export async function GET(
         const { tenantId } = await params;
 
         const rawUser = await getUserFromRequest();
-        const user = requireAuth(rawUser);
-        requireRole(user, "superadmin");
+        requireSuperadmin(rawUser);
 
         const report = getLowStockReport(tenantId);
 
         return NextResponse.json(report);
-
     } catch (err) {
         return handleRouteError(err);
     }

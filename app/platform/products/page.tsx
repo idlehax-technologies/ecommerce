@@ -10,14 +10,15 @@ import {
 } from "@mui/material";
 
 import { getUserFromRequest } from "@/lib/auth";
-import { requireRole } from "@/lib/auth/guards";
+import { requireSuperadmin } from "@/lib/auth/guards";
 
 import { listProductsForPlatform } from "@/lib/products/service";
 import ProductTable from "@/components/admin/products/ProductTable";
 
 export default async function PlatformProductsPage() {
   const rawUser = await getUserFromRequest();
-  requireRole(rawUser, "superadmin");
+
+  requireSuperadmin(rawUser);
 
   const products = await listProductsForPlatform();
 

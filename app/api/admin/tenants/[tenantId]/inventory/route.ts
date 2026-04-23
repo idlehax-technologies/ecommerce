@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireRole } from "@/lib/auth/guards";
 import { getUserFromRequest } from "@/lib/auth";
+import { requireSuperadmin } from "@/lib/auth/guards";
 
-import { listTenantInventory, provisionProduct } from "@/lib/tenantInventory/domain";
+import {
+    listTenantInventory,
+    provisionProduct,
+} from "@/lib/tenantInventory/domain";
+
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 export async function GET(
@@ -12,7 +16,9 @@ export async function GET(
     try {
         const { tenantId } = await params;
 
-        requireRole(await getUserFromRequest(), "superadmin");
+        const rawUser = await getUserFromRequest();
+        requireSuperadmin(rawUser);
+
         return NextResponse.json(listTenantInventory(tenantId));
     } catch (err: unknown) {
         return handleRouteError(err);
@@ -26,7 +32,8 @@ export async function PUT(
     try {
         const { tenantId } = await params;
 
-        requireRole(await getUserFromRequest(), "superadmin");
+        const rawUser = await getUserFromRequest();
+        requireSuperadmin(rawUser);
 
         const body = await req.json();
         const record = provisionProduct(tenantId, body);

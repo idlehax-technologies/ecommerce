@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { getUserFromRequest } from "@/lib/auth";
-import { requireTenant, requireRole } from "@/lib/auth/guards";
+import { requireTenant, requireMembershipRole } from "@/lib/auth/guards";
+
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import * as ordersDomain from "@/lib/orders/domain";
@@ -16,10 +17,13 @@ export async function POST(
         const { orderId } = await params;
 
         const rawUser = await getUserFromRequest();
-        requireRole(rawUser, "staff");
+        requireMembershipRole(rawUser, ["staff"]);
         const actor = requireTenant(rawUser);
 
-        const result = ordersDomain.markOrderPickedUp(actor.tenantId, orderId);
+        const result = ordersDomain.markOrderPickedUp(
+            actor.tenantId,
+            orderId
+        );
 
         const event: OrderEvent = {
             type: "OrderPickedUp",

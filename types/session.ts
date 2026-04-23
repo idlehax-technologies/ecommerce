@@ -1,9 +1,7 @@
-import type { UserRole } from "./auth";
-
 export type SessionPayload = {
     userId: string;
     phone: string;
-    role: UserRole;
-    tenantId?: string;
+    activeMembershipId?: string;
+    isSuperadmin?: boolean;   // ✅ ADD THIS
     impersonatedBy?: string;
 };

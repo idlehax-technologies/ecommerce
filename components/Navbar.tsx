@@ -11,16 +11,30 @@ import {
     Stack,
     Divider,
     CircularProgress,
+    Chip,
 } from "@mui/material";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useActiveMembership } from "@/hooks/useActiveMembership";
 
-/**
- * Global Navbar
- * - Safe to render everywhere (admin + tenant + login).
- * - Does NOT assume CartProvider exists.
- * - Tenant features are injected via `rightSlot`.
- */
+function MembershipChip({
+    tenantId,
+    role,
+    status,
+}: {
+    tenantId: string;
+    role: string;
+    status: string;
+}) {
+    return (
+        <Chip
+            label={`${tenantId} • ${role} • ${status}`}
+            size="small"
+            variant="outlined"
+        />
+    );
+}
+
 export default function Navbar({
     rightSlot,
 }: {
@@ -28,11 +42,7 @@ export default function Navbar({
 }) {
     const router = useRouter();
     const { user, loading, logout } = useAuth();
-
-    const role = user?.role;
-
-    const isTenantOperator = role === "admin" || role === "staff";
-    const isSuperadmin = role === "superadmin";
+    const { membership, loading: mLoading } = useActiveMembership();
 
     async function handleLogout() {
         await logout();
@@ -42,53 +52,39 @@ export default function Navbar({
     return (
         <AppBar position="static" color="default" elevation={1}>
             <Toolbar sx={{ justifyContent: "space-between" }}>
-                {/* Brand */}
                 <Typography
                     variant="h6"
                     component={Link}
                     href="/"
-                    sx={{
-                        textDecoration: "none",
-                        color: "inherit",
-                        fontWeight: 600,
-                    }}
+                    sx={{ textDecoration: "none", color: "inherit", fontWeight: 600 }}
                 >
                     TenantMart
                 </Typography>
 
-                {/* Navigation */}
                 <Stack direction="row" spacing={2} alignItems="center">
                     <Button component={Link} href="/products" color="inherit">
                         Products
                     </Button>
 
-                    {/* Tenant/Admin Navigation */}
-                    {!loading && isTenantOperator && (
-                        <Button component={Link} href="/admin" color="inherit">
-                            Admin
-                        </Button>
-                    )}
-
-                    {/* Platform Navigation */}
-                    {!loading && isSuperadmin && (
-                        <Button component={Link} href="/admin/tenants" color="inherit">
-                            Tenants
-                        </Button>
-                    )}
-
-                    {/* Injected tenant runtime UI (cart, etc.) */}
                     {rightSlot}
 
                     <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
 
-                    {/* Auth Section */}
-                    {loading ? (
+                    {loading || mLoading ? (
                         <CircularProgress size={20} />
                     ) : user ? (
                         <Stack direction="row" spacing={2} alignItems="center">
                             <Typography variant="body2" color="text.secondary">
                                 {user.phone}
                             </Typography>
+
+                            {membership && (
+                                <MembershipChip
+                                    tenantId={membership.tenantId}
+                                    role={membership.role}
+                                    status={membership.status}
+                                />
+                            )}
 
                             <Button component={Link} href="/profile" size="small">
                                 Profile

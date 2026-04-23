@@ -3,7 +3,7 @@
 import { NextResponse } from "next/server";
 
 import { getUserFromRequest } from "@/lib/auth";
-import { requireRole } from "@/lib/auth/guards";
+import { requireSuperadmin } from "@/lib/auth/guards";
 
 import {
   listProductsForPlatform,
@@ -18,7 +18,7 @@ import { handleRouteError } from "@/lib/http/handleRouteError";
 export async function GET() {
   try {
     const rawUser = await getUserFromRequest();
-    requireRole(rawUser, "superadmin");
+    requireSuperadmin(rawUser);
 
     const products = await listProductsForPlatform();
 
@@ -31,7 +31,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const rawUser = await getUserFromRequest();
-    requireRole(rawUser, "superadmin");
+    requireSuperadmin(rawUser);
 
     const body: unknown = await req.json();
     validateCreateProduct(body);

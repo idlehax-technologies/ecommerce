@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getUserFromRequest } from "@/lib/auth";
-import { requireAuth, requireRole } from "@/lib/auth/guards";
+import { requireSuperadmin } from "@/lib/auth/guards";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 import { adjustStock } from "@/lib/tenantInventory/adjustment";
@@ -14,8 +14,7 @@ export async function POST(
         const { tenantId } = await params;
 
         const rawUser = await getUserFromRequest();
-        const user = requireAuth(rawUser);
-        requireRole(user, "superadmin");
+        const user = requireSuperadmin(rawUser);
 
         const body = await req.json();
 
@@ -26,7 +25,6 @@ export async function POST(
         });
 
         return NextResponse.json(result);
-
     } catch (err) {
         return handleRouteError(err);
     }

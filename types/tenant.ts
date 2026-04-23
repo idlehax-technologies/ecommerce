@@ -1,4 +1,4 @@
-import { UserRole } from "./auth";
+import { MembershipRole } from "./membership";
 
 type TenantStatus = "PENDING" | "ACTIVE" | "SUSPENDED" | "ARCHIVED";
 
@@ -30,6 +30,6 @@ export type UpdateTenantDTO = {
  */
 export type TenantScopedActor = {
     userId: string;
-    role: UserRole;
+    role: MembershipRole;
     tenantId: string;
 };
