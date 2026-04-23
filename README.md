@@ -90,6 +90,35 @@ All mutations round-trip through the domain.
 
 ---
 
+## 4. Actor-Based Access Model (Critical)
+
+All domain execution is actor-driven.
+
+An execution context (`AccessActor`) is derived at the route layer and passed into domain functions where required.
+
+Actor types:
+
+- Tenant actor → { userId, tenantId, role }
+- Superadmin actor → { userId }
+
+This enables:
+
+- Explicit tenant scoping
+- Superadmin has global visibility and can perform membership lifecycle actions across all tenants
+- Elimination of implicit trust in routes
+
+Key principle:
+
+Authorization is not only enforced at the route level.
+The domain must re-check visibility and invariants using the actor.
+
+This prevents:
+
+- Cross-tenant data leakage
+- Unauthorized state mutations
+
+---
+
 # Technology Stack
 
 - Next.js (App Router)
@@ -108,18 +137,97 @@ The architecture is explicit by design.
 ## Authentication
 
 - Cookie-based JWT
-- Roles:
+
+- Membership roles (tenant-scoped):
   - customer
   - staff
   - admin
-  - superadmin
-- Guard-driven authorization
+
+- Superadmin (platform-level capability):
+  - Not a membership role
+  - Operates without tenant context
+  - Can view and perform membership lifecycle actions across all tenants
+  - Can upgrade roles via admin routes
+
+- Actor-based access model:
+  - Tenant users operate via membership (tenantId + role)
+  - Superadmin operates without tenant context
+  - Execution context is derived as an AccessActor
+
+- Guard-driven authorization:
+  - requireAccess → flexible (tenant + superadmin, used for read operations and membership lifecycle actions)
+  - requireMembershipRole → strict (tenant-only, used for tenant-scoped mutations where superadmin is not allowed)
+
 - No permission tables unless domain pressure requires it
 
 Authorization dimensions:
 1. Identity
 2. Role
 3. Session mode (direct vs assumed)
+
+---
+
+## Membership & Profile System
+
+### Membership Model
+
+Membership represents a user's relationship with a tenant.
+
+Each membership includes:
+
+- userId
+- tenantId
+- role (customer | staff | admin)
+- status (PENDING | APPROVED | REJECTED | REVOKED | EXPIRED)
+- timestamps
+
+### Lifecycle Invariants
+
+Allowed transitions:
+
+- PENDING → APPROVED
+- PENDING → REJECTED
+- APPROVED → REVOKED
+
+Disallowed transitions are structurally blocked at the domain level.
+
+### Visibility Rules
+
+- Tenant users can only access memberships within their tenant
+- Superadmin can view all memberships across tenants
+- Domain enforces visibility using actor context (not just route guards)
+
+### Membership Request Constraints
+
+- A user must have a complete profile before requesting membership
+- This is enforced at domain level (not UI-only)
+
+### Profile System
+
+User profiles contain:
+
+- fullName
+- email
+- addressText
+- phone (derived from auth)
+
+Profile rules:
+
+- Profile is required before entering tenant system
+- Profile completeness is validated in domain before membership creation
+- Profile APIs are user-scoped (no cross-user access)
+
+### Session Model
+
+- A user may have multiple memberships
+- Exactly one active membership is selected at a time
+- Tenant context is derived from active membership
+- Superadmin operates without tenant context
+
+System guarantees:
+
+- No tenant operation executes without valid context
+- Session switching is explicit and server-authoritative
 
 ---
 
@@ -308,6 +416,11 @@ This enables support for real-world payment delays (UPI, card processing, etc.).
 - Routes are orchestration only
 - All business logic is centralized
 - All cross-aggregate inconsistencies are detectable and recoverable through reconciliation
+- Domain enforces tenant visibility using actor context
+- Lifecycle transitions are invariant-protected at domain level
+- Profile completeness is enforced before membership creation
+- Superadmin has global visibility and can perform membership lifecycle actions across all tenants, including role upgrades via admin routes
+- System correctness is enforced by domain invariants, not by UI or route assumptions
 
 ---
 
@@ -1059,8 +1172,9 @@ Each module is a **self-contained domain boundary**.
 - auth
 - tenants
 - memberships
-- products (platform-owned)
-- tenantInventory (entitlement + stock)
+- profiles
+- products (platform-owned catalog)
+- tenantInventory (entitlement + stock layer)
 - cart
 - checkout
 - orders
@@ -1177,6 +1291,28 @@ Includes:
 - tenant derivation
 - permission checks
 
+### Access Control Strategy
+
+Two distinct guard types exist:
+
+1. requireAccess (flexible)
+   - Allows tenant users (role-checked)
+   - Allows superadmin (bypass)
+   - Used for read operations and global membership lifecycle actions
+
+2. requireMembershipRole (strict)
+   - Requires active membership
+   - Enforces tenant-scoped role
+   - Used for tenant-scoped lifecycle mutations (staff/admin only)
+
+This establishes:
+
+Read → flexible (superadmin allowed)  
+Membership lifecycle → flexible (superadmin + tenant staff)  
+Other writes → strict (tenant-only unless explicitly handled via admin routes)
+
+This separation prevents unintended privilege escalation while keeping superadmin capabilities explicit and controlled.
+
 ### HTTP Layer
 
 - centralized error handling
@@ -1212,6 +1348,10 @@ Future (Step 21):
 - No cross-domain leakage
 - Read and write paths are separated
 - Platform and tenant execution planes are isolated
+- Domain never trusts route-level authorization blindly
+- All cross-tenant access is explicitly guarded inside domain
+- Read paths may normalize state (e.g., expiry) to reflect real-time truth
+- Guards define access, domain enforces correctness
 
 ---
 
@@ -1219,106 +1359,157 @@ Future (Step 21):
 
 .
 ├── app
-│   ├── (tenant)                    # Tenant runtime (user-facing)
+│   ├── (tenant)                     # Tenant runtime (user-facing)
 │   │   ├── cart/
 │   │   ├── checkout/
 │   │   ├── fulfillment/
 │   │   ├── inventory/
 │   │   ├── memberships/
-│   │   ├── orders/                 # Order history + detail + receipt (SSR)
+│   │   │   ├── [membershipId]/
+│   │   │   └── page.tsx
+│   │   ├── orders/
+│   │   │   ├── [orderId]/
+│   │   │   │   └── receipt/
+│   │   │   └── page.tsx
 │   │   ├── pos/
-│   │   ├── products/               # Storefront (SSR)
+│   │   ├── products/
+│   │   │   ├── [productId]/
+│   │   │   └── page.tsx
 │   │   ├── profile/
-│   │   ├── reconciliation/         # Step 11
+│   │   ├── reconciliation/
 │   │   └── layout.tsx
 │   │
-│   ├── platform                    # Superadmin runtime
+│   ├── platform                     # Superadmin runtime
 │   │   ├── products/
+│   │   │   ├── new/
+│   │   │   └── [productId]/
 │   │   └── tenants/
+│   │       ├── new/
 │   │       └── [tenantId]/
-│   │           ├── inventory/
-│   │           │   ├── page.tsx
-│   │           │   └── low-stock/  # Step 12
-│   │           │       └── page.tsx
-│   │           └── page.tsx
+│   │           └── inventory/
+│   │               └── low-stock/
 │   │
-│   ├── api                         # Transport layer (routes only)
+│   ├── api                          # Transport layer (routes only)
 │   │   ├── admin/
-│   │   │   └── tenants/[tenantId]/inventory/
-│   │   │       ├── route.ts        # provisioning
-│   │   │       ├── low-stock/      # Step 12A
-│   │   │       │   └── route.ts
-│   │   │       └── adjust/         # Step 12B
-│   │   │           └── route.ts
+│   │   │   ├── memberships/[membershipId]/role/
+│   │   │   ├── products/
+│   │   │   └── tenants/[tenantId]/
+│   │   │       ├── activate/
+│   │   │       ├── archive/
+│   │   │       ├── assume/
+│   │   │       ├── suspend/
+│   │   │       └── inventory/
+│   │   │           ├── adjust/
+│   │   │           └── low-stock/
+│   │   │
+│   │   ├── auth/
+│   │   │   ├── otp/
+│   │   │   ├── logout/
+│   │   │   ├── me/
+│   │   │   └── stop-assume/
 │   │   │
 │   │   ├── cart/
 │   │   ├── checkout/
+│   │   ├── memberships/
+│   │   │   ├── [membershipId]/
+│   │   │   │   ├── approve/
+│   │   │   │   ├── reject/
+│   │   │   │   └── revoke/
+│   │   │   ├── active/
+│   │   │   ├── me/
+│   │   │   ├── pending/
+│   │   │   └── select/
+│   │   │
 │   │   ├── orders/
-│   │   ├── payments/
-│   │   └── reconciliation/         # Step 11
+│   │   │   ├── [orderId]/
+│   │   │   │   ├── cancel/
+│   │   │   │   ├── expire/
+│   │   │   │   ├── pay/
+│   │   │   │   ├── pickup/
+│   │   │   │   ├── refund/
+│   │   │   │   └── receipt/
+│   │   │   └── pos/
+│   │   │
+│   │   ├── payments/[orderId]/confirm/
+│   │   ├── profile/
+│   │   └── reconciliation/
+│   │       └── resolve/
 │   │
 │   └── layout.tsx
 │
 ├── components                      # Pure UI (no business logic)
+│   ├── admin/
+│   ├── auth/
 │   ├── cart/
 │   ├── checkout/
+│   ├── common/
+│   ├── guards/
+│   ├── lowStock/
+│   ├── memberships/
 │   ├── orders/
 │   ├── pos/
 │   ├── products/
-│   ├── reconciliation/             # Step 11 UI
-│   ├── lowStock/                   # Step 12 UI
-│   │   └── LowStockTable.tsx
-│   ├── tenant-provisioning/
-│   ├── admin/
-│   ├── guards/
-│   ├── Navbar.tsx
-│   └── Footer.tsx
+│   ├── profile/
+│   ├── reconciliation/
+│   ├── session/
+│   ├── tenant/
+│   └── tenant-provisioning/
+│
+├── contexts                        # Client state (UI only)
+│   ├── AuthContext.tsx
+│   └── CartContext.tsx
+│
+├── hooks
+│   └── useActiveMembership.ts
 │
 ├── lib                             # Core system (ALL domain logic)
 │   ├── api/                        # Client API wrappers
-│   │   ├── lowStock.ts             # Step 12A client
-│   │   ├── stockAdjustment.ts      # Step 12B client
-│   │   └── ...
+│   │   ├── auth.ts
+│   │   ├── cart.ts
+│   │   ├── checkout.ts
+│   │   ├── memberships.ts
+│   │   ├── orders.ts
+│   │   ├── profiles.ts
+│   │   ├── tenantInventory.ts
+│   │   ├── reconciliation.ts
+│   │   └── stockAdjustment.ts
 │   │
-│   ├── tenantInventory/            # Inventory domain (critical)
-│   │   ├── domain.ts
-│   │   ├── reservations.ts
-│   │   ├── adjustment.ts           # Step 12B
-│   │   ├── lowStock.ts             # Step 12A
-│   │   ├── lowStockService.ts
-│   │   ├── idempotency.ts
-│   │   ├── errors.ts
-│   │   ├── guards.ts
-│   │   ├── validators.ts
-│   │   └── storage.ts
-│   │
-│   ├── reconciliation/             # Step 11 system
-│   │   ├── domain.ts
-│   │   ├── resolution.ts
-│   │   ├── policy.ts
-│   │   ├── idempotency.ts
-│   │   └── service.ts
-│   │
-│   ├── audit/                      # Audit logging
-│   │   ├── domain.ts
-│   │   └── storage.ts
-│   │
-│   └── ... (auth, cart, orders, payments, etc.)
+│   ├── auth/
+│   ├── tenants/
+│   ├── memberships/
+│   ├── profiles/
+│   ├── products/
+│   ├── tenantInventory/
+│   ├── cart/
+│   ├── checkout/
+│   ├── orders/
+│   ├── payments/
+│   ├── reconciliation/
+│   ├── audit/
+│   ├── pos/
+│   ├── jobs/
+│   └── http/
 │
 ├── types                           # Shared contracts
-│   ├── lowStock.ts                 # Step 12A types
-│   ├── stockAdjustment.ts          # Step 12B types
+│   ├── auth.ts
+│   ├── profile.ts
+│   ├── membership.ts
+│   ├── tenant.ts
 │   ├── tenantInventory.ts
+│   ├── cart.ts
+│   ├── checkout.ts
+│   ├── order.ts
+│   ├── orderEvent.ts
+│   ├── payment.ts
 │   ├── reconciliation.ts
-│   └── ...
-│
-├── contexts
-│   ├── AuthContext.tsx
-│   └── CartContext.tsx
+│   ├── stockAdjustment.ts
+│   └── audit.ts
 │
 ├── docs
 │   └── checkout-api.md
 │
+├── public/
+├── package.json
 └── README.md
 
 The domain modules represent the core business capabilities:
@@ -1326,6 +1517,7 @@ The domain modules represent the core business capabilities:
 - Auth
 - Tenants
 - Memberships
+- Profile
 - Products
 - TenantInventory
 - Cart
