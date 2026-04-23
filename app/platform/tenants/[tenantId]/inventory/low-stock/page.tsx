@@ -1,7 +1,7 @@
 import { Box, Typography, Paper, Divider } from "@mui/material";
 
 import { getUserFromRequest } from "@/lib/auth";
-import { requireAuth, requireRole } from "@/lib/auth/guards";
+import { requireSuperadmin } from "@/lib/auth/guards";
 
 import { getLowStockReport } from "@/lib/tenantInventory/lowStockService";
 
@@ -16,8 +16,8 @@ export default async function LowStockPage({ params }: Props) {
     const { tenantId } = await params;
 
     const rawUser = await getUserFromRequest();
-    const user = requireAuth(rawUser);
-    requireRole(user, "superadmin");
+
+    requireSuperadmin(rawUser);
 
     const report = getLowStockReport(tenantId);
 

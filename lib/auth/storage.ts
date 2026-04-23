@@ -29,6 +29,7 @@ globalForAuth.__authOtps = otpStore;
  * ---- One-time seed ----
  * Runs only if store is empty.
  */
+
 function seedUsers() {
     if (userStore.size > 0) return;
 
@@ -36,51 +37,43 @@ function seedUsers() {
         {
             userId: "u_customer",
             phone: "9000000001",
-            role: "customer",
-            tenantId: "tenant_alpha",
+            activeMembershipId: "m_u_customer_alpha",
         },
         {
             userId: "u_staff",
             phone: "9000000002",
-            role: "staff",
-            tenantId: "tenant_alpha",
+            activeMembershipId: "m_u_staff_alpha",
         },
         {
             userId: "u_admin",
             phone: "9000000003",
-            role: "admin",
-            tenantId: "tenant_alpha",
+            activeMembershipId: "m_u_admin_alpha",
         },
         {
             userId: "u_superadmin",
             phone: "9000000004",
-            role: "superadmin",
+            isSuperadmin: true,
         },
-
-
 
         {
             userId: "mnsnhs_customer",
             phone: "8000000001",
-            role: "customer",
-            tenantId: "tenant_mnsnhs",
+            activeMembershipId: "m_mnsnhs_customer",
         },
         {
             userId: "mnsnhs_staff",
             phone: "8000000002",
-            role: "staff",
-            tenantId: "tenant_mnsnhs",
+            activeMembershipId: "m_mnsnhs_staff",
         },
         {
             userId: "mnsnhs_admin",
             phone: "8000000003",
-            role: "admin",
-            tenantId: "tenant_mnsnhs",
+            activeMembershipId: "m_mnsnhs_admin",
         },
         {
             userId: "mnsnhs_superadmin",
             phone: "8000000004",
-            role: "superadmin",
+            isSuperadmin: true,
         },
     ];
 

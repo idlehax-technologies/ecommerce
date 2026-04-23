@@ -11,7 +11,7 @@ import {
     assumeTenantAdminUseCase,
 } from "@/lib/tenants/service";
 import { getUserFromRequest } from "@/lib/auth";
-import { requireRole } from "@/lib/auth/guards";
+import { requireSuperadmin } from "@/lib/auth/guards";
 
 type PageProps = {
     params: Promise<{ tenantId: string }>;
@@ -25,7 +25,8 @@ export default async function TenantDetailPage({ params }: PageProps) {
     const { tenantId } = await params;
 
     const rawUser = await getUserFromRequest();
-    requireRole(rawUser, "superadmin");
+
+    requireSuperadmin(rawUser);
 
     const tenant = await getTenantById(tenantId);
 
@@ -65,12 +66,14 @@ export default async function TenantDetailPage({ params }: PageProps) {
                                 {tenant.name}
                             </Typography>
 
-                            <Button
-                                component={Link}
+                            <Link
                                 href={`/platform/tenants/${tenantId}/inventory/low-stock`}
+                                style={{ textDecoration: "none" }}
                             >
-                                Low Stock
-                            </Button>
+                                <Button>
+                                    Low Stock
+                                </Button>
+                            </Link>
                         </Stack>
 
                         <Chip

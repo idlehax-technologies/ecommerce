@@ -5,7 +5,7 @@ import { Container, Stack, TextField, Button, Typography, Card, CardContent } fr
 
 import { createTenantUseCase } from "@/lib/tenants/service";
 import { getUserFromRequest } from "@/lib/auth";
-import { requireRole } from "@/lib/auth/guards";
+import { requireSuperadmin } from "@/lib/auth/guards";
 
 /**
  * Superadmin Tenant Creation Page (Server Action Driven)
@@ -14,7 +14,8 @@ import { requireRole } from "@/lib/auth/guards";
 export default async function NewTenantPage() {
 
     const rawUser = await getUserFromRequest();
-    requireRole(rawUser, "superadmin");
+
+    requireSuperadmin(rawUser);
 
     async function create(formData: FormData) {
         "use server";

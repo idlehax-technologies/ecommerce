@@ -5,7 +5,7 @@ import { Container, Stack, Card, CardContent, Typography, Button, Chip } from "@
 
 import { listAllTenants, assumeTenantAdminUseCase } from "@/lib/tenants/service";
 import { getUserFromRequest } from "@/lib/auth";
-import { requireRole } from "@/lib/auth/guards";
+import { requireSuperadmin } from "@/lib/auth/guards";
 
 /**
  * Superadmin Control Plane — Server Page
@@ -15,7 +15,8 @@ import { requireRole } from "@/lib/auth/guards";
 export default async function TenantsPage() {
 
     const rawUser = await getUserFromRequest();
-    requireRole(rawUser, "superadmin");
+
+    requireSuperadmin(rawUser);
 
     const tenants = await listAllTenants();
 

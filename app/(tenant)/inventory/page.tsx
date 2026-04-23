@@ -1,5 +1,3 @@
-// app/(tenant)/inventory/page.tsx
-
 import { notFound } from "next/navigation";
 import { Box, Typography, Paper, Divider } from "@mui/material";
 

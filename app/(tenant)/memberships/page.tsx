@@ -1,24 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Container, Typography } from "@mui/material";
-import { pendingMemberships } from "@/lib/api/memberships";
-import MembershipApprovalTable from "@/components/memberships/MembershipApprovalTable";
+import MembershipDashboard from "@/components/memberships/MembershipDashboard";
 
 export default function Page() {
-    const [rows, setRows] = useState([]);
-
-    useEffect(() => {
-        pendingMemberships().then(setRows);
-    }, []);
-
     return (
         <Container>
             <Typography variant="h5" mb={2}>
-                Pending Approvals
+                Membership Dashboard
             </Typography>
 
-            <MembershipApprovalTable rows={rows} />
+            <MembershipDashboard />
         </Container>
     );
 }

@@ -1,9 +1,18 @@
-import RoleGuard from "@/components/guards/RoleGuard";
+"use client";
 
-export default function SuperadminLayout({
+import AccessGuard from "@/components/guards/AccessGuard";
+
+export default function MembershipsLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    return <RoleGuard allow={["staff"]}>{children}</RoleGuard>;
+    return (
+        <AccessGuard
+            allowRoles={["staff"]}
+            allowSuperadmin
+        >
+            {children}
+        </AccessGuard>
+    );
 }

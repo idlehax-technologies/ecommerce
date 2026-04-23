@@ -1,63 +1,96 @@
 "use client";
 
-import { useState } from "react";
-import { Box, TextField, Button, Stack } from "@mui/material";
+import { useEffect, useState } from "react";
+import {
+    TextField,
+    Button,
+    Stack,
+    CircularProgress,
+} from "@mui/material";
 
-type Props = {
-    initial?: {
-        fullName?: string;
-        phone?: string;
-        email?: string;
-        address?: string;
-        location?: string;
-    };
-    onSave: (data: any) => Promise<void>;
-};
+import { fetchProfile, saveProfile } from "@/lib/api/profiles";
+import { useSnackbar } from "@/components/common/AppSnackbar";
 
-export default function ProfileForm({ initial, onSave }: Props) {
+export default function ProfileForm({
+    onSaved,
+}: {
+    onSaved?: () => void;
+}) {
     const [form, setForm] = useState({
-        fullName: initial?.fullName ?? "",
-        phone: initial?.phone ?? "",
-        email: initial?.email ?? "",
-        address: initial?.address ?? "",
-        location: initial?.location ?? "",
+        fullName: "",
+        email: "",
+        addressText: "",
     });
 
+    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
-    const handle = (k: string, v: string) =>
-        setForm((p) => ({ ...p, [k]: v }));
+    const { show } = useSnackbar();
 
-    const submit = async () => {
-        setSaving(true);
-        await onSave(form);
-        setSaving(false);
-    };
+    useEffect(() => {
+        fetchProfile()
+            .then((p) => {
+                if (p) setForm(p);
+            })
+            .finally(() => setLoading(false));
+    }, []);
 
-    const complete =
-        form.fullName &&
-        form.phone &&
-        form.email &&
-        form.address &&
-        form.location;
+    function isComplete() {
+        return (
+            form.fullName.trim() &&
+            form.email.trim() &&
+            form.addressText.trim()
+        );
+    }
+
+    async function submit() {
+        try {
+            setSaving(true);
+            await saveProfile(form);
+            show("Profile saved");
+            onSaved?.(); // 🔴 trigger refresh
+        } catch {
+            show("Save failed", "error");
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    if (loading) return <CircularProgress />;
 
     return (
-        <Box>
-            <Stack spacing={2}>
-                <TextField label="Full name" value={form.fullName} onChange={(e) => handle("fullName", e.target.value)} />
-                <TextField label="Phone" value={form.phone} disabled />
-                <TextField label="Email" value={form.email} onChange={(e) => handle("email", e.target.value)} />
-                <TextField label="Address" value={form.address} onChange={(e) => handle("address", e.target.value)} />
-                <TextField label="Location" value={form.location} onChange={(e) => handle("location", e.target.value)} />
+        <Stack spacing={2}>
+            <TextField
+                label="Full Name"
+                value={form.fullName}
+                onChange={(e) =>
+                    setForm({ ...form, fullName: e.target.value })
+                }
+            />
 
-                <Button
-                    variant="contained"
-                    onClick={submit}
-                    disabled={!complete || saving}
-                >
-                    Save Profile
-                </Button>
-            </Stack>
-        </Box>
+            <TextField
+                label="Email"
+                value={form.email}
+                onChange={(e) =>
+                    setForm({ ...form, email: e.target.value })
+                }
+            />
+
+            <TextField
+                label="Address"
+                value={form.addressText}
+                onChange={(e) =>
+                    setForm({ ...form, addressText: e.target.value })
+                }
+            />
+
+            <Button
+                variant="contained"
+                disabled={!isComplete() || saving}
+                onClick={submit}
+            >
+                {saving ? "Saving..." : "Save Profile"}
+            </Button>
+        </Stack>
     );
 }
