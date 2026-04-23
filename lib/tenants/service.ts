@@ -1,3 +1,7 @@
+// ==============================
+// lib/tenants/service.ts (FIXED FOR MEMBERSHIP + SUPERADMIN MODEL)
+// ==============================
+
 import "server-only";
 
 import {
@@ -11,11 +15,12 @@ import {
 
 import { assertCreateTenantDTO } from "./validators";
 import { getUserFromRequest } from "@/lib/auth";
-import { requireAuth } from "@/lib/auth/guards";
+import { requireSuperadmin } from "@/lib/auth/guards";
 import { CreateTenantDTO, PublicTenant } from "@/types/tenant";
 
 import { cookies } from "next/headers";
 import { signToken } from "@/lib/jwt";
+import { getAdminMembershipForTenant } from "../memberships/domain";
 
 const SEVEN_DAYS = 60 * 60 * 24 * 7;
 
@@ -24,18 +29,14 @@ const SEVEN_DAYS = 60 * 60 * 24 * 7;
 /* -------------------------------------------------------------------------- */
 
 export async function listAllTenants(): Promise<PublicTenant[]> {
-    const user = requireAuth(await getUserFromRequest());
-
-    if (user.role !== "superadmin") throw new Error("Forbidden");
-
+    const user = requireSuperadmin(await getUserFromRequest());
     return listTenants();
 }
 
-export async function getTenantById(tenantId: string): Promise<PublicTenant> {
-    const user = requireAuth(await getUserFromRequest());
-
-    if (user.role !== "superadmin") throw new Error("Forbidden");
-
+export async function getTenantById(
+    tenantId: string
+): Promise<PublicTenant> {
+    const user = requireSuperadmin(await getUserFromRequest());
     return getTenant(tenantId);
 }
 
@@ -43,10 +44,10 @@ export async function getTenantById(tenantId: string): Promise<PublicTenant> {
 /* WRITE                                                                       */
 /* -------------------------------------------------------------------------- */
 
-export async function createTenantUseCase(body: unknown): Promise<PublicTenant> {
-    const user = requireAuth(await getUserFromRequest());
-
-    if (user.role !== "superadmin") throw new Error("Forbidden");
+export async function createTenantUseCase(
+    body: unknown
+): Promise<PublicTenant> {
+    const user = requireSuperadmin(await getUserFromRequest());
 
     assertCreateTenantDTO(body);
 
@@ -54,26 +55,17 @@ export async function createTenantUseCase(body: unknown): Promise<PublicTenant> 
 }
 
 export async function activateTenantUseCase(tenantId: string) {
-    const user = requireAuth(await getUserFromRequest());
-
-    if (user.role !== "superadmin") throw new Error("Forbidden");
-
+    const user = requireSuperadmin(await getUserFromRequest());
     return activateTenant(tenantId);
 }
 
 export async function suspendTenantUseCase(tenantId: string) {
-    const user = requireAuth(await getUserFromRequest());
-
-    if (user.role !== "superadmin") throw new Error("Forbidden");
-
+    const user = requireSuperadmin(await getUserFromRequest());
     return suspendTenant(tenantId);
 }
 
 export async function archiveTenantUseCase(tenantId: string) {
-    const user = requireAuth(await getUserFromRequest());
-
-    if (user.role !== "superadmin") throw new Error("Forbidden");
-
+    const user = requireSuperadmin(await getUserFromRequest());
     return archiveTenant(tenantId);
 }
 
@@ -82,15 +74,15 @@ export async function archiveTenantUseCase(tenantId: string) {
 /* -------------------------------------------------------------------------- */
 
 export async function assumeTenantAdminUseCase(tenantId: string) {
-    const user = requireAuth(await getUserFromRequest());
+    const user = requireSuperadmin(await getUserFromRequest());
 
-    if (user.role !== "superadmin") throw new Error("Forbidden");
+    const adminMembership = getAdminMembershipForTenant(tenantId);
 
     const token = signToken({
-        userId: user.userId,
+        userId: adminMembership.userId,
         phone: user.phone,
-        role: "admin",
-        tenantId,
+        activeMembershipId: adminMembership.membershipId,
+        isSuperadmin: false,
         impersonatedBy: user.userId,
     });
 

@@ -23,3 +23,10 @@ export const logout = () =>
 
 export const me = () =>
     fetch("/api/auth/me").then(handle);
+
+export const stopAssume = () =>
+    fetch("/api/auth/stop-assume", { method: "POST" }).then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || "Request failed");
+        return data;
+    });

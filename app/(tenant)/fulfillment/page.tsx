@@ -1,7 +1,7 @@
 import { Container, Typography, Box } from "@mui/material";
 
 import { getUserFromRequest } from "@/lib/auth";
-import { requireTenant, requireRole } from "@/lib/auth/guards";
+import { requireTenant, requireMembershipRole } from "@/lib/auth/guards";
 
 import { listTenantOrders } from "@/lib/orders/domain";
 
@@ -20,7 +20,7 @@ function toOrderListItem(order: Order): OrderListItem {
 export default async function FulfillmentPage() {
     const rawUser = await getUserFromRequest();
 
-    requireRole(rawUser, "staff");
+    requireMembershipRole(rawUser, ["staff"]);
     const actor = requireTenant(rawUser);
 
     const orders = listTenantOrders(actor.tenantId);

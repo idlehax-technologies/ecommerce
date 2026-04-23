@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { getUserFromRequest } from "@/lib/auth";
-import { requireTenant, requireRole } from "@/lib/auth/guards";
+import { requireTenant, requireMembershipRole } from "@/lib/auth/guards";
+
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import { executePOS } from "@/lib/pos/service";
@@ -10,7 +11,7 @@ export async function POST(req: Request) {
     try {
         const rawUser = await getUserFromRequest();
 
-        requireRole(rawUser, "staff");
+        requireMembershipRole(rawUser, ["staff"]);
         const actor = requireTenant(rawUser);
 
         const body = await req.json();
@@ -26,7 +27,6 @@ export async function POST(req: Request) {
             success: true,
             orderId: order.orderId,
         });
-
     } catch (err) {
         return handleRouteError(err);
     }

@@ -1,46 +1,18 @@
-// lib/auth.ts
-
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/jwt";
 import type { AuthUser } from "@/types/auth";
 import type { SessionPayload } from "@/types/session";
 import { authStore } from "@/lib/auth/storage";
 
-/*
-  Responsibility (system level):
-
-  1) Restore session from cookie
-  2) Convert JWT -> real DB user
-  3) Provide scope/role helpers for routes
-
-  This file should NEVER know:
-  - OTP
-  - passwords
-  - email
-  - login logic
-
-  It only restores identity + enforces authorization.
-*/
-
-/* ------------------------------------------------------------------ */
-/* payload guard                                                       */
-/* ------------------------------------------------------------------ */
-
 function isTokenPayload(v: unknown): v is SessionPayload {
   if (!v || typeof v !== "object") return false;
-
   const x = v as any;
 
   return (
     typeof x.userId === "string" &&
-    typeof x.phone === "string" &&
-    ["customer", "staff", "admin", "superadmin"].includes(x.role)
+    typeof x.phone === "string"
   );
 }
-
-/* ------------------------------------------------------------------ */
-/* session restore                                                     */
-/* ------------------------------------------------------------------ */
 
 export async function getUserFromRequest(): Promise<AuthUser | null> {
   const token = (await cookies()).get("auth")?.value;
@@ -48,35 +20,19 @@ export async function getUserFromRequest(): Promise<AuthUser | null> {
 
   try {
     const payload = verifyToken(token);
-
     if (!isTokenPayload(payload)) return null;
 
-    // Always fetch from storage (never trust token fields directly)
-    const authUser = authStore.getById(payload.userId);
-    if (!authUser) return null;
+    const user = authStore.getById(payload.userId);
+    if (!user) return null;
 
     return {
-      userId: authUser.userId,
-      phone: authUser.phone,
-      role: authUser.role,
-      tenantId: authUser.tenantId ?? undefined,
-      impersonatedBy: authUser.impersonatedBy ?? undefined,
+      userId: user.userId,
+      phone: user.phone,
+      activeMembershipId: user.activeMembershipId,
+      isSuperadmin: user.isSuperadmin,
+      impersonatedBy: user.impersonatedBy,
     };
   } catch {
     return null;
   }
-}
-
-/* ------------------------------------------------------------------ */
-/* scope helpers (VERY IMPORTANT – keep these)                         */
-/* ------------------------------------------------------------------ */
-
-export async function getTenantIdFromRequest(): Promise<string> {
-  const user = await getUserFromRequest();
-
-  if (!user?.tenantId) {
-    throw new Error("No tenant scope");
-  }
-
-  return user.tenantId;
 }

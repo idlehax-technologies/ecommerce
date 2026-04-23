@@ -1,75 +1,80 @@
-import type { AuthUser, UserRole } from "@/types/auth";
-import { ForbiddenError, NotInAssumedSessionError, TenantNotAssociatedError, UnauthorizedError } from "./errors";
-import { getTenant } from "../tenants/domain";
-import { TenantNotActiveError } from "../tenants/errors";
+import type { AccessActor, AuthUser } from "@/types/auth";
+import { UnauthorizedError, ForbiddenError, NotInAssumedSessionError } from "./errors";
+import { getMembership } from "@/lib/memberships/domain";
+import { MembershipRole } from "@/types/membership";
 
-/**
- * Type predicate.
- * Used when you want to CHECK auth without throwing.
- */
-export function isAuthenticated(user: AuthUser | null): user is AuthUser {
-    return user !== null;
-}
-
-/**
- * Hard requirement: user must exist.
- * Throws if not authenticated.
- */
 export function requireAuth(user: AuthUser | null): AuthUser {
-    if (!user) {
-        throw new UnauthorizedError();
-    }
+    if (!user) throw new UnauthorizedError();
     return user;
 }
 
-/**
- * Require a single specific role.
- */
-export function requireRole(
-    user: AuthUser | null,
-    role: UserRole
-): AuthUser {
+export function requireMembership(user: AuthUser | null) {
     const u = requireAuth(user);
 
-    if (u.role !== role) {
+    if (!u.activeMembershipId) {
+        throw new ForbiddenError("No active membership");
+    }
+
+    const membership = getMembership(u.activeMembershipId);
+
+    if (membership.status !== "APPROVED") {
+        throw new ForbiddenError("Membership not approved");
+    }
+
+    return {
+        userId: u.userId,
+        tenantId: membership.tenantId,
+        role: membership.role,
+    };
+}
+
+export function requireMembershipRole(
+    user: AuthUser | null,
+    roles: MembershipRole[]
+) {
+    const actor = requireMembership(user);
+
+    if (!roles.includes(actor.role)) {
         throw new ForbiddenError();
+    }
+
+    return actor;
+}
+
+export function requireTenant(user: AuthUser | null) {
+    return requireMembership(user);
+}
+
+export function requireSuperadmin(user: AuthUser | null): AuthUser {
+    const u = requireAuth(user);
+
+    if (!u.isSuperadmin) {
+        throw new ForbiddenError("Superadmin only");
     }
 
     return u;
 }
 
-/**
- * Require any one of multiple roles.
- */
-export function requireAnyRole(
+export function requireAccess(
     user: AuthUser | null,
-    roles: UserRole[]
-): AuthUser {
+    roles: MembershipRole[]
+): AccessActor {
     const u = requireAuth(user);
 
-    if (!roles.includes(u.role)) {
-        throw new ForbiddenError();
+    if (u.isSuperadmin) {
+        return { type: "superadmin", userId: u.userId };
     }
 
-    return u;
-}
+    const membership = requireMembership(u);
 
-export function requireTenant(
-    user: AuthUser | null
-): AuthUser & { tenantId: string } {
-    const u = requireAuth(user);
-
-    if (!u.tenantId) {
-        throw new TenantNotAssociatedError();
+    if (!roles.includes(membership.role)) {
+        throw new ForbiddenError("Insufficient role");
     }
 
-    const tenant = getTenant(u.tenantId); // ✅ domain, not storage
-
-    if (tenant.status !== "ACTIVE") {
-        throw new TenantNotActiveError();
-    }
-
-    return u as AuthUser & { tenantId: string };
+    return {
+        type: "tenant",
+        membership,
+    };
 }
 
 export function requireAssumedSession(

@@ -1,9 +1,7 @@
-// app/api/admin/products/[productId]/route.ts
-
 import { NextResponse } from "next/server";
 
 import { getUserFromRequest } from "@/lib/auth";
-import { requireRole } from "@/lib/auth/guards";
+import { requireSuperadmin } from "@/lib/auth/guards";
 
 import {
   getPlatformProduct,
@@ -24,7 +22,7 @@ export async function GET(
     const { productId } = await params;
 
     const rawUser = await getUserFromRequest();
-    requireRole(rawUser, "superadmin");
+    requireSuperadmin(rawUser);
 
     const product = await getPlatformProduct(productId);
 
@@ -42,7 +40,7 @@ export async function PATCH(
     const { productId } = await params;
 
     const rawUser = await getUserFromRequest();
-    requireRole(rawUser, "superadmin");
+    requireSuperadmin(rawUser);
 
     const body: unknown = await req.json();
     validateUpdateProduct(body);
@@ -65,7 +63,7 @@ export async function DELETE(
     const { productId } = await params;
 
     const rawUser = await getUserFromRequest();
-    requireRole(rawUser, "superadmin");
+    requireSuperadmin(rawUser);
 
     await deletePlatformProduct(productId);
 

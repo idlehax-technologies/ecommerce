@@ -6,7 +6,7 @@ import { Box, Typography, Paper, Divider } from "@mui/material";
 import TenantInventoryTable from "@/components/tenant-provisioning/TenantInventoryTable";
 
 import { getUserFromRequest } from "@/lib/auth";
-import { requireRole } from "@/lib/auth/guards";
+import { requireSuperadmin } from "@/lib/auth/guards";
 
 import { getTenantProvisioningView } from "@/lib/tenantInventory/service";
 
@@ -25,7 +25,8 @@ export default async function TenantInventoryPage({ params }: PageProps) {
     const { tenantId } = await params;
 
     const rawUser = await getUserFromRequest();
-    requireRole(rawUser, "superadmin");
+
+    requireSuperadmin(rawUser);
 
     const view = await getTenantProvisioningView(tenantId);
 

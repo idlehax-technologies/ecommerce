@@ -20,9 +20,6 @@ export async function verifyOtp(
         user = {
             userId: crypto.randomUUID(),
             phone: input.phone,
-            role: "customer",
-            tenantId: undefined,
-            impersonatedBy: undefined,
         };
         authStore.save(user);
     }
@@ -30,9 +27,9 @@ export async function verifyOtp(
     const token = signToken({
         userId: user.userId,
         phone: user.phone,
-        role: user.role,
-        tenantId: user.tenantId ?? undefined,
-        impersonatedBy: user.impersonatedBy ?? undefined,
+        activeMembershipId: user.activeMembershipId,
+        isSuperadmin: user.isSuperadmin,
+        impersonatedBy: user.impersonatedBy,
     });
 
     return { user, token };

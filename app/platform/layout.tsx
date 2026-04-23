@@ -1,3 +1,4 @@
+import AccessGuard from "@/components/guards/AccessGuard";
 import Navbar from "@/components/Navbar";
 
 export default function TenantLayout({
@@ -6,9 +7,11 @@ export default function TenantLayout({
     children: React.ReactNode;
 }) {
     return (
-        <>
+        <AccessGuard
+            allowSuperadmin
+        >
             <Navbar />
             {children}
-        </>
+        </AccessGuard>
     );
 }

@@ -2,23 +2,30 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Container } from "@mui/material";
-import MembershipReviewCard from "@/components/memberships/MembershipReviewCard";
+import { Container, CircularProgress } from "@mui/material";
+
 import { getMembership } from "@/lib/api/memberships";
+import type { MembershipView } from "@/types/membership";
+import MembershipDetailCard from "@/components/memberships/MembershipDetailCard";
 
 export default function Page() {
     const { membershipId } = useParams();
-    const [membership, setMembership] = useState<any | null>(null);
+    const [m, setM] = useState<MembershipView | null>(null);
+
+    async function load() {
+        const data = await getMembership(membershipId as string);
+        setM(data);
+    }
 
     useEffect(() => {
-        getMembership(membershipId as string).then(setMembership);
+        load();
     }, [membershipId]);
 
-    if (!membership) return null;
+    if (!m) return <CircularProgress />;
 
     return (
         <Container maxWidth="sm">
-            <MembershipReviewCard m={membership} />
+            <MembershipDetailCard m={m} reload={load} />
         </Container>
     );
 }

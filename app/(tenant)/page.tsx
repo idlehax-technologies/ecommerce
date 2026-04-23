@@ -1,5 +1,3 @@
-// app/(tenant)/page.tsx
-
 import { Container, Typography, Box } from "@mui/material";
 import { getUserFromRequest } from "@/lib/auth";
 import { requireTenant } from "@/lib/auth/guards";
