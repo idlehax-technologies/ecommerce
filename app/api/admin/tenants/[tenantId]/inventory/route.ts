@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getUserFromRequest } from "@/lib/auth";
+
+import { guardRequest } from "@/lib/security/requestGuard";
 import { requireSuperadmin } from "@/lib/auth/guards";
 
 import {
@@ -10,17 +11,19 @@ import {
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 export async function GET(
-    _: Request,
+    req: Request,
     { params }: { params: Promise<{ tenantId: string }> }
 ) {
     try {
         const { tenantId } = await params;
 
-        const rawUser = await getUserFromRequest();
-        requireSuperadmin(rawUser);
+        const user = await guardRequest(req, { requireAuth: true });
+        requireSuperadmin(user);
 
-        return NextResponse.json(listTenantInventory(tenantId));
-    } catch (err: unknown) {
+        const rows = listTenantInventory(tenantId);
+
+        return NextResponse.json({ rows });
+    } catch (err) {
         return handleRouteError(err);
     }
 }
@@ -32,14 +35,18 @@ export async function PUT(
     try {
         const { tenantId } = await params;
 
-        const rawUser = await getUserFromRequest();
-        requireSuperadmin(rawUser);
+        const user = await guardRequest(req, {
+            requireAuth: true,
+            csrf: true,
+        });
+        requireSuperadmin(user);
 
         const body = await req.json();
+
         const record = provisionProduct(tenantId, body);
 
         return NextResponse.json(record);
-    } catch (err: unknown) {
+    } catch (err) {
         return handleRouteError(err);
     }
 }

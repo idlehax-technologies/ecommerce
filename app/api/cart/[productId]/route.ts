@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireTenant } from "@/lib/auth/guards";
-import { getUserFromRequest } from "@/lib/auth";
+import { guardRequest } from "@/lib/security/requestGuard";
 import * as cartDomain from "@/lib/cart/domain";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 import { assertUpdateCartItemDTO } from "@/lib/cart/guards";
@@ -12,8 +12,12 @@ export async function PATCH(
     try {
         const { productId } = await params;
 
-        const rawUser = await getUserFromRequest();
-        const actor = requireTenant(rawUser);
+        const user = await guardRequest(req, {
+            requireAuth: true,
+            csrf: true,
+        });
+
+        const actor = requireTenant(user);
 
         const body: unknown = await req.json();
 
@@ -22,25 +26,29 @@ export async function PATCH(
         const cart = cartDomain.updateItem(actor, productId, body);
 
         return NextResponse.json(cart);
-    } catch (err: unknown) {
+    } catch (err) {
         return handleRouteError(err);
     }
 }
 
 export async function DELETE(
-    _req: Request,
+    req: Request,
     { params }: { params: Promise<{ productId: string }> }
 ) {
     try {
         const { productId } = await params;
 
-        const rawUser = await getUserFromRequest();
-        const actor = requireTenant(rawUser);
+        const user = await guardRequest(req, {
+            requireAuth: true,
+            csrf: true,
+        });
+
+        const actor = requireTenant(user);
 
         const cart = cartDomain.removeItem(actor, productId);
 
         return NextResponse.json(cart);
-    } catch (err: unknown) {
+    } catch (err) {
         return handleRouteError(err);
     }
 }

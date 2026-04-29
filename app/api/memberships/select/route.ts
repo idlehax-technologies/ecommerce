@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getUserFromRequest } from "@/lib/auth";
+import { guardRequest } from "@/lib/security/requestGuard";
 import { requireAuth } from "@/lib/auth/guards";
 import { selectMembership } from "@/lib/memberships/domain";
 import { assertSelectMembership } from "@/lib/memberships/validators";
@@ -7,7 +7,10 @@ import { handleRouteError } from "@/lib/http/handleRouteError";
 
 export async function POST(req: Request) {
     try {
-        const user = requireAuth(await getUserFromRequest());
+        const user = await guardRequest(req, {
+            requireAuth: true,
+            csrf: true,
+        });
 
         const body: unknown = await req.json();
         assertSelectMembership(body);
@@ -15,7 +18,7 @@ export async function POST(req: Request) {
         selectMembership(user.userId, body.membershipId);
 
         return NextResponse.json({ success: true });
-    } catch (err: unknown) {
+    } catch (err) {
         return handleRouteError(err);
     }
 }

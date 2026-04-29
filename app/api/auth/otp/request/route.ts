@@ -5,18 +5,19 @@ import { mapOtpRequest } from "@/lib/auth/mappers";
 import { requestOtp } from "@/lib/auth/domain";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
+import { guardRequest } from "@/lib/security/requestGuard";
 
 export async function POST(req: Request) {
     try {
+        await guardRequest(req, {
+            rateLimitKey: "otp_request", // ✅ NEW
+        });
+
         const body: unknown = await req.json();
 
-        // transport validation
         assertOtpRequest(body);
-
-        // normalization boundary
         const input = mapOtpRequest(body);
 
-        // business action
         await requestOtp(input);
 
         return NextResponse.json({ success: true });

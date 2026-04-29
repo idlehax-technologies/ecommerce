@@ -1,33 +1,31 @@
 import { NextResponse } from "next/server";
 
-import { getUserFromRequest } from "@/lib/auth";
+import { guardRequest } from "@/lib/security/requestGuard";
 import { requireTenant, requireMembershipRole } from "@/lib/auth/guards";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import * as ordersDomain from "@/lib/orders/domain";
-import { handleOrderEvent } from "@/lib/orders/reactions";
-import { OrderEvent } from "@/types/orderEvent";
+import { dispatchEvent } from "@/lib/events/dispatcher";
 
 export async function POST(
-    _req: Request,
+    req: Request,
     { params }: { params: Promise<{ orderId: string }> }
 ) {
     try {
         const { orderId } = await params;
 
-        const rawUser = await getUserFromRequest();
-        requireMembershipRole(rawUser, ["staff"]);
-        const actor = requireTenant(rawUser);
+        const user = await guardRequest(req, {
+            requireAuth: true,
+            csrf: true,
+        });
+
+        requireMembershipRole(user, ["staff"]);
+        const actor = requireTenant(user);
 
         const result = ordersDomain.expireOrder(actor.tenantId, orderId);
 
-        const event: OrderEvent = {
-            type: "OrderExpired",
-            order: result.order,
-        };
-
-        await handleOrderEvent(event);
+        await dispatchEvent(result.event, { actorId: actor.userId });
 
         return NextResponse.json({ success: true });
     } catch (err) {

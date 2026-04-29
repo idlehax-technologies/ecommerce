@@ -1,13 +1,25 @@
 import { NextResponse } from "next/server";
 
-export async function POST() {
-    const res = NextResponse.json({ success: true });
+import { handleRouteError } from "@/lib/http/handleRouteError";
+import { guardRequest } from "@/lib/security/requestGuard";
 
-    res.cookies.set("auth", "", {
-        httpOnly: true,
-        path: "/",
-        maxAge: 0,
-    });
+export async function POST(req: Request) {
+    try {
+        await guardRequest(req, {
+            requireAuth: true,
+            csrf: true,
+        })
 
-    return res;
+        const res = NextResponse.json({ success: true });
+
+        res.cookies.set("auth", "", {
+            httpOnly: true,
+            path: "/",
+            maxAge: 0,
+        });
+
+        return res;
+    } catch (err) {
+        return handleRouteError(err);
+    }
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getUserFromRequest } from "@/lib/auth";
+import { guardRequest } from "@/lib/security/requestGuard";
 import { requireTenant } from "@/lib/auth/guards";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
@@ -7,10 +7,16 @@ import { assertCheckoutDTO } from "@/lib/checkout/validators";
 import { toCheckoutInput } from "@/lib/checkout/mappers";
 import { executeCheckout } from "@/lib/checkout/service";
 
+import { dispatchEvent } from "@/lib/events/dispatcher";
+
 export async function POST(req: Request) {
     try {
-        const rawUser = await getUserFromRequest();
-        const actor = requireTenant(rawUser);
+        const user = await guardRequest(req, {
+            requireAuth: true,
+            csrf: true,
+        });
+
+        const actor = requireTenant(user);
 
         const body: unknown = await req.json();
 
@@ -18,11 +24,13 @@ export async function POST(req: Request) {
 
         const input = toCheckoutInput(actor.userId, actor.tenantId, body);
 
-        const order = await executeCheckout(input);
+        const result = await executeCheckout(input);
+
+        await dispatchEvent(result.event, { actorId: actor.userId });
 
         return NextResponse.json({
             success: true,
-            orderId: order.orderId,
+            orderId: result.order.orderId,
             message: "Order placed successfully",
         });
 

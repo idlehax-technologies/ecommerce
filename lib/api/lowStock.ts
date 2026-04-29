@@ -1,19 +1,10 @@
+import { apiFetch } from "./fetch";
 import type { LowStockReport } from "@/types/lowStock";
 
-export async function getLowStock(
+export function getLowStock(
     tenantId: string
 ): Promise<LowStockReport> {
-
-    const res = await fetch(
-        `/api/admin/tenants/${tenantId}/inventory/low-stock`,
-        {
-            credentials: "include",
-        }
+    return apiFetch(
+        `/api/admin/tenants/${tenantId}/inventory/low-stock`
     );
-
-    if (!res.ok) {
-        throw new Error("Failed to fetch low stock");
-    }
-
-    return res.json();
 }

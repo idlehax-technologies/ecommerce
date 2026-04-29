@@ -4,6 +4,8 @@ import { requireSuperadmin } from "@/lib/auth/guards";
 import { updateMembershipRole } from "@/lib/memberships/domain";
 import { assertUpdateMembershipRole } from "@/lib/memberships/validators";
 import { handleRouteError } from "@/lib/http/handleRouteError";
+import { dispatchEvent } from "@/lib/events/dispatcher";
+import { guardRequest } from "@/lib/security/requestGuard";
 
 export async function PATCH(
     req: Request,
@@ -12,16 +14,22 @@ export async function PATCH(
     try {
         const { membershipId } = await params;
 
-        const user = requireSuperadmin(await getUserFromRequest());
+        const user = await guardRequest(req, {
+            requireAuth: true,
+            csrf: true,
+        });
+        requireSuperadmin(user);
 
         const body: unknown = await req.json();
         assertUpdateMembershipRole(body);
 
-        updateMembershipRole(
+        const result = updateMembershipRole(
             user.userId,
             membershipId,
             body.role
         );
+
+        await dispatchEvent(result.event, { actorId: user.userId });
 
         return NextResponse.json({ success: true });
     } catch (err) {

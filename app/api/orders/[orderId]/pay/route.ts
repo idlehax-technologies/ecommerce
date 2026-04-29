@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { getUserFromRequest } from "@/lib/auth";
+import { guardRequest } from "@/lib/security/requestGuard";
 import { requireTenant } from "@/lib/auth/guards";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import * as paymentsDomain from "@/lib/payments/domain";
-import { handleOrderEvent } from "@/lib/orders/reactions";
 
 export async function POST(
     req: Request,
@@ -14,17 +13,19 @@ export async function POST(
     try {
         const { orderId } = await params;
 
-        const rawUser = await getUserFromRequest();
-        const actor = requireTenant(rawUser);
+        const user = await guardRequest(req, {
+            requireAuth: true,
+            csrf: true,
+        });
+
+        const actor = requireTenant(user);
 
         const body = await req.json();
-
-        const { method } = body;
 
         const result = paymentsDomain.recordPayment(
             actor.tenantId,
             orderId,
-            method
+            body.method
         );
 
         return NextResponse.json({

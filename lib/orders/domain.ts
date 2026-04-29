@@ -1,8 +1,12 @@
 import { randomUUID } from "crypto";
+import type { DomainEvent } from "@/types/domainEvent";
 import type { Order, OrderItem } from "@/types/order";
-import type { OrderEvent } from "@/types/orderEvent";
 
-import { saveOrder, getOrder, listOrdersByTenant } from "./storage";
+import {
+    saveOrder,
+    getOrder,
+    listOrdersByTenant
+} from "./storage";
 
 import {
     OrderNotFoundError,
@@ -12,8 +16,9 @@ import {
     InvalidOrderTransitionError,
 } from "./errors";
 
-function validateOrderItems(items: OrderItem[]) {
+/* ---------------- VALIDATION ---------------- */
 
+function validateOrderItems(items: OrderItem[]) {
     if (!items || items.length === 0) {
         throw new EmptyOrderItemsError();
     }
@@ -32,40 +37,83 @@ function computeTotal(items: OrderItem[]): number {
     );
 }
 
+/* ---------------- TRANSITION ---------------- */
+
+function transition(
+    order: Order,
+    expected: Order["status"],
+    to: Order["status"]
+) {
+    if (order.status !== expected) {
+        throw new InvalidOrderTransitionError(order.status, to);
+    }
+
+    const allowed: Record<Order["status"], Order["status"][]> = {
+        RESERVED: ["PAID", "CANCELLED", "EXPIRED"],
+        PAID: ["PICKED_UP", "REFUNDED"],
+        PICKED_UP: [],
+        CANCELLED: [],
+        EXPIRED: [],
+        REFUNDED: [],
+    };
+
+    if (!allowed[expected].includes(to)) {
+        throw new InvalidOrderTransitionError(expected, to);
+    }
+
+    const from = order.status;
+
+    order.status = to;
+    order.updatedAt = new Date().toISOString();
+
+    saveOrder(order);
+
+    return { from, to };
+}
+
+/* ---------------- CREATE ---------------- */
+
 export function createOrder(
     tenantId: string,
     userId: string,
     items: OrderItem[]
-): { order: Order; event: OrderEvent } {
+): { order: Order; event: DomainEvent } {
 
     validateOrderItems(items);
 
-    const computedTotal = computeTotal(items);
+    const total = computeTotal(items);
 
-    if (computedTotal <= 0) {
+    if (total <= 0) {
         throw new OrderTotalMismatchError();
     }
+
+    const now = new Date().toISOString();
 
     const order: Order = {
         orderId: randomUUID(),
         tenantId,
         userId,
-        items: [...items],   // snapshot protection
-        total: computedTotal,
+        items: [...items],
+        total,
         currency: "INR",
-        paymentMethod: "CASH",
+        paymentMethod: "CASH", // or your default
         status: "RESERVED",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now,
     };
 
     saveOrder(order);
 
     return {
         order,
-        event: { type: "OrderCreated", order }
+        event: {
+            type: "OrderCreated",
+            order
+        }
     };
 }
+
+/* ---------------- READ ---------------- */
 
 export function getTenantOrder(
     tenantId: string,
@@ -84,124 +132,115 @@ export function getTenantOrder(
 export function listTenantOrders(
     tenantId: string
 ): Order[] {
-
     return listOrdersByTenant(tenantId);
 }
 
-export function listTenantOrdersForUser(
-    tenantId: string,
-    userId: string
-): Order[] {
-    return listOrdersByTenant(tenantId).filter(
-        (o) => o.userId === userId
-    );
-}
+/* ---------------- MUTATIONS ---------------- */
 
 /**
- * Lifecycle transition engine
+ * 🔴 IMPORTANT
+ * Payment domain must pass payment object
  */
-
-function transition(
-    order: Order,
-    expected: Order["status"],
-    to: Order["status"]
-) {
-
-    if (order.status !== expected) {
-        throw new InvalidOrderTransitionError(order.status, to);
-    }
-
-    const allowed: Record<Order["status"], Order["status"][]> = {
-        RESERVED: ["PAID", "CANCELLED", "EXPIRED"],
-        PAID: ["PICKED_UP", "REFUNDED"], // ✅ NEW
-        PICKED_UP: [],
-        CANCELLED: [],
-        EXPIRED: [],
-        REFUNDED: [], // ✅ NEW
-    };
-
-    if (!allowed[expected].includes(to)) {
-        throw new InvalidOrderTransitionError(expected, to);
-    }
-
-    order.status = to;
-    order.updatedAt = new Date().toISOString();
-
-    saveOrder(order);
-}
-
 export function markOrderPaid(
     tenantId: string,
     orderId: string,
-    method: Order["paymentMethod"]
-) {
+    method: Order["paymentMethod"],
+    payment: any
+): { order: Order; event: DomainEvent } {
+
     const order = getTenantOrder(tenantId, orderId);
+
+    const { from, to } = transition(order, "RESERVED", "PAID");
 
     order.paymentMethod = method;
 
-    transition(order, "RESERVED", "PAID");
-
     return {
         order,
-        event: undefined, // ✅ NO EVENT HERE
+        event: {
+            type: "OrderPaid",
+            order,
+            from,
+            to
+        }
     };
 }
 
 export function cancelOrder(
     tenantId: string,
     orderId: string
-): { order: Order; event: OrderEvent } {
+): { order: Order; event: DomainEvent } {
 
     const order = getTenantOrder(tenantId, orderId);
 
-    transition(order, "RESERVED", "CANCELLED");
+    const { from, to } = transition(order, "RESERVED", "CANCELLED");
 
     return {
         order,
-        event: { type: "OrderCancelled", order }
+        event: {
+            type: "OrderCancelled",
+            order,
+            from,
+            to
+        }
     };
 }
 
 export function expireOrder(
     tenantId: string,
     orderId: string
-) {
+): { order: Order; event: DomainEvent } {
 
     const order = getTenantOrder(tenantId, orderId);
 
-    transition(order, "RESERVED", "EXPIRED");
+    const { from, to } = transition(order, "RESERVED", "EXPIRED");
 
     return {
         order,
-        event: { type: "OrderExpired", order }
+        event: {
+            type: "OrderExpired",
+            order,
+            from,
+            to
+        }
     };
 }
 
 export function markOrderPickedUp(
     tenantId: string,
     orderId: string
-) {
+): { order: Order; event: DomainEvent } {
 
     const order = getTenantOrder(tenantId, orderId);
 
-    transition(order, "PAID", "PICKED_UP");
+    const { from, to } = transition(order, "PAID", "PICKED_UP");
 
     return {
         order,
-        event: { type: "OrderPickedUp", order }
+        event: {
+            type: "OrderPickedUp",
+            order,
+            from,
+            to
+        }
     };
 }
 
 export function refundOrder(
     tenantId: string,
     orderId: string
-) {
+): { order: Order; event: DomainEvent } {
+
     const order = getTenantOrder(tenantId, orderId);
 
-    transition(order, "PAID", "REFUNDED");
+    const { from, to } = transition(order, "PAID", "REFUNDED");
 
     return {
         order,
-        event: { type: "OrderRefunded", order }
+        event: {
+            type: "OrderRefunded",
+            order,
+            from,
+            to
+        }
     };
 }

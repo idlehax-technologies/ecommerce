@@ -1,15 +1,20 @@
 import { NextResponse } from "next/server";
-import { getUserFromRequest } from "@/lib/auth";
+import { guardRequest } from "@/lib/security/requestGuard";
 import { requireAccess, requireAuth } from "@/lib/auth/guards";
-import { requestMembership, listMembershipsEnriched, listAllMembershipsEnriched } from "@/lib/memberships/domain";
+import {
+    requestMembership,
+    listMembershipsEnriched,
+    listAllMembershipsEnriched
+} from "@/lib/memberships/domain";
 import { assertRequestMembership } from "@/lib/memberships/validators";
 import { handleRouteError } from "@/lib/http/handleRouteError";
+import { dispatchEvent } from "@/lib/events/dispatcher";
 
-export async function GET() {
+export async function GET(req: Request) {
     try {
-        const rawUser = await getUserFromRequest();
+        const user = await guardRequest(req, { requireAuth: true });
 
-        const ctx = requireAccess(rawUser, ["staff"]);
+        const ctx = requireAccess(user, ["staff"]);
 
         const data =
             ctx.type === "superadmin"
@@ -24,15 +29,20 @@ export async function GET() {
 
 export async function POST(req: Request) {
     try {
-        const user = requireAuth(await getUserFromRequest());
+        const user = await guardRequest(req, {
+            requireAuth: true,
+            csrf: true,
+        });
 
         const body: unknown = await req.json();
         assertRequestMembership(body);
 
-        const m = requestMembership(user.userId, body.tenantId);
+        const result = requestMembership(user.userId, body.tenantId);
 
-        return NextResponse.json(m);
-    } catch (err: unknown) {
+        await dispatchEvent(result.event, { actorId: user.userId });
+
+        return NextResponse.json(result.membership);
+    } catch (err) {
         return handleRouteError(err);
     }
 }

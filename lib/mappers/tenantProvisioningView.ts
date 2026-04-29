@@ -10,13 +10,9 @@ import type { TenantInventory } from "@/types/tenantInventory";
  */
 export type TenantProvisioningRow = {
     product: Product;
-
     enabled: boolean;
     stock: number;
-
-    /**
-     * Indicates whether a TenantInventory record exists.
-     */
+    reserved: number;   // ADD THIS
     isProvisioned: boolean;
 };
 
@@ -29,6 +25,7 @@ export function toTenantProvisioningRow(
             product,
             enabled: false,
             stock: 0,
+            reserved: 0,
             isProvisioned: false,
         };
     }
@@ -37,6 +34,7 @@ export function toTenantProvisioningRow(
         product,
         enabled: provision.enabled,
         stock: provision.stock,
+        reserved: provision.reserved,
         isProvisioned: true,
     };
 }
