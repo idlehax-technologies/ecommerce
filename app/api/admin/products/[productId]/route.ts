@@ -13,16 +13,17 @@ import { validateUpdateProduct } from "@/lib/products/validators";
 import type { UpdateProductDTO } from "@/types/product";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
+import { guardRequest } from "@/lib/security/requestGuard";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
     const { productId } = await params;
 
-    const rawUser = await getUserFromRequest();
-    requireSuperadmin(rawUser);
+    const user = await guardRequest(req, { requireAuth: true });
+    requireSuperadmin(user);
 
     const product = await getPlatformProduct(productId);
 
@@ -39,8 +40,11 @@ export async function PATCH(
   try {
     const { productId } = await params;
 
-    const rawUser = await getUserFromRequest();
-    requireSuperadmin(rawUser);
+    const user = await guardRequest(req, {
+      requireAuth: true,
+      csrf: true,
+    });
+    requireSuperadmin(user);
 
     const body: unknown = await req.json();
     validateUpdateProduct(body);
@@ -56,14 +60,17 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
     const { productId } = await params;
 
-    const rawUser = await getUserFromRequest();
-    requireSuperadmin(rawUser);
+    const user = await guardRequest(req, {
+      requireAuth: true,
+      csrf: true,
+    });
+    requireSuperadmin(user);
 
     await deletePlatformProduct(productId);
 

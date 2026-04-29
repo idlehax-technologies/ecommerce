@@ -5,11 +5,16 @@ import { mapOtpVerify } from "@/lib/auth/mappers";
 import { verifyOtp } from "@/lib/auth/domain";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
+import { guardRequest } from "@/lib/security/requestGuard";
 
 const SEVEN_DAYS = 60 * 60 * 24 * 7;
 
 export async function POST(req: Request) {
     try {
+        await guardRequest(req, {
+            rateLimitKey: "otp_verify", // ✅ NEW
+        });
+
         const body: unknown = await req.json();
 
         assertOtpVerify(body);

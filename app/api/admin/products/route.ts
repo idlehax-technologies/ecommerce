@@ -14,11 +14,12 @@ import { validateCreateProduct } from "@/lib/products/validators";
 import type { CreateProductDTO } from "@/types/product";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
+import { guardRequest } from "@/lib/security/requestGuard";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const rawUser = await getUserFromRequest();
-    requireSuperadmin(rawUser);
+    const user = await guardRequest(req, { requireAuth: true });
+    requireSuperadmin(user);
 
     const products = await listProductsForPlatform();
 
@@ -30,8 +31,11 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const rawUser = await getUserFromRequest();
-    requireSuperadmin(rawUser);
+    const user = await guardRequest(req, {
+      requireAuth: true,
+      csrf: true,
+    });
+    requireSuperadmin(user);
 
     const body: unknown = await req.json();
     validateCreateProduct(body);

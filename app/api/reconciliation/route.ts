@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
 
-import { getUserFromRequest } from "@/lib/auth";
+import { guardRequest } from "@/lib/security/requestGuard";
 import { requireTenant, requireMembershipRole } from "@/lib/auth/guards";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import { getReconciliationReport } from "@/lib/reconciliation/service";
 
-export async function GET() {
+export async function GET(req: Request) {
     try {
-        const rawUser = await getUserFromRequest();
+        const user = await guardRequest(req, { requireAuth: true });
 
-        requireMembershipRole(rawUser, ["staff"]);
-        const actor = requireTenant(rawUser);
+        requireMembershipRole(user, ["staff"]);
+        const actor = requireTenant(user);
 
         const report = getReconciliationReport(actor.tenantId);
 

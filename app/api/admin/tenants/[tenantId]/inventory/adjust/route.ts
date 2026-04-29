@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { getUserFromRequest } from "@/lib/auth";
 import { requireSuperadmin } from "@/lib/auth/guards";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 import { adjustStock } from "@/lib/tenantInventory/adjustment";
+
+import { dispatchEvent } from "@/lib/events/dispatcher";
+import { guardRequest } from "@/lib/security/requestGuard";
 
 export async function POST(
     req: Request,
@@ -13,8 +15,11 @@ export async function POST(
     try {
         const { tenantId } = await params;
 
-        const rawUser = await getUserFromRequest();
-        const user = requireSuperadmin(rawUser);
+        const user = await guardRequest(req, {
+            requireAuth: true,
+            csrf: true,
+        });
+        requireSuperadmin(user);
 
         const body = await req.json();
 
@@ -24,7 +29,13 @@ export async function POST(
             request: body,
         });
 
-        return NextResponse.json(result);
+        if (result.event) {
+            await dispatchEvent(result.event, { actorId: user.userId });
+        }
+
+        return NextResponse.json({
+            updated: result.updated
+        });
     } catch (err) {
         return handleRouteError(err);
     }

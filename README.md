@@ -421,6 +421,10 @@ This enables support for real-world payment delays (UPI, card processing, etc.).
 - Profile completeness is enforced before membership creation
 - Superadmin has global visibility and can perform membership lifecycle actions across all tenants, including role upgrades via admin routes
 - System correctness is enforced by domain invariants, not by UI or route assumptions
+- Analytics is derived strictly from historical data (no live dependency)
+- Audit logs provide complete system traceability
+- Notifications are event-driven and idempotent
+- All requests are validated at the boundary before domain execution
 
 ---
 
@@ -437,7 +441,7 @@ bringing it closer to real-world transactional systems where payment confirmatio
 • Checkout application service converting carts into transactional orders
 • Order aggregate with strict tenant binding and snapshot item model
 • Lifecycle-driven order state machine
-• Domain event emission for cross-domain reactions
+• Typed domain event system with centralized dispatching, enabling cross-domain reactions, audit projection, and notification delivery
 • Payment domain with asynchronous confirmation boundary
 • Immutable payment recording with method tracking (CASH / UPI / CARD / NET_BANKING)
 • Manual cancel / expire / refund flows with strict state guard enforcement
@@ -982,11 +986,241 @@ Implications:
 
 ---
 
+## Step 13 — Tenant Analytics Service (Snapshot-Based Read Model)
+
+Completed.
+
+A tenant-scoped analytics service is introduced as a pure read model
+derived strictly from historical transactional data.
+
+### Design Principle
+
+Analytics must never depend on live product or inventory state.
+
+All metrics are computed from:
+
+- Orders
+- Order items (snapshot pricing)
+- Order lifecycle state
+
+### Capabilities introduced
+
+- Tenant-scoped sales aggregation
+- Revenue computation from immutable order totals
+- Inventory insights derived from order consumption patterns
+- SSR-compatible analytics endpoints
+- Deterministic read model (no side effects)
+
+### Data Model
+
+Analytics is computed from:
+
+Orders → Items → Snapshot price + quantity
+
+Not from:
+
+- Product catalog
+- TenantInventory (live state)
+
+### System guarantees
+
+- Historical correctness (no drift)
+- Reproducibility of metrics
+- Independence from mutable entities
+- Safe integration with audit and reconciliation layers
+
+### Architectural Role
+
+Step 13 establishes:
+
+- Read-model layer on top of transactional system
+- Foundation for dashboards and reporting
+- Clean separation between transactional truth and analytical projections
+
+---
+
+## Step 14 — Audit Logging Layer (Append-Only Event Projection)
+
+Completed.
+
+An append-only audit system is introduced as a cross-domain projection layer
+derived strictly from domain events.
+
+### Core Principle
+
+Every state-changing operation must emit a domain event,
+and every event must produce exactly one audit log entry.
+
+### Capabilities introduced
+
+- Append-only audit storage
+- Actor identity tracking (userId)
+- Tenant context tracking
+- Event-type normalization (ORDER_CREATED, MEMBERSHIP_APPROVED, etc.)
+- Explicit state transitions (from → to)
+- Structured metadata for domain-specific events
+
+### Event Coverage
+
+All lifecycle events are captured:
+
+- Orders (created, paid, cancelled, expired, picked up, refunded)
+- Membership lifecycle (requested, approved, rejected, revoked, role updated)
+- Inventory adjustments
+- Payment confirmations
+
+### Data Model
+
+Each audit entry contains:
+
+- eventType
+- actorId
+- tenantId
+- entity reference (orderId, membershipId, etc.)
+- from → to transition
+- metadata (domain-specific context)
+- timestamp
+
+### System guarantees
+
+- Immutable history (no updates or deletes)
+- One-to-one mapping between events and logs
+- Full timeline reconstruction capability
+- Cross-domain traceability
+
+### Architectural Role
+
+Step 14 introduces:
+
+- System observability
+- Compliance foundation
+- Debugging and forensics capability
+- Backbone for future governance layers
+
+---
+
+## Step 15 — Notification Service Abstraction (Event-Driven)
+
+Completed.
+
+A notification system is introduced as a pure event-driven projection layer.
+
+### Core Principle
+
+Notifications are derived strictly from domain events.
+No route or UI layer triggers notifications directly.
+
+### Capabilities introduced
+
+- Event → Notification mapping layer
+- Idempotent notification dispatch
+- Adapter-based delivery system
+- Channel abstraction (currently console-based delivery; external channels are adapter-extensible)
+- Reference-based linking (orderId, membershipId, etc.)
+
+### Notification Model
+
+Each notification contains:
+
+- notificationId
+- tenantId
+- userId
+- channel
+- title
+- message
+- reference (entity linkage)
+- createdAt
+
+### Supported Events
+
+Notifications are generated for:
+
+- Order lifecycle (created, paid, cancelled, expired, picked up, refunded)
+- Membership lifecycle (requested, approved, rejected, revoked)
+
+### Delivery Architecture
+
+- Dispatcher receives domain events
+- Mapper converts events → notifications
+- Adapter delivers per channel
+
+### System guarantees
+
+- No duplicate notifications (idempotent dispatch)
+- No direct UI-triggered side effects
+- Clean separation from domain logic
+- Future extensibility (email, push, etc.)
+
+### Architectural Role
+
+Step 15 introduces:
+
+- User-facing feedback layer
+- Event-driven side effects
+- Foundation for external integrations
+
+---
+
+## Step 16 — Security Hardening Pass (Request Boundary Enforcement)
+
+Completed.
+
+A system-wide security layer is introduced at the request boundary.
+
+### Core Principle
+
+All requests must pass through a centralized guard layer
+before reaching domain logic.
+
+### Capabilities introduced
+
+- Centralized request guard (`guardRequest`)
+- CSRF protection for all mutation routes
+- Cookie-based authentication enforcement
+- Rate limiting (global + OTP-specific)
+- Strict route-level authentication enforcement
+
+### Execution Model
+
+Request
+↓
+guardRequest (auth + rate limit + CSRF)
+↓
+Authorization guards (requireAccess / requireMembershipRole)
+↓
+Domain execution
+
+### Security Guarantees
+
+- No unauthenticated route access where not allowed
+- No CSRF vulnerability on mutations
+- No uncontrolled request flooding (rate limiting)
+- No bypass of guard-driven authorization
+
+### Authorization Audit Integrity
+
+- All mutations tied to authenticated actors
+- Actor identity consistently propagated
+- Alignment with audit logging (Step 14)
+
+### Architectural Role
+
+Step 16 establishes:
+
+- Secure execution boundary
+- Consistent request validation
+- Foundation for production-grade deployment
+
+---
+
 ### Architectural Position
 
-Step 11 → Detect inconsistencies  
-Step 12 → Monitor + Correct inventory safely  
+Step 11 → Detect inconsistencies
+Step 12 → Monitor + Correct inventory safely
 Step 13 → Analytics (read models on stable data)
+Step 14 → Audit logging (system traceability)
+Step 15 → Notifications (event-driven side effects)
+Step 16 → Security (request boundary enforcement)
 
 ---
 
@@ -1009,7 +1243,9 @@ This prevents carts from temporarily exceeding inventory availability.
 
 ### Domain Events
 
-Order lifecycle now emits domain events:
+The system emits typed domain events representing all state-changing operations.
+
+Order lifecycle emits:
 
 - `OrderCreated`
 - `OrderPaid`
@@ -1018,15 +1254,57 @@ Order lifecycle now emits domain events:
 - `OrderPickedUp`
 - `OrderRefunded`
 
-These events decouple the order domain from other system domains and establish integration points for:
+Additional domain events include:
 
-- inventory reconciliation
-- payment recording
-- notifications
-- audit logging
-- analytics
+- `PaymentConfirmed`
+- `MembershipRequested`
+- `MembershipApproved`
+- `MembershipRejected`
+- `MembershipRevoked`
+- `MembershipRoleUpdated`
+- `InventoryAdjusted`
 
-Application services now react to emitted domain events.
+These events decouple domains and establish integration points for:
+
+- inventory lifecycle reactions
+- payment → order synchronization
+- audit logging (event projection)
+- notifications (event-driven delivery)
+- analytics (read-model derivation)
+- reconciliation consistency checks
+
+Application services do not perform cross-domain side effects directly.  
+All side effects are derived from domain events through the dispatcher.
+
+---
+
+### Event Dispatching Layer
+
+All domain events are routed through a centralized dispatcher.
+
+Responsibilities:
+
+- Route events to reaction handlers (e.g., order lifecycle reactions)
+- Project events into audit logs
+- Trigger notification mapping and delivery
+
+Execution model:
+
+Domain emits event  
+↓  
+Central dispatcher receives event  
+↓  
+Reactions (side effects)  
+↓  
+Audit projection  
+↓  
+Notification projection
+
+System guarantees:
+
+- No direct side effects inside routes
+- All cross-domain reactions are event-driven
+- Audit and notifications remain consistent with domain state
 
 ---
 
@@ -1034,8 +1312,8 @@ Application services now react to emitted domain events.
 
 Events are constructed only by the domain that owns the relevant data:
 
-- Orders domain emits structural lifecycle events
-- Payments domain emits `OrderPaid` (because it owns payment data)
+- Orders domain emits structural lifecycle events (OrderCreated, OrderPaid, etc.)
+- Payments domain emits `PaymentConfirmed` (payment lifecycle event)
 
 This prevents invalid event construction and ensures type-safe domain boundaries.
 
@@ -1067,23 +1345,50 @@ Inventory Monitoring (low-stock detection)
 ↓
 Controlled Inventory Adjustment (platform-driven, invariant-safe corrections)
 ↓
-Audit Logging (immutable trace of all corrective actions)
+Analytics Layer (snapshot-based read model)
+↓
+Audit Logging (append-only event projection)
+↓
+Notification System (event-driven delivery)
+↓
+Security Layer (request boundary enforcement)
 
 ---
 
 # Upcoming Roadmap
 
-13. Tenant analytics service (snapshot-based read model for sales, revenue, and inventory metrics strictly using historical order data, never live product data)
-14. Audit logging layer (append-only, cross-domain event logging with actor identity, tenant context, and immutable write-event tracking aligned with domain actions)
-15. Notification service abstraction (event-driven notifications triggered strictly from domain events with idempotent dispatch and adapter-based delivery design)
-16. Security hardening pass (request-level protection via CSRF, cookies, rate limiting + authorization audit ensuring strict guard-driven role and tenant enforcement)
-17. Background job runner (idempotent, state-machine-safe scheduled execution for tasks like auto-expire of unpaid RESERVED orders with retry-safe design)
+17. Background job runner: Generic, idempotent, state-machine-safe asynchronous execution layer for lifecycle-driven domain jobs and event-driven side-effects, supporting scheduled domain transitions (e.g., auto-expire unpaid RESERVED orders, auto-expire unapproved PENDING memberships after timeout) and execution of side-effect intents (e.g., notifications), with retry safety, deduplication, and deterministic behavior, while preserving strict separation between domain logic, intent generation, and side-effect execution through adapter boundaries
 18. Data export service (tenant-scoped deterministic CSV generation aligned with reconciliation data ensuring snapshot correctness and pagination readiness)
 19. Multi-tenant isolation test suite (systematic validation of tenant boundaries including cross-tenant access attempts, concurrent operations, and leakage prevention)
 20. Performance pass (query-shape optimization, pagination enforcement, and projection safety to prepare for DB-backed execution without data over-fetching)
 21. Production readiness layer (Map → DB migration with transaction support, DB constraints, concurrency control, structured logging, observability, and deployment readiness)
 
 Each step builds on previously locked invariants.
+
+---
+
+# Completed Roadmap
+
+1. Checkout application service (tenant-scoped stock reservation + order creation from cart)
+2. Order aggregate implementation (domain-level order model with strict tenant binding)
+3. Order state machine enforcement (RESERVED → PAID → FULFILLED → CLOSED / EXPIRED / CANCELLED)
+4. Atomic stock reservation + deduction inside TenantInventory domain
+5. Payment recording domain (mode tracking: CASH / UPI / ONLINE, immutable payment log)
+6. Staff POS module under (tenant) runtime (direct order creation bypassing cart)
+7. Staff fulfillment dashboard (tenant-scoped order lifecycle management)
+8. Customer order history (SSR, tenant-bound)
+9. Order receipt generation (server-rendered printable view)
+10. Manual cancel / refund / expire flows with state guard enforcement
+11. Reconciliation system
+   A. Detection engine (read-only, tenant-scoped mismatch detection across orders, payments, and inventory with idempotent scans and deterministic reporting)
+   B. Resolution layer (manual/controlled correction flows for mismatches with invariant-safe adjustments and audit traceability)
+12. Inventory monitoring & control
+   A. Low-stock detection service (threshold-based, tenant-scoped monitoring using consistent inventory snapshots without mutating state)
+   B. Stock adjustment flows (admin-triggered, idempotent stock corrections within TenantInventory domain enforcing stock ≥ reserved invariants)
+13. Tenant analytics service (snapshot-based read model for sales, revenue, and inventory metrics strictly using historical order data, never live product data)
+14. Audit logging layer: Append-only, cross-domain audit system derived from domain events and aligned with domain actions, recording actor identity, tenant context, immutable event entries, and explicit state transitions (from → to) for all state-changing events (including role changes), where all state mutations must emit dedicated domain events that are projected into audit logs (one entry per event) with from/to populated, with structured metadata for domain-specific events (e.g., approval actions like approvedBy, approvedAt), enabling full historical reconstruction and timeline queries of all domain lifecycle events
+15. Notification service abstraction (event-driven notifications triggered strictly from domain events with idempotent dispatch and adapter-based delivery design)
+16. Security hardening pass (request-level protection via CSRF, cookies, rate limiting + authorization audit ensuring strict guard-driven role and tenant enforcement)
 
 ---
 
@@ -1180,7 +1485,10 @@ Each module is a **self-contained domain boundary**.
 - orders
 - payments
 - reconciliation
+- analytics
 - audit
+- notifications
+- security (implicit via requestGuard layer)
 
 ---
 
@@ -1514,15 +1822,21 @@ Future (Step 21):
 
 The domain modules represent the core business capabilities:
 
-- Auth
-- Tenants
-- Memberships
-- Profile
-- Products
-- TenantInventory
-- Cart
-- Checkout
-- Orders
+- Auth (identity and session management)
+- Tenants (tenant lifecycle and platform control)
+- Memberships (access, roles, and lifecycle)
+- Profiles (user data and completeness)
+- Products (platform-owned catalog)
+- TenantInventory (entitlement and stock management)
+- Cart (pre-order aggregation and validation)
+- Checkout (application service orchestration)
+- Orders (transactional state machine and lifecycle)
+- Payments (payment recording and confirmation)
+- Reconciliation (cross-aggregate consistency checks and resolution)
+- Analytics (snapshot-based read models)
+- Audit (append-only event traceability)
+- Notifications (event-driven user communication)
+- Security (request boundary enforcement via guardRequest: auth, CSRF, rate limiting)
 
 ---
 

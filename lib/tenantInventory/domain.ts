@@ -2,6 +2,7 @@ import { tenantInventoryStore } from "./storage";
 import { toNewProvision, applyProvisionPatch } from "./mappers";
 import { requireProvision } from "./guards";
 import {
+    CannotDisableWithActiveReservationsError,
     InvalidQuantityError,
     ProvisionNotFoundError,
 } from "./errors";
@@ -35,8 +36,13 @@ export async function provisionProduct(
     }
 
     const updated = applyProvisionPatch(existing, dto);
-    tenantInventoryStore.save(updated);
 
+    // NEW INVARIANT
+    if (existing.enabled && !dto.enabled && existing.reserved > 0) {
+        throw new CannotDisableWithActiveReservationsError(dto.productId);
+    }
+
+    tenantInventoryStore.save(updated);
     return updated;
 }
 

@@ -1,32 +1,41 @@
 import { NextResponse } from "next/server";
 
-import { getUserFromRequest } from "@/lib/auth";
+import { guardRequest } from "@/lib/security/requestGuard";
 import { requireTenant, requireMembershipRole } from "@/lib/auth/guards";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import { executePOS } from "@/lib/pos/service";
+import { dispatchEvent } from "@/lib/events/dispatcher";
 
 export async function POST(req: Request) {
     try {
-        const rawUser = await getUserFromRequest();
+        const user = await guardRequest(req, {
+            requireAuth: true,
+            csrf: true,
+        });
 
-        requireMembershipRole(rawUser, ["staff"]);
-        const actor = requireTenant(rawUser);
+        requireMembershipRole(user, ["staff"]);
+        const actor = requireTenant(user);
 
         const body = await req.json();
 
-        const order = await executePOS({
+        const result = await executePOS({
             tenantId: actor.tenantId,
             staffId: actor.userId,
             items: body.items,
             paymentMethod: body.paymentMethod,
         });
 
+        for (const event of result.events) {
+            await dispatchEvent(event, { actorId: actor.userId });
+        }
+
         return NextResponse.json({
             success: true,
-            orderId: order.orderId,
+            orderId: result.order.orderId,
         });
+
     } catch (err) {
         return handleRouteError(err);
     }

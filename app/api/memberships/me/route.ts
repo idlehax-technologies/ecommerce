@@ -1,12 +1,11 @@
-import { getUserFromRequest } from "@/lib/auth";
-import { requireAuth } from "@/lib/auth/guards";
+import { NextResponse } from "next/server";
+import { guardRequest } from "@/lib/security/requestGuard";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 import { listUserMembershipsEnriched } from "@/lib/memberships/domain";
-import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(req: Request) {
     try {
-        const user = requireAuth(await getUserFromRequest());
+        const user = await guardRequest(req, { requireAuth: true });
 
         const data = listUserMembershipsEnriched(user.userId);
 

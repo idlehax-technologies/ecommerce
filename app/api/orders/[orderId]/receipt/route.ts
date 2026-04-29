@@ -1,21 +1,17 @@
-import { NextResponse } from "next/server";
-
-import { getUserFromRequest } from "@/lib/auth";
-import { requireTenant, requireAuth } from "@/lib/auth/guards";
+import { guardRequest } from "@/lib/security/requestGuard";
+import { requireTenant } from "@/lib/auth/guards";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import { getTenantOrder } from "@/lib/orders/domain";
 
-// ⚠️ uses built-in Response (no external lib)
 export async function GET(
-    _req: Request,
+    req: Request,
     { params }: { params: Promise<{ orderId: string }> }
 ) {
     try {
         const { orderId } = await params;
 
-        const rawUser = await getUserFromRequest();
-        const user = requireAuth(rawUser);
+        const user = await guardRequest(req, { requireAuth: true });
         const actor = requireTenant(user);
 
         const order = getTenantOrder(actor.tenantId, orderId);

@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-import { getUserFromRequest } from "@/lib/auth";
 import { signToken } from "@/lib/jwt";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 import { requireAssumedSession } from "@/lib/auth/guards";
+import { guardRequest } from "@/lib/security/requestGuard";
 
 const SEVEN_DAYS = 60 * 60 * 24 * 7;
 
-export async function POST() {
+export async function POST(req: Request) {
     try {
-        const rawUser = await getUserFromRequest();
+        const rawUser = await guardRequest(req, {
+            requireAuth: true,
+            csrf: true,
+        })
         const user = requireAssumedSession(rawUser);
 
         const token = signToken({
