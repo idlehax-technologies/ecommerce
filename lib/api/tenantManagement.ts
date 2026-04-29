@@ -1,32 +1,24 @@
-// lib/api/tenantManagement.ts
-
-async function handle(res: Response) {
-    if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error ?? "Request failed");
-    }
-    return res.json();
-}
+import { apiFetch } from "./fetch";
 
 export const tenantAdminApi = {
     create: (body: { name: string }) =>
-        fetch("/api/admin/tenants", {
+        apiFetch("/api/admin/tenants", {
             method: "POST",
             body: JSON.stringify(body),
-        }).then(handle),
+        }),
 
     list: () =>
-        fetch("/api/admin/tenants").then(handle),
+        apiFetch("/api/admin/tenants"),
 
     get: (tenantId: string) =>
-        fetch(`/api/admin/tenants/${tenantId}`).then(handle),
+        apiFetch(`/api/admin/tenants/${tenantId}`),
 
     activate: (tenantId: string) =>
-        fetch(`/api/admin/tenants/${tenantId}/activate`, { method: "POST" }).then(handle),
+        apiFetch(`/api/admin/tenants/${tenantId}/activate`, { method: "POST" }),
 
     suspend: (tenantId: string) =>
-        fetch(`/api/admin/tenants/${tenantId}/suspend`, { method: "POST" }).then(handle),
+        apiFetch(`/api/admin/tenants/${tenantId}/suspend`, { method: "POST" }),
 
     archive: (tenantId: string) =>
-        fetch(`/api/admin/tenants/${tenantId}/archive`, { method: "POST" }).then(handle),
+        apiFetch(`/api/admin/tenants/${tenantId}/archive`, { method: "POST" }),
 };

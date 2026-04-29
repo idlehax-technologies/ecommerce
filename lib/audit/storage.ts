@@ -1,18 +1,26 @@
 import type { AuditLog } from "@/types/audit";
 
-const globalForAudit = globalThis as unknown as {
+type GlobalAudit = typeof globalThis & {
     __auditLogs?: AuditLog[];
 };
+
+const globalForAudit = globalThis as GlobalAudit;
 
 const store: AuditLog[] =
     globalForAudit.__auditLogs ?? [];
 
 globalForAudit.__auditLogs = store;
 
-export function saveAudit(log: AuditLog) {
+// 🔴 PRIVATE — NOT EXPORTED
+function appendAudit(log: AuditLog) {
     store.push(log);
 }
 
+// 🔴 READ ONLY API
 export function listAuditByTenant(tenantId: string): AuditLog[] {
     return store.filter(l => l.tenantId === tenantId);
 }
+
+// 🔴 INTERNAL EXPORT (ONLY FOR PROJECTOR)
+// This keeps it out of public surface but usable internally
+export const __internal_appendAudit = appendAudit;

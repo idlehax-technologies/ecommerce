@@ -46,3 +46,9 @@ export class InventoryInvariantViolationError extends TenantInventoryError {
         super(message);
     }
 }
+
+export class CannotDisableWithActiveReservationsError extends TenantInventoryError {
+    constructor(productId: string) {
+        super(`Cannot disable product ${productId} while reservations exist`);
+    }
+}

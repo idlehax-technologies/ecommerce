@@ -5,87 +5,77 @@ import * as tenantInventoryDomain from "@/lib/tenantInventory/domain";
 import { cartItemToOrderItem } from "@/lib/orders/mappers";
 import { requireCartNotEmpty } from "./guards";
 
-import { handleOrderEvent } from "@/lib/orders/reactions";
-
 import type { CheckoutInput } from "@/types/checkout";
 import type { Order } from "@/types/order";
+import type { DomainEvent } from "@/types/domainEvent";
+
+/**
+ * CHECKOUT APPLICATION SERVICE
+ *
+ * Responsibilities:
+ * - orchestrate cart → order flow
+ * - reserve inventory BEFORE order creation
+ * - rollback on failure
+ * - clear cart AFTER success
+ *
+ * MUST NOT:
+ * - execute side-effects (events, audit, reactions)
+ * - bypass domain invariants
+ *
+ * Event execution is delegated to route → dispatcher
+ */
 
 export async function executeCheckout(
     input: CheckoutInput
-): Promise<Order> {
+): Promise<{ order: Order; event: DomainEvent }> {
 
     const actor = { tenantId: input.tenantId } as any;
 
+    // STEP 1 — Load cart
     const cart = cartDomain.getCart(actor);
 
     requireCartNotEmpty(cart);
 
     const orderItems = cart.items.map(cartItemToOrderItem);
 
-    /**
-     * STEP 1
-     * Reserve inventory BEFORE creating order
-     */
-
+    // STEP 2 — Reserve inventory BEFORE order creation
     for (const item of orderItems) {
-
         tenantInventoryDomain.reserveStock(
             input.tenantId,
             item.productId,
             item.quantity
         );
-
     }
 
-    /**
-     * STEP 2
-     * Create order only after inventory secured
-     */
-
-    let order;
+    let result: { order: Order; event: DomainEvent };
 
     try {
-
-        const result = ordersDomain.createOrder(
+        // STEP 3 — Create order AFTER inventory secured
+        result = ordersDomain.createOrder(
             input.tenantId,
             input.userId,
             orderItems
         );
 
-        order = result.order;
-
-        /**
-         * Lifecycle reactions now handled
-         * by the orders module
-         */
-
-        await handleOrderEvent(result.event);
-
     } catch (err) {
 
-        /**
-         * Rollback reservations if order creation fails
-         */
-
+        // STEP 4 — Rollback reservation on failure
         for (const item of orderItems) {
-
             tenantInventoryDomain.releaseStock(
                 input.tenantId,
                 item.productId,
                 item.quantity
             );
-
         }
 
         throw err;
     }
 
-    /**
-     * STEP 3
-     * Clear cart
-     */
-
+    // STEP 5 — Clear cart AFTER successful order creation
     cartDomain.clearCart(actor);
 
-    return order;
+    // 🚨 CRITICAL: DO NOT execute event here
+    // Event execution must happen in route via dispatchEvent
+
+    return result;
 }

@@ -4,6 +4,13 @@ import { createContext, useContext, useEffect, useState } from "react";
 import type { AuthState, AuthUser } from "@/types/auth";
 import * as api from "@/lib/api/auth";
 
+export function getCsrfToken(): string | null {
+  return document.cookie
+    .split("; ")
+    .find(c => c.startsWith("csrf_token="))
+    ?.split("=")[1] ?? null;
+}
+
 interface Ctx extends AuthState {
   requestOtp: (p: string) => Promise<void>;
   verifyOtp: (p: string, c: string) => Promise<void>;

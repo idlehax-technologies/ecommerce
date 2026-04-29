@@ -1,32 +1,39 @@
 import { NextResponse } from "next/server";
 
-import { getUserFromRequest } from "@/lib/auth";
+import { guardRequest } from "@/lib/security/requestGuard";
 import { requireTenant } from "@/lib/auth/guards";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import * as paymentsDomain from "@/lib/payments/domain";
-import { handleOrderEvent } from "@/lib/orders/reactions";
+import { dispatchEvent } from "@/lib/events/dispatcher";
 
 export async function POST(
-    _req: Request,
+    req: Request,
     { params }: { params: Promise<{ orderId: string }> }
 ) {
     try {
         const { orderId } = await params;
 
-        const rawUser = await getUserFromRequest();
-        const actor = requireTenant(rawUser);
+        const user = await guardRequest(req, {
+            requireAuth: true,
+            csrf: true,
+        });
+
+        const actor = requireTenant(user);
 
         const result = paymentsDomain.confirmPayment(
             actor.tenantId,
             orderId
         );
 
-        if (result.event) {
-            await handleOrderEvent(result.event);
+        for (const event of result.events) {
+            await dispatchEvent(event, { actorId: actor.userId });
         }
 
-        return NextResponse.json(result);
+        return NextResponse.json({
+            payment: result.payment,
+            order: result.order,
+        });
 
     } catch (err) {
         return handleRouteError(err);

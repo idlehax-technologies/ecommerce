@@ -38,6 +38,7 @@ export default function TenantInventoryTable({ tenantId, rows, canEdit }: Props)
                     <TableCell>Status</TableCell>
                     <TableCell>Enabled</TableCell>
                     <TableCell>Stock</TableCell>
+                    <TableCell>Reserved</TableCell>
                 </TableRow>
             </TableHead>
 
@@ -86,6 +87,10 @@ export default function TenantInventoryTable({ tenantId, rows, canEdit }: Props)
                             ) : (
                                 <Typography>{row.stock}</Typography>
                             )}
+                        </TableCell>
+
+                        <TableCell>
+                            <Typography>{row.reserved}</Typography>
                         </TableCell>
                     </TableRow>
                 ))}

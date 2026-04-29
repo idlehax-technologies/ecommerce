@@ -1,23 +1,19 @@
-// app/api/admin/tenants/[tenantId]/route.ts
-
 import { NextResponse } from "next/server";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 import { getTenantById } from "@/lib/tenants/service";
 
-/**
- * Transport Adapter Only
- * ----------------------
- * - No authorization logic here
- * - No domain orchestration here
- * - Delegates entirely to service layer
- */
+import { guardRequest } from "@/lib/security/requestGuard";
+import { requireSuperadmin } from "@/lib/auth/guards";
 
 export async function GET(
-    _: Request,
+    req: Request,
     { params }: { params: Promise<{ tenantId: string }> }
 ) {
     try {
         const { tenantId } = await params;
+
+        const user = await guardRequest(req, { requireAuth: true });
+        requireSuperadmin(user);
 
         const tenant = await getTenantById(tenantId);
 

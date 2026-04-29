@@ -5,16 +5,17 @@ import { requireSuperadmin } from "@/lib/auth/guards";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 import { getLowStockReport } from "@/lib/tenantInventory/lowStockService";
+import { guardRequest } from "@/lib/security/requestGuard";
 
 export async function GET(
-    _: Request,
+    req: Request,
     { params }: { params: Promise<{ tenantId: string }> }
 ) {
     try {
         const { tenantId } = await params;
 
-        const rawUser = await getUserFromRequest();
-        requireSuperadmin(rawUser);
+        const user = await guardRequest(req, { requireAuth: true });
+        requireSuperadmin(user);
 
         const report = getLowStockReport(tenantId);
 

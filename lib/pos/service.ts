@@ -2,10 +2,10 @@ import * as ordersDomain from "@/lib/orders/domain";
 import * as tenantInventoryDomain from "@/lib/tenantInventory/domain";
 import * as paymentsDomain from "@/lib/payments/domain";
 
-import { handleOrderEvent } from "@/lib/orders/reactions";
 import { getProduct } from "@/lib/products/domain";
 
-import type { OrderItem } from "@/types/order";
+import type { Order, OrderItem } from "@/types/order";
+import type { DomainEvent } from "@/types/domainEvent";
 
 export type POSItemInput = {
     productId: string;
@@ -19,14 +19,17 @@ export type POSInput = {
     paymentMethod?: "CASH" | "UPI" | "CARD" | "NET_BANKING";
 };
 
-export async function executePOS(input: POSInput) {
+export async function executePOS(input: POSInput): Promise<{
+    order: Order & { placedByStaffId: string };
+    events: DomainEvent[];
+}> {
     if (!input.items.length) {
         throw new Error("POS requires items");
     }
 
     const orderItems: OrderItem[] = [];
 
-    // 🔥 Build snapshot items
+    // build snapshot
     for (const item of input.items) {
         const product = await getProduct(item.productId);
 
@@ -38,7 +41,7 @@ export async function executePOS(input: POSInput) {
         });
     }
 
-    // 🔥 Reserve stock first
+    // reserve stock
     for (const item of orderItems) {
         tenantInventoryDomain.reserveStock(
             input.tenantId,
@@ -47,24 +50,57 @@ export async function executePOS(input: POSInput) {
         );
     }
 
-    let order;
-
     try {
-        const result = ordersDomain.createOrder(
-            input.tenantId,
-            input.staffId,
-            orderItems
-        );
+        const { order, event: orderCreatedEvent } =
+            ordersDomain.createOrder(
+                input.tenantId,
+                input.staffId,
+                orderItems
+            );
 
-        order = {
-            ...result.order,
+        const enrichedOrder: Order & { placedByStaffId: string } = {
+            ...order,
             placedByStaffId: input.staffId,
         };
 
-        await handleOrderEvent(result.event);
+        const events: DomainEvent[] = [orderCreatedEvent];
+
+        // payment flow (2-step)
+        if (input.paymentMethod) {
+            // STEP 1 — create payment (PENDING)
+            paymentsDomain.recordPayment(
+                input.tenantId,
+                order.orderId,
+                input.paymentMethod
+            );
+
+            // STEP 2 — confirm payment (returns BOTH events)
+            const paymentResult = paymentsDomain.confirmPayment(
+                input.tenantId,
+                order.orderId
+            );
+
+            // include BOTH events
+            events.push(...paymentResult.events);
+
+            const enrichedPaidOrder: Order & { placedByStaffId: string } = {
+                ...paymentResult.order,
+                placedByStaffId: input.staffId,
+            };
+
+            return {
+                order: enrichedPaidOrder,
+                events,
+            };
+        }
+
+        return {
+            order: enrichedOrder,
+            events,
+        };
 
     } catch (err) {
-        // rollback reservations
+        // rollback reservation
         for (const item of orderItems) {
             tenantInventoryDomain.releaseStock(
                 input.tenantId,
@@ -74,23 +110,4 @@ export async function executePOS(input: POSInput) {
         }
         throw err;
     }
-
-    // 🔥 Optional immediate payment
-    if (input.paymentMethod) {
-        const paymentResult = paymentsDomain.recordPayment(
-            input.tenantId,
-            order.orderId,
-            input.paymentMethod
-        );
-
-        await handleOrderEvent({
-            type: "OrderPaid",
-            order: paymentResult.order,
-            payment: paymentResult.payment,
-        });
-
-        return paymentResult.order;
-    }
-
-    return order;
 }

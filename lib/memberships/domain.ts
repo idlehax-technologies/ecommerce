@@ -1,6 +1,8 @@
 import { membershipStore } from "./storage";
 import { toNewMembership } from "./mappers";
 import type { Membership } from "@/types/membership";
+import type { DomainEvent } from "@/types/domainEvent";
+
 import {
     assertDoesNotExist,
     assertExists,
@@ -8,9 +10,11 @@ import {
     assertVisible,
     requireOwnership,
 } from "./guards";
+
 import { authStore } from "../auth/storage";
 import { profileStore } from "../profiles/storage";
 import { tenantStore } from "../tenants/storage";
+
 import { AccessActor } from "@/types/auth";
 import { assertCompleteProfile } from "../profiles/guards";
 
@@ -20,7 +24,6 @@ const EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function expirePendingMemberships(): void {
     const now = Date.now();
-
     const all = membershipStore.getAll();
 
     for (const m of all) {
@@ -36,25 +39,21 @@ export function expirePendingMemberships(): void {
     }
 }
 
-/* ---------------- CORE ---------------- */
+/* ---------------- CORE (MUTATIONS) ---------------- */
 
 export function requestMembership(
     userId: string,
     tenantId: string
-): Membership {
-    expirePendingMemberships(); // ✅ ensure correctness
+): { membership: Membership; event: DomainEvent } {
+
+    expirePendingMemberships();
 
     const profile = profileStore.get(userId);
-
     if (!profile) {
         throw new Error("Profile must be completed before requesting membership");
     }
 
-    assertCompleteProfile(profile); // 🔴 critical fix
-
-    if (!profile) {
-        throw new Error("Profile must be completed before requesting membership");
-    }
+    assertCompleteProfile(profile);
 
     const existing = membershipStore
         .listByUser(userId)
@@ -68,53 +67,142 @@ export function requestMembership(
 
     const m = toNewMembership(userId, tenantId);
     membershipStore.save(m);
-    return m;
+
+    return {
+        membership: m,
+        event: {
+            type: "MembershipRequested",
+            membership: m
+        }
+    };
 }
 
-export function approveMembership(actor: AccessActor, membershipId: string) {
+export function approveMembership(
+    actor: AccessActor,
+    membershipId: string
+): { membership: Membership; event: DomainEvent } {
+
     const m = membershipStore.get(membershipId);
     assertExists(m);
 
     assertVisible(actor, m);
     assertStatus(m, "PENDING");
+
+    const from = m.status;
 
     m.status = "APPROVED";
     m.updatedAt = new Date().toISOString();
     membershipStore.save(m);
+
+    return {
+        membership: m,
+        event: {
+            type: "MembershipApproved",
+            membership: m,
+            from,
+            to: "APPROVED"
+        }
+    };
 }
 
-export function rejectMembership(actor: AccessActor, membershipId: string) {
+export function rejectMembership(
+    actor: AccessActor,
+    membershipId: string
+): { membership: Membership; event: DomainEvent } {
+
     const m = membershipStore.get(membershipId);
     assertExists(m);
 
     assertVisible(actor, m);
     assertStatus(m, "PENDING");
 
+    const from = m.status;
+
     m.status = "REJECTED";
     m.updatedAt = new Date().toISOString();
     membershipStore.save(m);
+
+    return {
+        membership: m,
+        event: {
+            type: "MembershipRejected",
+            membership: m,
+            from,
+            to: "REJECTED"
+        }
+    };
 }
 
-export function revokeMembership(actor: AccessActor, membershipId: string) {
+export function revokeMembership(
+    actor: AccessActor,
+    membershipId: string
+): { membership: Membership; event: DomainEvent } {
+
     const m = membershipStore.get(membershipId);
     assertExists(m);
 
     assertVisible(actor, m);
     assertStatus(m, "APPROVED");
 
+    const from = m.status;
+
     m.status = "REVOKED";
     m.updatedAt = new Date().toISOString();
     membershipStore.save(m);
+
+    return {
+        membership: m,
+        event: {
+            type: "MembershipRevoked",
+            membership: m,
+            from,
+            to: "REVOKED"
+        }
+    };
 }
 
-export function getActiveMembership(
-    userId: string,
-    membershipId: string
-) {
-    expirePendingMemberships(); // ✅ important
+export function updateMembershipRole(
+    actorUserId: string,
+    membershipId: string,
+    newRole: Membership["role"]
+): { membership: Membership; event: DomainEvent } {
 
     const m = membershipStore.get(membershipId);
+    assertExists(m);
 
+    if (m.userId === actorUserId) {
+        throw new Error("Cannot modify your own role");
+    }
+
+    assertStatus(m, "APPROVED");
+
+    if (m.role === newRole) {
+        throw new Error("Role already set");
+    }
+
+    const from = m.role;
+
+    m.role = newRole;
+    m.updatedAt = new Date().toISOString();
+    membershipStore.save(m);
+
+    return {
+        membership: m,
+        event: {
+            type: "MembershipRoleUpdated",
+            membership: m,
+            from,
+            to: newRole
+        }
+    };
+}
+
+/* ---------------- READ METHODS (UNCHANGED) ---------------- */
+
+export function getActiveMembership(userId: string, membershipId: string) {
+    expirePendingMemberships();
+
+    const m = membershipStore.get(membershipId);
     assertExists(m);
     requireOwnership(m, userId);
     assertStatus(m, "APPROVED");
@@ -124,7 +212,6 @@ export function getActiveMembership(
 
 export function listUserMemberships(userId: string) {
     expirePendingMemberships();
-
     return membershipStore.listByUser(userId);
 }
 
@@ -144,10 +231,7 @@ export function getMembership(id: string) {
     return m;
 }
 
-export function selectMembership(
-    userId: string,
-    membershipId: string
-) {
+export function selectMembership(userId: string, membershipId: string) {
     expirePendingMemberships();
 
     const m = membershipStore.get(membershipId);
@@ -164,7 +248,6 @@ export function selectMembership(
 
 export function listAllMemberships() {
     expirePendingMemberships();
-
     return membershipStore.getAll();
 }
 
@@ -186,33 +269,7 @@ export function getAdminMembershipForTenant(tenantId: string) {
     return m;
 }
 
-export function updateMembershipRole(
-    actorUserId: string,
-    membershipId: string,
-    newRole: Membership["role"]
-) {
-    const m = membershipStore.get(membershipId);
-
-    assertExists(m);
-
-    // ❌ self-upgrade not allowed
-    if (m.userId === actorUserId) {
-        throw new Error("Cannot modify your own role");
-    }
-
-    // ❌ must be approved
-    assertStatus(m, "APPROVED");
-
-    // ❌ no-op
-    if (m.role === newRole) {
-        throw new Error("Role already set");
-    }
-
-    m.role = newRole;
-    m.updatedAt = new Date().toISOString();
-
-    membershipStore.save(m);
-}
+/* ---------------- ENRICHED (UNCHANGED) ---------------- */
 
 export function listMembershipsEnriched(tenantId: string) {
     expirePendingMemberships();

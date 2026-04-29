@@ -1,24 +1,28 @@
+import { apiFetch } from "./fetch";
 import type { StockAdjustmentRequest } from "@/types/stockAdjustment";
-import type { TenantInventory } from "@/types/tenantInventory";
+
+type AdjustedStock = {
+    productId: string;
+    stock: number;
+    reserved: number;
+};
+
+type AdjustResponse = {
+    updated: AdjustedStock;
+};
 
 export async function adjustStock(
     tenantId: string,
     payload: StockAdjustmentRequest
-): Promise<TenantInventory> {
+): Promise<AdjustedStock> {
 
-    const res = await fetch(
+    const res = await apiFetch<AdjustResponse>(
         `/api/admin/tenants/${tenantId}/inventory/adjust`,
         {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
             body: JSON.stringify(payload),
         }
     );
 
-    if (!res.ok) {
-        throw new Error("Stock adjustment failed");
-    }
-
-    return res.json();
+    return res.updated; // ✅ FIX
 }
