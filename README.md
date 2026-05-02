@@ -425,6 +425,12 @@ This enables support for real-world payment delays (UPI, card processing, etc.).
 - Audit logs provide complete system traceability
 - Notifications are event-driven and idempotent
 - All requests are validated at the boundary before domain execution
+- All read operations are bounded via explicit query limits
+- No unbounded dataset is returned from API endpoints
+- Background execution is idempotent and invariant-safe
+- Tenant isolation is enforced at domain level and verified through automated test suites
+- Data export reflects deterministic snapshot state, not live mutable state
+- Data export is the only controlled exception to bounded reads, as it requires full snapshot extraction
 
 ---
 
@@ -1213,14 +1219,209 @@ Step 16 establishes:
 
 ---
 
+## Step 17 — Background Job Runner (Asynchronous Execution Layer)
+
+Completed.
+
+A generic, idempotent background job system is introduced for executing
+asynchronous domain workflows and lifecycle-driven transitions.
+
+### Core Principle
+
+All asynchronous execution must be:
+
+- idempotent
+- deterministic
+- invariant-safe
+- decoupled from domain logic
+
+### Capabilities introduced
+
+- Job runner abstraction for async execution
+- Central execution loop for processing registered jobs
+- Scheduled lifecycle transitions:
+  - auto-expire RESERVED unpaid orders
+  - auto-expire PENDING memberships
+- Event-driven side-effect execution (notifications)
+- Retry-safe execution model
+- Deduplication via idempotency guarantees
+- Separation of:
+  - domain intent generation
+  - side-effect execution (adapter-driven)
+
+### System guarantees
+
+- No duplicate side effects
+- Safe retry behavior
+- No violation of domain invariants
+- Deterministic job execution
+
+### Architectural Role
+
+Step 17 introduces:
+
+- asynchronous execution layer
+- lifecycle automation
+- foundation for background processing (cron / queues in Step 21)
+
+---
+
+## Step 18 — Data Export Service (Deterministic Snapshot Export)
+
+Completed.
+
+A tenant-scoped export system is introduced for generating deterministic CSV outputs.
+
+### Core Principle
+
+Exports must reflect **consistent historical truth**, not live mutable state.
+
+### Capabilities introduced
+
+- Tenant-scoped CSV export
+- Deterministic snapshot generation
+- Alignment with reconciliation data model
+- Structured export for:
+  - orders
+  - reconciliation reports
+- File download via API (binary response)
+
+### Design constraints
+
+- Export reads full dataset (intentionally unbounded)
+- No partial / paginated export at this stage
+- Snapshot correctness guaranteed
+
+### System guarantees
+
+- Export reflects stable transactional state
+- No dependency on live product or inventory state
+- Reproducible outputs
+
+### Architectural Role
+
+Step 18 introduces:
+
+- data portability layer
+- reporting capability
+- foundation for large-scale export (streaming in future)
+
+---
+
+## Step 19 — Multi-Tenant Isolation Test Suite
+
+Completed.
+
+A system-wide isolation test suite is introduced to validate tenant boundaries
+and prevent cross-tenant data leakage.
+
+### Core Principle
+
+Tenant isolation must be **provable**, not assumed.
+
+### Capabilities introduced
+
+- Automated test suite covering:
+  - cross-tenant access attempts
+  - data leakage scenarios
+  - authorization boundary violations
+  - concurrent execution isolation
+- Domain-level isolation validation
+- Guard enforcement verification
+
+### Test coverage includes
+
+- Orders
+- Inventory
+- Memberships
+- Payments
+- Reconciliation
+- Concurrency scenarios
+
+### System guarantees
+
+- No cross-tenant read leakage
+- No cross-tenant write mutation
+- Guards correctly enforce access boundaries
+- Concurrent operations remain isolated
+
+### Architectural Role
+
+Step 19 introduces:
+
+- correctness verification layer
+- regression protection for tenant isolation
+- foundation for production trust guarantees
+
+---
+
+## Step 20 — Performance Pass (Bounded Reads & Query Safety)
+
+Completed.
+
+A system-wide performance pass is introduced to enforce bounded data access
+and prepare the system for DB-backed execution.
+
+### Core Principle
+
+All read operations must be **bounded and controlled**.
+
+### Capabilities introduced
+
+- Centralized query limits (`QUERY_LIMITS`)
+- Bounded read contracts across all domains:
+  - Orders
+  - Products
+  - Memberships
+  - Inventory
+  - Audit logs
+- Limits applied at domain read layer (not UI or API slicing)
+- Prevention of unbounded dataset retrieval
+
+### Design decisions
+
+- No pagination system introduced (data scale does not require it yet)
+- No infinite scroll implementation
+- No DTO/projection overengineering
+- Limits are applied before transformation or enrichment to avoid processing unbounded datasets
+
+### System guarantees
+
+- No unbounded reads
+- Controlled response size
+- Memory safety
+- DB-read readiness (future LIMIT pushdown)
+
+### Architectural impact
+
+- Domain read APIs now define query boundaries
+- API layer no longer slices datasets
+- Clear separation between:
+  - bounded reads (Step 20)
+  - loading strategy (future concern)
+
+### Future alignment
+
+Step 20 prepares for:
+
+- Current implementation applies limits in domain; storage-level LIMIT pushdown will be introduced in Step 21 (DB migration)
+- scalable read models
+- pagination only when required by data scale
+
+---
+
 ### Architectural Position
 
-Step 11 → Detect inconsistencies
-Step 12 → Monitor + Correct inventory safely
-Step 13 → Analytics (read models on stable data)
-Step 14 → Audit logging (system traceability)
-Step 15 → Notifications (event-driven side effects)
-Step 16 → Security (request boundary enforcement)
+Step 11 → Detect inconsistencies  
+Step 12 → Monitor + Correct inventory safely  
+Step 13 → Analytics (read models on stable data)  
+Step 14 → Audit logging (system traceability)  
+Step 15 → Notifications (event-driven side effects)  
+Step 16 → Security (request boundary enforcement)  
+Step 17 → Background execution (idempotent async job runner)  
+Step 18 → Data export (deterministic snapshot-based reporting)  
+Step 19 → Isolation verification (tenant boundary test suite)  
+Step 20 → Performance safety (bounded reads and query-shape enforcement)
 
 ---
 
@@ -1337,30 +1538,34 @@ Order State Machine (PAID / REFUNDED / etc.)
 ↓  
 Inventory Commit / Release  
 ↓  
-Domain Events
-↓
-Reconciliation System (detect + resolve inconsistencies across aggregates)
-↓
-Inventory Monitoring (low-stock detection)
-↓
-Controlled Inventory Adjustment (platform-driven, invariant-safe corrections)
-↓
-Analytics Layer (snapshot-based read model)
-↓
-Audit Logging (append-only event projection)
-↓
-Notification System (event-driven delivery)
-↓
-Security Layer (request boundary enforcement)
+Domain Events  
+↓  
+Reconciliation System (detect + resolve inconsistencies across aggregates)  
+↓  
+Inventory Monitoring (low-stock detection)  
+↓  
+Controlled Inventory Adjustment (platform-driven, invariant-safe corrections)  
+↓  
+Analytics Layer (snapshot-based read model)  
+↓  
+Audit Logging (append-only event projection)  
+↓  
+Notification System (event-driven delivery)  
+↓  
+Security Layer (request boundary enforcement)  
+↓  
+Background Job Runner (scheduled lifecycle transitions + async execution layer)  
+↓  
+Data Export Service (deterministic snapshot-based CSV generation)  
+↓  
+Isolation Test Suite (system-wide tenant boundary validation)  
+↓  
+Performance Layer (bounded reads, query-shape enforcement, DB readiness)
 
 ---
 
 # Upcoming Roadmap
 
-17. Background job runner: Generic, idempotent, state-machine-safe asynchronous execution layer for lifecycle-driven domain jobs and event-driven side-effects, supporting scheduled domain transitions (e.g., auto-expire unpaid RESERVED orders, auto-expire unapproved PENDING memberships after timeout) and execution of side-effect intents (e.g., notifications), with retry safety, deduplication, and deterministic behavior, while preserving strict separation between domain logic, intent generation, and side-effect execution through adapter boundaries
-18. Data export service (tenant-scoped deterministic CSV generation aligned with reconciliation data ensuring snapshot correctness and pagination readiness)
-19. Multi-tenant isolation test suite (systematic validation of tenant boundaries including cross-tenant access attempts, concurrent operations, and leakage prevention)
-20. Performance pass (query-shape optimization, pagination enforcement, and projection safety to prepare for DB-backed execution without data over-fetching)
 21. Production readiness layer (Map → DB migration with transaction support, DB constraints, concurrency control, structured logging, observability, and deployment readiness)
 
 Each step builds on previously locked invariants.
@@ -1389,6 +1594,10 @@ Each step builds on previously locked invariants.
 14. Audit logging layer: Append-only, cross-domain audit system derived from domain events and aligned with domain actions, recording actor identity, tenant context, immutable event entries, and explicit state transitions (from → to) for all state-changing events (including role changes), where all state mutations must emit dedicated domain events that are projected into audit logs (one entry per event) with from/to populated, with structured metadata for domain-specific events (e.g., approval actions like approvedBy, approvedAt), enabling full historical reconstruction and timeline queries of all domain lifecycle events
 15. Notification service abstraction (event-driven notifications triggered strictly from domain events with idempotent dispatch and adapter-based delivery design)
 16. Security hardening pass (request-level protection via CSRF, cookies, rate limiting + authorization audit ensuring strict guard-driven role and tenant enforcement)
+17. Background job runner: Generic, idempotent, state-machine-safe asynchronous execution layer for lifecycle-driven domain jobs and event-driven side-effects, supporting scheduled domain transitions (e.g., auto-expire unpaid RESERVED orders, auto-expire unapproved PENDING memberships after timeout) and execution of side-effect intents (e.g., notifications), with retry safety, deduplication, and deterministic behavior, while preserving strict separation between domain logic, intent generation, and side-effect execution through adapter boundaries
+18. Data export service (tenant-scoped deterministic CSV generation aligned with reconciliation data ensuring snapshot correctness and pagination readiness)
+19. Multi-tenant isolation test suite (systematic validation of tenant boundaries including cross-tenant access attempts, concurrent operations, and leakage prevention)
+20. Performance pass (bounded reads, query-shape enforcement, and DB-ready data access without over-fetching, without introducing pagination prematurely)
 
 ---
 
@@ -1488,6 +1697,8 @@ Each module is a **self-contained domain boundary**.
 - analytics
 - audit
 - notifications
+- jobs (background job runner and async execution layer)
+- export (deterministic data export service)
 - security (implicit via requestGuard layer)
 
 ---
@@ -1668,21 +1879,17 @@ Future (Step 21):
 .
 ├── app
 │   ├── (tenant)                     # Tenant runtime (user-facing)
+│   │   ├── analytics/
+│   │   ├── audit/
 │   │   ├── cart/
 │   │   ├── checkout/
 │   │   ├── fulfillment/
 │   │   ├── inventory/
 │   │   ├── memberships/
-│   │   │   ├── [membershipId]/
-│   │   │   └── page.tsx
 │   │   ├── orders/
-│   │   │   ├── [orderId]/
-│   │   │   │   └── receipt/
-│   │   │   └── page.tsx
+│   │   │   └── [orderId]/receipt/
 │   │   ├── pos/
 │   │   ├── products/
-│   │   │   ├── [productId]/
-│   │   │   └── page.tsx
 │   │   ├── profile/
 │   │   ├── reconciliation/
 │   │   └── layout.tsx
@@ -1701,56 +1908,42 @@ Future (Step 21):
 │   │   ├── admin/
 │   │   │   ├── memberships/[membershipId]/role/
 │   │   │   ├── products/
-│   │   │   └── tenants/[tenantId]/
-│   │   │       ├── activate/
-│   │   │       ├── archive/
-│   │   │       ├── assume/
-│   │   │       ├── suspend/
-│   │   │       └── inventory/
-│   │   │           ├── adjust/
-│   │   │           └── low-stock/
+│   │   │   └── tenants/[tenantId]/inventory/
+│   │   │       ├── adjust/
+│   │   │       └── low-stock/
 │   │   │
+│   │   ├── analytics/
+│   │   ├── audit/
 │   │   ├── auth/
-│   │   │   ├── otp/
-│   │   │   ├── logout/
-│   │   │   ├── me/
-│   │   │   └── stop-assume/
-│   │   │
 │   │   ├── cart/
 │   │   ├── checkout/
+│   │   ├── export/                  # Step 18
 │   │   ├── memberships/
-│   │   │   ├── [membershipId]/
-│   │   │   │   ├── approve/
-│   │   │   │   ├── reject/
-│   │   │   │   └── revoke/
 │   │   │   ├── active/
 │   │   │   ├── me/
 │   │   │   ├── pending/
 │   │   │   └── select/
-│   │   │
 │   │   ├── orders/
 │   │   │   ├── [orderId]/
-│   │   │   │   ├── cancel/
-│   │   │   │   ├── expire/
-│   │   │   │   ├── pay/
-│   │   │   │   ├── pickup/
-│   │   │   │   ├── refund/
-│   │   │   │   └── receipt/
 │   │   │   └── pos/
-│   │   │
 │   │   ├── payments/[orderId]/confirm/
 │   │   ├── profile/
 │   │   └── reconciliation/
 │   │       └── resolve/
 │   │
-│   └── layout.tsx
+│   ├── login/
+│   ├── layout.tsx
+│   └── ThemeRegistry.tsx
 │
 ├── components                      # Pure UI (no business logic)
 │   ├── admin/
+│   ├── analytics/
+│   ├── audit/
 │   ├── auth/
 │   ├── cart/
 │   ├── checkout/
 │   ├── common/
+│   ├── export/                     # Step 18
 │   ├── guards/
 │   ├── lowStock/
 │   ├── memberships/
@@ -1771,54 +1964,72 @@ Future (Step 21):
 │   └── useActiveMembership.ts
 │
 ├── lib                             # Core system (ALL domain logic)
+│   ├── analytics/
 │   ├── api/                        # Client API wrappers
-│   │   ├── auth.ts
-│   │   ├── cart.ts
-│   │   ├── checkout.ts
-│   │   ├── memberships.ts
-│   │   ├── orders.ts
-│   │   ├── profiles.ts
-│   │   ├── tenantInventory.ts
-│   │   ├── reconciliation.ts
-│   │   └── stockAdjustment.ts
-│   │
+│   ├── audit/
 │   ├── auth/
-│   ├── tenants/
-│   ├── memberships/
-│   ├── profiles/
-│   ├── products/
-│   ├── tenantInventory/
 │   ├── cart/
 │   ├── checkout/
+│   ├── events/                     # Event dispatcher
+│   ├── export/                     # Step 18
+│   ├── http/
+│   ├── jobs/                       # Step 17 (background runner)
+│   ├── mappers/
+│   ├── memberships/
+│   ├── notifications/
 │   ├── orders/
 │   ├── payments/
-│   ├── reconciliation/
-│   ├── audit/
 │   ├── pos/
-│   ├── jobs/
-│   └── http/
+│   ├── products/
+│   ├── profiles/
+│   ├── reconciliation/
+│   ├── security/
+│   ├── tenantInventory/
+│   └── tenants/
+│
+├── tests                           # Step 19 (isolation test suite)
+│   ├── isolation/
+│   │   ├── concurrency.test.ts
+│   │   ├── guards.test.ts
+│   │   ├── inventory.test.ts
+│   │   ├── jobs.test.ts
+│   │   ├── memberships.test.ts
+│   │   ├── orders.test.ts
+│   │   ├── payments.test.ts
+│   │   └── reconciliation.test.ts
+│   └── setup.ts
 │
 ├── types                           # Shared contracts
+│   ├── analytics.ts
+│   ├── audit.ts
 │   ├── auth.ts
-│   ├── profile.ts
-│   ├── membership.ts
-│   ├── tenant.ts
-│   ├── tenantInventory.ts
 │   ├── cart.ts
 │   ├── checkout.ts
+│   ├── domainEvent.ts
+│   ├── export.ts                   # Step 18
+│   ├── job.ts                      # Step 17
+│   ├── lowStock.ts
+│   ├── membership.ts
+│   ├── notification.ts
 │   ├── order.ts
-│   ├── orderEvent.ts
 │   ├── payment.ts
+│   ├── product.ts
+│   ├── profile.ts
 │   ├── reconciliation.ts
 │   ├── stockAdjustment.ts
-│   └── audit.ts
+│   ├── tenant.ts
+│   └── tenantInventory.ts
 │
-├── docs
+├── docs/
 │   └── checkout-api.md
 │
 ├── public/
+├── proxy.ts                        # Middleware replacement (Next.js 16)
+├── next.config.ts
 ├── package.json
-└── README.md
+├── README.md
+├── tsconfig.json
+└── vitest.config.ts
 
 The domain modules represent the core business capabilities:
 
@@ -1836,6 +2047,8 @@ The domain modules represent the core business capabilities:
 - Analytics (snapshot-based read models)
 - Audit (append-only event traceability)
 - Notifications (event-driven user communication)
+- Jobs (idempotent background execution layer for lifecycle transitions and async side effects)
+- Export (deterministic snapshot-based data export service)
 - Security (request boundary enforcement via guardRequest: auth, CSRF, rate limiting)
 
 ---
@@ -1885,7 +2098,5 @@ This project solves those problems at the foundation layer.
 # Status
 
 Actively evolving through staged architectural hardening.
-
 The focus is not speed of features.
-
 The focus is structural correctness.

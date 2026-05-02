@@ -59,10 +59,13 @@ export function deprovisionProduct(
 }
 
 export function listTenantInventory(
-    tenantId: string
+    tenantId: string,
+    limit?: number
 ): TenantInventory[] {
 
-    return tenantInventoryStore.listByTenant(tenantId);
+    const all = tenantInventoryStore.listByTenant(tenantId);
+
+    return limit ? all.slice(0, limit) : all;
 }
 
 export function findTenantProvision(

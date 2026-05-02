@@ -20,8 +20,10 @@ export async function createProduct(
   return product;
 }
 
-export async function listProducts(): Promise<Product[]> {
-  return productStore.getAll().filter(p => !p.deletedAt);
+export async function listProducts(limit?: number): Promise<Product[]> {
+  const all = productStore.getAll().filter(p => !p.deletedAt);
+
+  return limit ? all.slice(0, limit) : all;
 }
 
 export async function getProduct(productId: string): Promise<Product> {

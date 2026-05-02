@@ -1,0 +1,7 @@
+export const QUERY_LIMITS = {
+    ORDERS: 100,
+    MEMBERSHIPS: 1000,
+    INVENTORY: 200,
+    PRODUCTS: 200,
+    AUDIT: 200,
+};

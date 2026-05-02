@@ -17,6 +17,7 @@ function mapEventType(e: DomainEvent): AuditEventType {
         case "MembershipApproved": return "MEMBERSHIP_APPROVED";
         case "MembershipRejected": return "MEMBERSHIP_REJECTED";
         case "MembershipRevoked": return "MEMBERSHIP_REVOKED";
+        case "MembershipExpired": return "MEMBERSHIP_EXPIRED";
         case "MembershipRoleUpdated": return "MEMBERSHIP_ROLE_UPDATED";
         case "InventoryAdjusted": return "INVENTORY_ADJUSTED";
         case "PaymentConfirmed": return "PAYMENT_CONFIRMED";

@@ -2,10 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { ensureCsrfCookie } from "@/lib/security/csrf";
 
-export async function middleware(req: NextRequest) {
-    // ensure CSRF token exists
+export async function proxy(_req: NextRequest) {
     await ensureCsrfCookie();
-
     return NextResponse.next();
 }
 
