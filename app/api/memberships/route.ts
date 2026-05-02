@@ -10,18 +10,23 @@ import { assertRequestMembership } from "@/lib/memberships/validators";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 import { dispatchEvent } from "@/lib/events/dispatcher";
 
+import { QUERY_LIMITS } from "@/lib/config/queryLimits";
+
 export async function GET(req: Request) {
     try {
         const user = await guardRequest(req, { requireAuth: true });
 
-        const ctx = requireAccess(user, ["staff"]);
+        const actor = requireAccess(user, ["staff"]);
 
-        const data =
-            ctx.type === "superadmin"
-                ? listAllMembershipsEnriched()
-                : listMembershipsEnriched(ctx.membership.tenantId);
+        const memberships =
+            actor.type === "superadmin"
+                ? listAllMembershipsEnriched(QUERY_LIMITS.MEMBERSHIPS)
+                : listMembershipsEnriched(
+                    actor.membership.tenantId,
+                    QUERY_LIMITS.MEMBERSHIPS
+                );
 
-        return NextResponse.json(data);
+        return NextResponse.json({ memberships });
     } catch (err) {
         return handleRouteError(err);
     }

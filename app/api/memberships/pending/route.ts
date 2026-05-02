@@ -7,19 +7,20 @@ import {
 } from "@/lib/memberships/domain";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
+import { QUERY_LIMITS } from "@/lib/config/queryLimits";
+
 export async function GET(req: Request) {
     try {
         const user = await guardRequest(req, { requireAuth: true });
 
         const actor = requireAccess(user, ["staff"]);
 
-        if (actor.type === "superadmin") {
-            return NextResponse.json(listAllMembershipsEnriched());
-        }
+        const memberships =
+            actor.type === "superadmin"
+                ? listAllMembershipsEnriched(QUERY_LIMITS.MEMBERSHIPS)
+                : listPendingMemberships(actor.membership.tenantId);
 
-        return NextResponse.json(
-            listPendingMemberships(actor.membership.tenantId)
-        );
+        return NextResponse.json({ memberships });
     } catch (err) {
         return handleRouteError(err);
     }
