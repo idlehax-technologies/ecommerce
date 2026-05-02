@@ -22,21 +22,50 @@ const EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 
 /* ---------------- EXPIRY ---------------- */
 
-export function expirePendingMemberships(): void {
+export function expireMembership(
+    membershipId: string
+): { membership: Membership; event: DomainEvent } | null {
+
+    const m = membershipStore.get(membershipId);
+
+    if (!m || m.status !== "PENDING") return null;
+
     const now = Date.now();
-    const all = membershipStore.getAll();
+    const created = new Date(m.createdAt).getTime();
 
-    for (const m of all) {
-        if (m.status !== "PENDING") continue;
+    if (now - created < EXPIRY_MS) return null;
 
-        const created = new Date(m.createdAt).getTime();
+    const from = m.status;
 
-        if (now - created >= EXPIRY_MS) {
-            m.status = "EXPIRED";
-            m.updatedAt = new Date().toISOString();
-            membershipStore.save(m);
+    m.status = "EXPIRED";
+    m.updatedAt = new Date().toISOString();
+
+    membershipStore.save(m);
+
+    return {
+        membership: m,
+        event: {
+            type: "MembershipExpired",
+            membership: m,
+            from,
+            to: "EXPIRED"
         }
-    }
+    };
+}
+
+export function findExpiredMemberships(): string[] {
+    const now = Date.now();
+
+    return membershipStore
+        .getAll()
+        .filter((m) => {
+            if (m.status !== "PENDING") return false;
+
+            const created = new Date(m.createdAt).getTime();
+
+            return now - created >= EXPIRY_MS;
+        })
+        .map((m) => m.membershipId);
 }
 
 /* ---------------- CORE (MUTATIONS) ---------------- */
@@ -45,8 +74,6 @@ export function requestMembership(
     userId: string,
     tenantId: string
 ): { membership: Membership; event: DomainEvent } {
-
-    expirePendingMemberships();
 
     const profile = profileStore.get(userId);
     if (!profile) {
@@ -200,8 +227,6 @@ export function updateMembershipRole(
 /* ---------------- READ METHODS (UNCHANGED) ---------------- */
 
 export function getActiveMembership(userId: string, membershipId: string) {
-    expirePendingMemberships();
-
     const m = membershipStore.get(membershipId);
     assertExists(m);
     requireOwnership(m, userId);
@@ -211,29 +236,22 @@ export function getActiveMembership(userId: string, membershipId: string) {
 }
 
 export function listUserMemberships(userId: string) {
-    expirePendingMemberships();
     return membershipStore.listByUser(userId);
 }
 
 export function listPendingMemberships(tenantId: string) {
-    expirePendingMemberships();
-
     return membershipStore
         .listByTenant(tenantId)
         .filter((m) => m.status === "PENDING");
 }
 
 export function getMembership(id: string) {
-    expirePendingMemberships();
-
     const m = membershipStore.get(id);
     assertExists(m);
     return m;
 }
 
 export function selectMembership(userId: string, membershipId: string) {
-    expirePendingMemberships();
-
     const m = membershipStore.get(membershipId);
 
     assertExists(m);
@@ -247,13 +265,10 @@ export function selectMembership(userId: string, membershipId: string) {
 }
 
 export function listAllMemberships() {
-    expirePendingMemberships();
     return membershipStore.getAll();
 }
 
 export function getAdminMembershipForTenant(tenantId: string) {
-    expirePendingMemberships();
-
     const m = membershipStore
         .listByTenant(tenantId)
         .find(
@@ -271,12 +286,17 @@ export function getAdminMembershipForTenant(tenantId: string) {
 
 /* ---------------- ENRICHED (UNCHANGED) ---------------- */
 
-export function listMembershipsEnriched(tenantId: string) {
-    expirePendingMemberships();
-
+export function listMembershipsEnriched(
+    tenantId: string,
+    limit?: number
+) {
     const memberships = membershipStore.listByTenant(tenantId);
 
-    return memberships.map((m) => {
+    const sliced = limit
+        ? memberships.slice(0, limit)
+        : memberships;
+
+    return sliced.map((m) => {
         const profile = profileStore.get(m.userId);
         const tenant = tenantStore.get(m.tenantId);
 
@@ -305,8 +325,6 @@ export function getMembershipEnriched(
     actor: AccessActor,
     membershipId: string
 ) {
-    expirePendingMemberships();
-
     const m = membershipStore.get(membershipId);
     assertExists(m);
 
@@ -363,12 +381,14 @@ export function listUserMembershipsEnriched(userId: string) {
     });
 }
 
-export function listAllMembershipsEnriched() {
-    expirePendingMemberships();
-
+export function listAllMembershipsEnriched(limit?: number) {
     const memberships = membershipStore.getAll();
 
-    return memberships.map((m) => {
+    const sliced = limit
+        ? memberships.slice(0, limit)
+        : memberships;
+
+    return sliced.map((m) => {
         const profile = profileStore.get(m.userId);
         const tenant = tenantStore.get(m.tenantId);
 

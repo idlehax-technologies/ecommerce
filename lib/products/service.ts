@@ -14,8 +14,10 @@ import type {
 
 import { toProductUpdateChanges } from "./mappers";
 
-export async function listProductsForPlatform(): Promise<Product[]> {
-    return listDomainProducts();
+export async function listProductsForPlatform(
+    limit?: number
+): Promise<Product[]> {
+    return listDomainProducts(limit);
 }
 
 export async function createPlatformProduct(

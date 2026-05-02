@@ -130,9 +130,12 @@ export function getTenantOrder(
 }
 
 export function listTenantOrders(
-    tenantId: string
+    tenantId: string,
+    limit?: number
 ): Order[] {
-    return listOrdersByTenant(tenantId);
+    const all = listOrdersByTenant(tenantId);
+
+    return limit ? all.slice(0, limit) : all;
 }
 
 /* ---------------- MUTATIONS ---------------- */
@@ -145,7 +148,6 @@ export function markOrderPaid(
     tenantId: string,
     orderId: string,
     method: Order["paymentMethod"],
-    payment: any
 ): { order: Order; event: DomainEvent } {
 
     const order = getTenantOrder(tenantId, orderId);

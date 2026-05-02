@@ -17,8 +17,16 @@ function appendAudit(log: AuditLog) {
 }
 
 // 🔴 READ ONLY API
-export function listAuditByTenant(tenantId: string): AuditLog[] {
-    return store.filter(l => l.tenantId === tenantId);
+export function listAuditByTenant(
+    tenantId: string,
+    limit?: number
+): AuditLog[] {
+    const all = store
+        .filter(l => l.tenantId === tenantId)
+        .slice() // avoid mutating original
+        .reverse(); // newest first
+
+    return limit ? all.slice(0, limit) : all;
 }
 
 // 🔴 INTERNAL EXPORT (ONLY FOR PROJECTOR)

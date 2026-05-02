@@ -10,6 +10,8 @@ import {
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
+import { QUERY_LIMITS } from "@/lib/config/queryLimits";
+
 export async function GET(
     req: Request,
     { params }: { params: Promise<{ tenantId: string }> }
@@ -20,7 +22,10 @@ export async function GET(
         const user = await guardRequest(req, { requireAuth: true });
         requireSuperadmin(user);
 
-        const rows = listTenantInventory(tenantId);
+        const rows = listTenantInventory(
+            tenantId,
+            QUERY_LIMITS.INVENTORY
+        );
 
         return NextResponse.json({ rows });
     } catch (err) {

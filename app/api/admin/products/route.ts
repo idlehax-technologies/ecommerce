@@ -16,12 +16,16 @@ import type { CreateProductDTO } from "@/types/product";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 import { guardRequest } from "@/lib/security/requestGuard";
 
+import { QUERY_LIMITS } from "@/lib/config/queryLimits";
+
 export async function GET(req: Request) {
   try {
     const user = await guardRequest(req, { requireAuth: true });
     requireSuperadmin(user);
 
-    const products = await listProductsForPlatform();
+    const products = await listProductsForPlatform(
+      QUERY_LIMITS.PRODUCTS
+    );
 
     return NextResponse.json({ products });
   } catch (err: unknown) {
