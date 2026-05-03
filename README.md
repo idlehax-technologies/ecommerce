@@ -125,7 +125,7 @@ This prevents:
 - TypeScript (strict mode)
 - Material UI (MUI)
 - Cookie-based JWT authentication (httpOnly)
-- In-memory storage (dev simulation of database)
+- In-memory storage (dev simulation of database + observability metrics)
 - Manual domain layering (no ORM abstraction)
 
 The architecture is explicit by design.
@@ -431,6 +431,7 @@ This enables support for real-world payment delays (UPI, card processing, etc.).
 - Tenant isolation is enforced at domain level and verified through automated test suites
 - Data export reflects deterministic snapshot state, not live mutable state
 - Data export is the only controlled exception to bounded reads, as it requires full snapshot extraction
+- Observability is boundary-scoped and does not leak into domain logic
 
 ---
 
@@ -1410,6 +1411,99 @@ Step 20 prepares for:
 
 ---
 
+## Step 22 — Observability Layer (Boundary-Level Metrics)
+
+Completed.
+
+A lightweight observability layer is introduced to capture system behavior at execution boundaries without affecting domain logic.
+
+### Core Principle
+
+Observability must be:
+
+- boundary-scoped (route, dispatcher, error handler)
+- non-invasive (no domain coupling)
+- approximate but meaningful
+- safe to discard without affecting correctness
+
+### Capabilities introduced
+
+- Latency tracking (p50 / p95)
+- Request rate measurement
+- Error rate computation (normalized against traffic)
+- User activity tracking (unique users per runtime window)
+- Throughput calculation (requests/sec)
+- Checkout conversion metrics:
+  - OrderCreated → PaymentConfirmed ratio
+
+### Instrumentation Points
+
+Metrics are captured at:
+
+- API route boundary (request + latency + user)
+- Event dispatcher (domain event tracking)
+- Central error handler (unexpected failures)
+
+No instrumentation exists inside:
+
+- domain layer
+- storage layer
+
+This preserves strict domain purity.
+
+### Data Model
+
+Metrics are stored in-memory using a bounded rolling buffer:
+
+- Metrics → FIFO window (bounded)
+- Users → bounded set (no eviction, capped growth)
+- Uptime → process start reference
+
+Derived metrics:
+
+- latency percentiles (p50 / p95)
+- errorRate = errors / requests
+- throughput = requests / uptime
+- checkoutSuccess = PaymentConfirmed / OrderCreated
+
+### System Guarantees
+
+- Zero impact on transactional correctness
+- No dependency on database or persistence layer
+- Safe under process restarts (metrics are ephemeral by design)
+- Fully compatible with Step 21 (DB migration)
+- No cross-layer leakage into domain logic
+
+### Design Trade-offs
+
+- Metrics are approximate (not durable)
+- No long-term persistence
+- No historical aggregation beyond runtime window
+
+This is intentional:
+
+Observability is designed for:
+
+- validation
+- performance measurement
+- CV-grade metrics
+
+Not for:
+
+- production monitoring systems (future concern)
+
+### Architectural Role
+
+Step 22 introduces:
+
+- execution visibility across system boundaries
+- performance measurement capability
+- validation layer for system behavior under load
+
+It completes the system by enabling measurability without compromising correctness.
+
+---
+
 ### Architectural Position
 
 Step 11 → Detect inconsistencies  
@@ -1422,6 +1516,7 @@ Step 17 → Background execution (idempotent async job runner)
 Step 18 → Data export (deterministic snapshot-based reporting)  
 Step 19 → Isolation verification (tenant boundary test suite)  
 Step 20 → Performance safety (bounded reads and query-shape enforcement)
+Step 22 → Observability (boundary-level metrics capturing latency, request rate, error rate, user activity, throughput, and conversion across core transactional flows)
 
 ---
 
@@ -1561,6 +1656,8 @@ Data Export Service (deterministic snapshot-based CSV generation)
 Isolation Test Suite (system-wide tenant boundary validation)  
 ↓  
 Performance Layer (bounded reads, query-shape enforcement, DB readiness)
+↓  
+Observability Layer (boundary-level metrics: latency, throughput, error rate, conversion)
 
 ---
 
@@ -1598,6 +1695,7 @@ Each step builds on previously locked invariants.
 18. Data export service (tenant-scoped deterministic CSV generation aligned with reconciliation data ensuring snapshot correctness and pagination readiness)
 19. Multi-tenant isolation test suite (systematic validation of tenant boundaries including cross-tenant access attempts, concurrent operations, and leakage prevention)
 20. Performance pass (bounded reads, query-shape enforcement, and DB-ready data access without over-fetching, without introducing pagination prematurely)
+22. Lightweight, boundary-level observability layer capturing latency, request rate, error rate, user activity, throughput, and conversion metrics across core transactional flows using in-memory instrumentation at route, dispatcher, and error boundaries while preserving domain purity and full compatibility with future DB migration
 
 ---
 
@@ -1836,6 +1934,13 @@ This separation prevents unintended privilege escalation while keeping superadmi
 
 - centralized error handling
 - domain error → HTTP mapping
+
+### Observability Layer
+
+- boundary-level instrumentation (routes, dispatcher, error handler)
+- in-memory metrics collection (latency, throughput, error rate, conversion)
+- no domain coupling
+- no persistence dependency
 
 ### Contexts
 
@@ -2076,6 +2181,7 @@ Seed data loads automatically.
 - Guards before permissions abstraction
 - Explicit domain ownership
 - No premature abstractions
+- Observability without violating domain boundaries
 
 The system is designed to survive scale, not just function in demos.
 

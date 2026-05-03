@@ -6,11 +6,15 @@ import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import * as paymentsDomain from "@/lib/payments/domain";
 import { dispatchEvent } from "@/lib/events/dispatcher";
+import { recordLatency, recordRequest, recordUser } from "@/lib/metrics";
 
 export async function POST(
     req: Request,
     { params }: { params: Promise<{ orderId: string }> }
 ) {
+    const start = Date.now();
+    recordRequest();
+
     try {
         const { orderId } = await params;
 
@@ -20,6 +24,7 @@ export async function POST(
         });
 
         const actor = requireTenant(user);
+        recordUser(actor.userId);
 
         const result = paymentsDomain.confirmPayment(
             actor.tenantId,
@@ -30,12 +35,15 @@ export async function POST(
             await dispatchEvent(event, { actorId: actor.userId });
         }
 
+        recordLatency(Date.now() - start);
+
         return NextResponse.json({
             payment: result.payment,
             order: result.order,
         });
 
     } catch (err) {
+        recordLatency(Date.now() - start);
         return handleRouteError(err);
     }
 }

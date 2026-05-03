@@ -8,8 +8,12 @@ import { toCheckoutInput } from "@/lib/checkout/mappers";
 import { executeCheckout } from "@/lib/checkout/service";
 
 import { dispatchEvent } from "@/lib/events/dispatcher";
+import { recordLatency, recordRequest, recordUser } from "@/lib/metrics";
 
 export async function POST(req: Request) {
+    const start = Date.now();
+    recordRequest();
+
     try {
         const user = await guardRequest(req, {
             requireAuth: true,
@@ -17,6 +21,7 @@ export async function POST(req: Request) {
         });
 
         const actor = requireTenant(user);
+        recordUser(actor.userId);
 
         const body: unknown = await req.json();
 
@@ -28,6 +33,8 @@ export async function POST(req: Request) {
 
         await dispatchEvent(result.event, { actorId: actor.userId });
 
+        recordLatency(Date.now() - start);
+
         return NextResponse.json({
             success: true,
             orderId: result.order.orderId,
@@ -35,6 +42,7 @@ export async function POST(req: Request) {
         });
 
     } catch (err) {
+        recordLatency(Date.now() - start);
         return handleRouteError(err);
     }
 }

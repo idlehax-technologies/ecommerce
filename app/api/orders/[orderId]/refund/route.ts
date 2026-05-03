@@ -7,11 +7,15 @@ import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import * as ordersDomain from "@/lib/orders/domain";
 import { dispatchEvent } from "@/lib/events/dispatcher";
+import { recordLatency, recordRequest, recordUser } from "@/lib/metrics";
 
 export async function POST(
     req: Request,
     { params }: { params: Promise<{ orderId: string }> }
 ) {
+    const start = Date.now();
+    recordRequest();
+
     try {
         const { orderId } = await params;
 
@@ -22,13 +26,17 @@ export async function POST(
 
         requireMembershipRole(user, ["staff"]);
         const actor = requireTenant(user);
+        recordUser(actor.userId);
 
         const result = ordersDomain.refundOrder(actor.tenantId, orderId);
 
         await dispatchEvent(result.event, { actorId: actor.userId });
 
+        recordLatency(Date.now() - start);
+
         return NextResponse.json({ success: true });
     } catch (err) {
+        recordLatency(Date.now() - start);
         return handleRouteError(err);
     }
 }
