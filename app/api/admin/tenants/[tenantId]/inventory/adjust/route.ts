@@ -1,3 +1,5 @@
+// app/api/admin/tenants/[tenantId]/inventory/adjust/route.ts
+
 import { NextResponse } from "next/server";
 
 import { requireSuperadmin } from "@/lib/auth/guards";
@@ -7,11 +9,15 @@ import { adjustStock } from "@/lib/tenantInventory/adjustment";
 
 import { dispatchEvent } from "@/lib/events/dispatcher";
 import { guardRequest } from "@/lib/security/requestGuard";
+import { recordLatency, recordRequest } from "@/lib/metrics";
 
 export async function POST(
     req: Request,
     { params }: { params: Promise<{ tenantId: string }> }
 ) {
+    const start = Date.now();
+    recordRequest();
+
     try {
         const { tenantId } = await params;
 
@@ -19,6 +25,7 @@ export async function POST(
             requireAuth: true,
             csrf: true,
         });
+
         requireSuperadmin(user);
 
         const body = await req.json();
@@ -33,10 +40,14 @@ export async function POST(
             await dispatchEvent(result.event, { actorId: user.userId });
         }
 
+        recordLatency(Date.now() - start);
+
         return NextResponse.json({
             updated: result.updated
         });
+
     } catch (err) {
+        recordLatency(Date.now() - start);
         return handleRouteError(err);
     }
 }

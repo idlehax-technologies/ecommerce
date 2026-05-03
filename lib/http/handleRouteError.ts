@@ -6,6 +6,7 @@ import { ProductDomainError } from "@/lib/products/errors";
 import { MembershipDomainError } from "@/lib/memberships/errors";
 import { CheckoutDomainError } from "@/lib/checkout/errors";
 import { CartDomainError } from "@/lib/cart/errors";
+import { recordError } from "../metrics";
 
 /**
  * Central HTTP error translator.
@@ -41,6 +42,8 @@ export function handleRouteError(err: unknown) {
 
     // Unexpected error — do not leak internals
     console.error("Unhandled route error:", err);
+
+    recordError(); // implicit: type = "internal"
 
     return NextResponse.json(
         { error: "Internal server error" },

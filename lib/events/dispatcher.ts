@@ -2,6 +2,7 @@ import type { DomainEvent } from "@/types/domainEvent";
 import { projectAudit } from "@/lib/audit/projector";
 import { handleOrderEvent } from "@/lib/orders/reactions";
 import { enqueueJob } from "@/lib/jobs/service";
+import { recordEvent } from "../metrics";
 
 type OrderEvent = Extract<DomainEvent, { type: `Order${string}` }>;
 
@@ -34,6 +35,7 @@ export async function dispatchEvent(
     event: DomainEvent,
     ctx: { actorId: string }
 ) {
+    recordEvent(event.type);
 
     // domain reactions
     if (event.type.startsWith("Order")) {
