@@ -23,14 +23,17 @@ export async function POST(req: Request) {
 
         const result = exportData(actor.tenantId, body);
 
-        return new NextResponse(result.content, {
-            headers: {
-                "Content-Type": "text/csv; charset=utf-8",
-                "Content-Disposition": `attachment; filename="${result.filename}"`,
-            },
-        });
+        return new NextResponse(
+            result.content,
+            {
+                headers: {
+                    "Content-Type": "text/csv; charset=utf-8",
+                    "Content-Disposition": `attachment; filename="${result.filename}"`,
+                },
+            }
+        );
 
-    } catch (err) {
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

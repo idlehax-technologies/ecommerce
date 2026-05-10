@@ -3,7 +3,7 @@ import { CheckoutInvalidInputError } from "./errors";
 
 export function assertCheckoutDTO(body: unknown): asserts body is CheckoutRequest {
     if (!body || typeof body !== "object") {
-        throw new CheckoutInvalidInputError();
+        throw new CheckoutInvalidInputError("Invalid request body");
     }
 
     const b = body as CheckoutRequest;

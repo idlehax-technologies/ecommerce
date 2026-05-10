@@ -21,7 +21,7 @@ export async function POST(req: Request) {
         await requestOtp(input);
 
         return NextResponse.json({ success: true });
-    } catch (err) {
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

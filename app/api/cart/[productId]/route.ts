@@ -32,8 +32,8 @@ export async function PATCH(
 
         recordLatency(Date.now() - start);
 
-        return NextResponse.json(cart);
-    } catch (err) {
+        return NextResponse.json({ cart });
+    } catch (err: unknown) {
         recordLatency(Date.now() - start);
         return handleRouteError(err);
     }
@@ -61,8 +61,8 @@ export async function DELETE(
 
         recordLatency(Date.now() - start);
 
-        return NextResponse.json(cart);
-    } catch (err) {
+        return NextResponse.json({ cart });
+    } catch (err: unknown) {
         recordLatency(Date.now() - start);
         return handleRouteError(err);
     }

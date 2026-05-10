@@ -13,8 +13,8 @@ export async function GET(req: Request) {
 
         const analytics = getTenantAnalytics(actor.tenantId);
 
-        return NextResponse.json(analytics);
-    } catch (err) {
+        return NextResponse.json({ analytics });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

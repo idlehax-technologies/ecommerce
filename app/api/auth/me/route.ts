@@ -7,7 +7,7 @@ export async function GET(req: Request) {
         const user = await guardRequest(req, { requireAuth: true });
 
         return NextResponse.json({ user });
-    } catch (err) {
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

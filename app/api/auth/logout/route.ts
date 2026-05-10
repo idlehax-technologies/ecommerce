@@ -19,7 +19,7 @@ export async function POST(req: Request) {
         });
 
         return res;
-    } catch (err) {
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

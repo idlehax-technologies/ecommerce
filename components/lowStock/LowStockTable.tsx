@@ -64,7 +64,6 @@ export default function LowStockTable({ tenantId, items }: Props) {
                     idempotencyKey: generateKey(),
                     productId,
                     newStock,
-                    reason: "low_stock_adjustment",
                 });
 
                 window.location.reload();

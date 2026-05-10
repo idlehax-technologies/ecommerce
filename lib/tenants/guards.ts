@@ -2,7 +2,6 @@ import { Tenant } from "@/types/tenant";
 import {
     TenantAlreadyExistsError,
     TenantNotFoundError,
-    TenantScopeError,
     TenantAlreadyActiveError,
     TenantCannotActivateError,
     TenantCannotSuspendError,
@@ -48,18 +47,5 @@ export function assertCanSuspend(t: Tenant) {
 export function assertCanArchive(t: Tenant) {
     if (t.status === "ARCHIVED") {
         throw new TenantCannotArchiveError();
-    }
-}
-
-/**
- * Scope
- */
-
-export function assertTenantScope(
-    user: { tenantId: string },
-    tenantId: string
-) {
-    if (user.tenantId !== tenantId) {
-        throw new TenantScopeError();
     }
 }

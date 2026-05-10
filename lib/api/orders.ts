@@ -11,7 +11,7 @@ export const payOrder = (
     orderId: string,
     method: string
 ) =>
-    apiFetch<{ success: boolean; orderId: string }>(
+    apiFetch<{ order: Order }>(
         `/api/orders/${orderId}/pay`,
         {
             method: "POST",
@@ -23,7 +23,7 @@ export const createPOSOrder = (payload: {
     items: { productId: string; quantity: number }[];
     paymentMethod?: string;
 }) =>
-    apiFetch<{ success: boolean; orderId: string }>(
+    apiFetch<{ order: Order & { placedByStaffId: string }; }>(
         `/api/orders/pos`,
         {
             method: "POST",

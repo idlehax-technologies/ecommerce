@@ -7,6 +7,4 @@ export type StockAdjustmentRequest = {
      * absolute new stock value
      */
     newStock: number;
-
-    reason: string;
 };

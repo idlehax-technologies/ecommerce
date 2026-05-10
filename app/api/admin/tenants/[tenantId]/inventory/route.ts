@@ -11,6 +11,7 @@ import {
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import { QUERY_LIMITS } from "@/lib/config/queryLimits";
+import { validateProvisionInput } from "@/lib/tenantInventory/validators";
 
 export async function GET(
     req: Request,
@@ -28,7 +29,7 @@ export async function GET(
         );
 
         return NextResponse.json({ rows });
-    } catch (err) {
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }
@@ -46,12 +47,14 @@ export async function PUT(
         });
         requireSuperadmin(user);
 
-        const body = await req.json();
+        const body: unknown = await req.json();
+
+        validateProvisionInput(body);
 
         const record = provisionProduct(tenantId, body);
 
-        return NextResponse.json(record);
-    } catch (err) {
+        return NextResponse.json({ record });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

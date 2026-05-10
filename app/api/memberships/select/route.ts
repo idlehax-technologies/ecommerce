@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireAuth } from "@/lib/auth/guards";
 import { selectMembership } from "@/lib/memberships/domain";
 import { assertSelectMembership } from "@/lib/memberships/validators";
 import { handleRouteError } from "@/lib/http/handleRouteError";
@@ -18,7 +17,7 @@ export async function POST(req: Request) {
         selectMembership(user.userId, body.membershipId);
 
         return NextResponse.json({ success: true });
-    } catch (err) {
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

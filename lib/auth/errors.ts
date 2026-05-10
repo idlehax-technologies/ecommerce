@@ -19,12 +19,6 @@ export class OtpRateLimitError extends AuthDomainError {
     }
 }
 
-export class UserNotFoundError extends AuthDomainError {
-    constructor(message = "User not found") {
-        super(message, 404);
-    }
-}
-
 export class UnauthorizedError extends AuthDomainError {
     constructor(message = "Unauthorized") {
         super(message, 401);
@@ -33,12 +27,6 @@ export class UnauthorizedError extends AuthDomainError {
 
 export class ForbiddenError extends AuthDomainError {
     constructor(message = "Forbidden") {
-        super(message, 403);
-    }
-}
-
-export class TenantNotAssociatedError extends AuthDomainError {
-    constructor(message = "User is not associated with a tenant") {
         super(message, 403);
     }
 }

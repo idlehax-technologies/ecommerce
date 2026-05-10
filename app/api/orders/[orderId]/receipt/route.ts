@@ -66,13 +66,16 @@ export async function GET(
         </html>
         `;
 
-        return new Response(html, {
-            headers: {
-                "Content-Type": "text/html; charset=utf-8",
-                "Content-Disposition": `inline; filename=receipt-${orderId}.html`,
-            },
-        });
-    } catch (err) {
+        return new Response(
+            html,
+            {
+                headers: {
+                    "Content-Type": "text/html; charset=utf-8",
+                    "Content-Disposition": `inline; filename=receipt-${orderId}.html`,
+                },
+            }
+        );
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

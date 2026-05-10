@@ -17,8 +17,8 @@ export async function GET(
 
         const order = ordersDomain.getTenantOrder(actor.tenantId, orderId);
 
-        return NextResponse.json(order);
-    } catch (err) {
+        return NextResponse.json({ order });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

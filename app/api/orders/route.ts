@@ -17,7 +17,7 @@ export async function GET(req: Request) {
         );
 
         return NextResponse.json({ orders });
-    } catch (err) {
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

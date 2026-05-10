@@ -7,16 +7,12 @@ type AdjustedStock = {
     reserved: number;
 };
 
-type AdjustResponse = {
-    updated: AdjustedStock;
-};
-
 export async function adjustStock(
     tenantId: string,
     payload: StockAdjustmentRequest
-): Promise<AdjustedStock> {
+): Promise<{ updated: AdjustedStock }> {
 
-    const res = await apiFetch<AdjustResponse>(
+    const res = await apiFetch<{ updated: AdjustedStock }>(
         `/api/admin/tenants/${tenantId}/inventory/adjust`,
         {
             method: "POST",
@@ -24,5 +20,5 @@ export async function adjustStock(
         }
     );
 
-    return res.updated; // ✅ FIX
+    return res;
 }

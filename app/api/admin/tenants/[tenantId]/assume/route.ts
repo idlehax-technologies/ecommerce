@@ -18,10 +18,10 @@ export async function POST(
         });
         requireSuperadmin(user);
 
-        const result = await assumeTenantAdminUseCase(tenantId);
+        await assumeTenantAdminUseCase(tenantId);
 
-        return NextResponse.json(result);
-    } catch (err) {
+        return NextResponse.json({ success: true });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

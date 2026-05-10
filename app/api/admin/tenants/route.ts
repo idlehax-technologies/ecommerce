@@ -11,8 +11,8 @@ export async function GET(req: Request) {
         requireSuperadmin(user);
 
         const tenants = await listAllTenants();
-        return NextResponse.json(tenants);
-    } catch (err) {
+        return NextResponse.json({ tenants });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }
@@ -28,8 +28,8 @@ export async function POST(req: Request) {
         const body = await req.json();
         const tenant = await createTenantUseCase(body);
 
-        return NextResponse.json(tenant);
-    } catch (err) {
+        return NextResponse.json({ tenant });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { getUserFromRequest } from "@/lib/auth";
 import { requireSuperadmin } from "@/lib/auth/guards";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
-import { getLowStockReport } from "@/lib/tenantInventory/lowStockService";
+import { detectLowStock } from "@/lib/tenantInventory/lowStock";
 import { guardRequest } from "@/lib/security/requestGuard";
 
 export async function GET(
@@ -17,10 +16,10 @@ export async function GET(
         const user = await guardRequest(req, { requireAuth: true });
         requireSuperadmin(user);
 
-        const report = getLowStockReport(tenantId);
+        const report = detectLowStock(tenantId);
 
-        return NextResponse.json(report);
-    } catch (err) {
+        return NextResponse.json({ report });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

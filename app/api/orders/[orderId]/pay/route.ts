@@ -1,5 +1,3 @@
-// app/api/orders/[orderId]/pay/route.ts
-
 import { NextResponse } from "next/server";
 
 import { guardRequest } from "@/lib/security/requestGuard";
@@ -38,11 +36,10 @@ export async function POST(
         recordLatency(Date.now() - start);
 
         return NextResponse.json({
-            success: true,
-            orderId: result.order.orderId,
+            order: result.order
         });
 
-    } catch (err) {
+    } catch (err: unknown) {
         recordLatency(Date.now() - start);
         return handleRouteError(err);
     }

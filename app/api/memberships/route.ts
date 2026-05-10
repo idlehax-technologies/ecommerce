@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireAccess, requireAuth } from "@/lib/auth/guards";
+import { requireAccess } from "@/lib/auth/guards";
 import {
     requestMembership,
     listMembershipsEnriched,
@@ -27,7 +27,7 @@ export async function GET(req: Request) {
                 );
 
         return NextResponse.json({ memberships });
-    } catch (err) {
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }
@@ -46,8 +46,10 @@ export async function POST(req: Request) {
 
         await dispatchEvent(result.event, { actorId: user.userId });
 
-        return NextResponse.json(result.membership);
-    } catch (err) {
+        return NextResponse.json({
+            membership: result.membership
+        });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

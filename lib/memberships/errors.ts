@@ -13,8 +13,8 @@ export class MembershipNotFoundError extends MembershipDomainError {
     }
 }
 
-export class MembershipAlreadyActiveError extends MembershipDomainError {
-    constructor(message = "User already has access or a pending request for this tenant") {
+export class MembershipAlreadyExistsError extends MembershipDomainError {
+    constructor(message = "User already has pending or approved membership for this tenant") {
         super(message, 409);
     }
 }
@@ -25,7 +25,7 @@ export class MembershipInvalidStateError extends MembershipDomainError {
     }
 }
 
-export class MembershipValidationError extends MembershipDomainError {
+export class MembershipInvalidInputError extends MembershipDomainError {
     constructor(message = "Invalid request body") {
         super(message, 400);
     }

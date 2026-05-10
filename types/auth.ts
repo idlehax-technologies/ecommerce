@@ -13,12 +13,6 @@ export type AuthState = {
   loading: boolean;
 };
 
-export type AuthResponse =
-  | { success: true; user: AuthUser }
-  | { success: false; error: string };
-
-
-
 export type TenantActor = {
   type: "tenant";
   membership: {

@@ -16,8 +16,8 @@ export async function GET(
 
         const data = getMembershipEnriched(actor, membershipId);
 
-        return NextResponse.json(data);
-    } catch (err) {
+        return NextResponse.json({ data });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

@@ -35,7 +35,7 @@ export async function POST(
         recordLatency(Date.now() - start);
 
         return NextResponse.json({ success: true });
-    } catch (err) {
+    } catch (err: unknown) {
         recordLatency(Date.now() - start);
         return handleRouteError(err);
     }

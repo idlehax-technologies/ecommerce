@@ -1,12 +1,10 @@
+import { Order } from "@/types/order";
 import { apiFetch } from "./fetch";
-import type {
-    CheckoutRequest,
-    CheckoutResponse,
-} from "@/types/checkout";
+import type { CheckoutRequest } from "@/types/checkout";
 
 export function checkout(
     payload: CheckoutRequest
-): Promise<CheckoutResponse> {
+): Promise<{ order: Order }> {
     return apiFetch("/api/checkout", {
         method: "POST",
         body: JSON.stringify(payload),

@@ -4,7 +4,7 @@ import { runTenantReconciliation } from "@/lib/reconciliation/domain";
 
 import type { ExportRequest } from "@/types/export";
 
-export type OrderExportRow = {
+type OrderExportRow = {
     orderId: string;
     status: string;
     total: number;
@@ -14,7 +14,7 @@ export type OrderExportRow = {
     createdAt: string;
 };
 
-export type ReconciliationExportRow = {
+type ReconciliationExportRow = {
     type: string;
     orderId: string;
     paymentId: string;
@@ -24,7 +24,7 @@ export type ReconciliationExportRow = {
     detectedAt: string;
 };
 
-export type ExportDomainResult = {
+type ExportDomainResult = {
     filename: string;
     rows: OrderExportRow[] | ReconciliationExportRow[];
 };

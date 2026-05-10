@@ -1,9 +1,3 @@
-// ==============================
-// lib/tenants/service.ts (FIXED FOR MEMBERSHIP + SUPERADMIN MODEL)
-// ==============================
-
-import "server-only";
-
 import {
     createTenant,
     listTenants,
@@ -29,14 +23,12 @@ const SEVEN_DAYS = 60 * 60 * 24 * 7;
 /* -------------------------------------------------------------------------- */
 
 export async function listAllTenants(): Promise<PublicTenant[]> {
-    const user = requireSuperadmin(await getUserFromRequest());
     return listTenants();
 }
 
 export async function getTenantById(
     tenantId: string
 ): Promise<PublicTenant> {
-    const user = requireSuperadmin(await getUserFromRequest());
     return getTenant(tenantId);
 }
 
@@ -47,25 +39,19 @@ export async function getTenantById(
 export async function createTenantUseCase(
     body: unknown
 ): Promise<PublicTenant> {
-    const user = requireSuperadmin(await getUserFromRequest());
-
     assertCreateTenantDTO(body);
-
     return createTenant(body as CreateTenantDTO);
 }
 
 export async function activateTenantUseCase(tenantId: string) {
-    const user = requireSuperadmin(await getUserFromRequest());
     return activateTenant(tenantId);
 }
 
 export async function suspendTenantUseCase(tenantId: string) {
-    const user = requireSuperadmin(await getUserFromRequest());
     return suspendTenant(tenantId);
 }
 
 export async function archiveTenantUseCase(tenantId: string) {
-    const user = requireSuperadmin(await getUserFromRequest());
     return archiveTenant(tenantId);
 }
 

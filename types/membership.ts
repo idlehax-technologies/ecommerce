@@ -17,18 +17,6 @@ export type Membership = {
     updatedAt: string;
 };
 
-export type RequestMembershipInput = {
-    tenantId: string;
-};
-
-export type SelectMembershipInput = {
-    membershipId: string;
-};
-
-export type UpdateMembershipRoleInput = {
-    role: MembershipRole;
-};
-
 export type MembershipView = {
     membershipId: string;
     status: MembershipStatus;

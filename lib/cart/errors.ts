@@ -11,12 +11,6 @@ export abstract class CartDomainError extends Error {
    Domain invariant errors
    ========================================================= */
 
-export class CrossTenantCartError extends CartDomainError {
-    constructor(message = "Cannot mix products from different tenants") {
-        super(message, 409);
-    }
-}
-
 export class CartItemNotFoundError extends CartDomainError {
     constructor(message = "Item not found in cart") {
         super(message, 404);

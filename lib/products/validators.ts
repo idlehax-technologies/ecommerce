@@ -40,24 +40,24 @@ function assertNoForbiddenFields(obj: Record<string, unknown>) {
 export function validateCreateProduct(
   body: unknown
 ): asserts body is CreateProductDTO {
-  if (!isObject(body)) throw new ProductInvalidInputError("Invalid body");
+  if (!isObject(body)) throw new ProductInvalidInputError("Invalid request body");
 
   assertNoForbiddenFields(body);
 
   if (!isNonEmptyString(body.title))
-    throw new ProductInvalidInputError("Title required");
+    throw new ProductInvalidInputError("Title is required");
 
   if (!isPositiveMoney(body.price))
-    throw new ProductInvalidInputError("Invalid price");
+    throw new ProductInvalidInputError("Price must be a positive number");
 }
 
 export function validateUpdateProduct(
   body: unknown
 ): asserts body is UpdateProductDTO {
-  if (!isObject(body)) throw new ProductInvalidInputError("Invalid body");
+  if (!isObject(body)) throw new ProductInvalidInputError("Invalid request body");
 
   assertNoForbiddenFields(body);
 
   if (Object.keys(body).length === 0)
-    throw new ProductInvalidInputError("Empty update");
+    throw new ProductInvalidInputError("Update payload cannot be empty");
 }

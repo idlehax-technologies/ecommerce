@@ -46,18 +46,6 @@ export async function provisionProduct(
     return updated;
 }
 
-export function deprovisionProduct(
-    tenantId: string,
-    productId: string
-): void {
-
-    const existing = tenantInventoryStore.get(tenantId, productId);
-
-    requireProvision(existing, productId);
-
-    tenantInventoryStore.delete(tenantId, productId);
-}
-
 export function listTenantInventory(
     tenantId: string,
     limit?: number

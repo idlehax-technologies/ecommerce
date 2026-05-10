@@ -17,6 +17,8 @@ import { tenantStore } from "../tenants/storage";
 
 import { AccessActor } from "@/types/auth";
 import { assertCompleteProfile } from "../profiles/guards";
+import { ForbiddenError } from "../auth/errors";
+import { MembershipInvalidStateError, MembershipNotFoundError } from "./errors";
 
 const EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -198,13 +200,13 @@ export function updateMembershipRole(
     assertExists(m);
 
     if (m.userId === actorUserId) {
-        throw new Error("Cannot modify your own role");
+        throw new ForbiddenError("Cannot modify your own role");
     }
 
     assertStatus(m, "APPROVED");
 
     if (m.role === newRole) {
-        throw new Error("Role already set");
+        throw new MembershipInvalidStateError("Cannot update membership role to the same value");
     }
 
     const from = m.role;
@@ -235,10 +237,6 @@ export function getActiveMembership(userId: string, membershipId: string) {
     return m;
 }
 
-export function listUserMemberships(userId: string) {
-    return membershipStore.listByUser(userId);
-}
-
 export function listPendingMemberships(tenantId: string) {
     return membershipStore
         .listByTenant(tenantId)
@@ -264,10 +262,6 @@ export function selectMembership(userId: string, membershipId: string) {
     });
 }
 
-export function listAllMemberships() {
-    return membershipStore.getAll();
-}
-
 export function getAdminMembershipForTenant(tenantId: string) {
     const m = membershipStore
         .listByTenant(tenantId)
@@ -278,7 +272,7 @@ export function getAdminMembershipForTenant(tenantId: string) {
         );
 
     if (!m) {
-        throw new Error("No admin membership found for tenant");
+        throw new MembershipNotFoundError("No admin membership found for tenant");
     }
 
     return m;

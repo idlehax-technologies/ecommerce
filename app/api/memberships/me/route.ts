@@ -9,8 +9,8 @@ export async function GET(req: Request) {
 
         const data = listUserMembershipsEnriched(user.userId);
 
-        return NextResponse.json(data);
-    } catch (err) {
+        return NextResponse.json({ data });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

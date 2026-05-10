@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { jobStore } from "./storage";
 import type { Job, JobType } from "@/types/job";
+import { JobNotFoundError, JobRetryNotAllowedError } from "./errors";
 
 export function enqueueJob<T extends JobType>(
     type: T,
@@ -72,6 +73,16 @@ export function listJobs() {
 }
 
 export function retryJob(jobId: string) {
+    const job = jobStore.get(jobId);
+
+    if (!job) {
+        throw new JobNotFoundError();
+    }
+
+    if (job.status !== "FAILED") {
+        throw new JobRetryNotAllowedError();
+    }
+
     jobStore.update(jobId, (j) => ({
         ...j,
         status: "PENDING",

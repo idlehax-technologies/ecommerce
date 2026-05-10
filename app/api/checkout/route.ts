@@ -36,9 +36,7 @@ export async function POST(req: Request) {
         recordLatency(Date.now() - start);
 
         return NextResponse.json({
-            success: true,
-            orderId: result.order.orderId,
-            message: "Order placed successfully",
+            order: result.order
         });
 
     } catch (err) {

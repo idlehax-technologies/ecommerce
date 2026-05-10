@@ -1,5 +1,3 @@
-export type ExportFormat = "CSV";
-
 export type ExportType =
     | "ORDERS"
     | "RECONCILIATION";

@@ -32,10 +32,9 @@ export default function CheckoutButton() {
         try {
             const res = await checkout(payload);
 
-            if (res.success) {
-                await clear();
-                router.push(`/orders/${res.orderId}`);
-            }
+            await clear();
+
+            router.push(`/orders/${res.order.orderId}`);
         } catch {
             // backend error handling handled by route layer
         } finally {

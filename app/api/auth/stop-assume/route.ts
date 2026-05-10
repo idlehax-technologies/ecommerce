@@ -35,7 +35,7 @@ export async function POST(req: Request) {
         });
 
         return NextResponse.json({ success: true });
-    } catch (err) {
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

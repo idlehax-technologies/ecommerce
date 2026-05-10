@@ -29,7 +29,7 @@ export async function POST(
         await dispatchEvent(result.event, { actorId });
 
         return NextResponse.json({ success: true });
-    } catch (err) {
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

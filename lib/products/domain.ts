@@ -6,7 +6,7 @@ import type {
 } from "@/types/product";
 
 import { toNewProduct } from "./mappers";
-import { assertNotDeleted, assertProductExists } from "./guards";
+import { assertActive, assertNotDeleted, assertProductExists } from "./guards";
 
 function now(): string {
   return new Date().toISOString();
@@ -68,6 +68,7 @@ export async function getProductForCart(productId: string): Promise<Product> {
   const p = productStore.get(productId);
   assertProductExists(p);
   assertNotDeleted(p);
+  assertActive(p);
 
   return p;
 }

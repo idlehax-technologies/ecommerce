@@ -19,7 +19,7 @@ export async function GET(req: Request) {
         );
 
         return NextResponse.json({ logs });
-    } catch (err) {
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

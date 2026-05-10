@@ -7,12 +7,12 @@ import { getProduct } from "@/lib/products/domain";
 import type { Order, OrderItem } from "@/types/order";
 import type { DomainEvent } from "@/types/domainEvent";
 
-export type POSItemInput = {
+type POSItemInput = {
     productId: string;
     quantity: number;
 };
 
-export type POSInput = {
+type POSInput = {
     tenantId: string;
     staffId: string;
     items: POSItemInput[];

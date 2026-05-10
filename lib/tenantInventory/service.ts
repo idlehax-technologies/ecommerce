@@ -10,7 +10,7 @@ import {
  * Read-model returned to UI / routes.
  * This is NOT a domain entity.
  */
-export type TenantProvisioningView = {
+type TenantProvisioningView = {
     rows: TenantProvisioningRow[];
 };
 

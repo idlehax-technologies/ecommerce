@@ -13,8 +13,8 @@ export async function GET(req: Request) {
 
         const cart = cartDomain.getCart(actor);
 
-        return NextResponse.json(cart);
-    } catch (err) {
+        return NextResponse.json({ cart });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }
@@ -40,8 +40,8 @@ export async function POST(req: Request) {
 
         recordLatency(Date.now() - start);
 
-        return NextResponse.json(cart);
-    } catch (err) {
+        return NextResponse.json({ cart });
+    } catch (err: unknown) {
         recordLatency(Date.now() - start);
         return handleRouteError(err);
     }
@@ -64,8 +64,8 @@ export async function DELETE(req: Request) {
 
         recordLatency(Date.now() - start);
 
-        return NextResponse.json({ ok: true });
-    } catch (err) {
+        return NextResponse.json({ success: true });
+    } catch (err: unknown) {
         recordLatency(Date.now() - start);
         return handleRouteError(err);
     }

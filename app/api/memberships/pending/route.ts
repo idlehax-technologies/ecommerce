@@ -21,7 +21,7 @@ export async function GET(req: Request) {
                 : listPendingMemberships(actor.membership.tenantId);
 
         return NextResponse.json({ memberships });
-    } catch (err) {
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

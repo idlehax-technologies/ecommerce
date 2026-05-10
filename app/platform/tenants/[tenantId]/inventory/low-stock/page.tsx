@@ -3,7 +3,7 @@ import { Box, Typography, Paper, Divider } from "@mui/material";
 import { getUserFromRequest } from "@/lib/auth";
 import { requireSuperadmin } from "@/lib/auth/guards";
 
-import { getLowStockReport } from "@/lib/tenantInventory/lowStockService";
+import { detectLowStock } from "@/lib/tenantInventory/lowStock";
 
 import LowStockTable from "@/components/lowStock/LowStockTable";
 
@@ -19,7 +19,7 @@ export default async function LowStockPage({ params }: Props) {
 
     requireSuperadmin(rawUser);
 
-    const report = getLowStockReport(tenantId);
+    const report = detectLowStock(tenantId);
 
     return (
         <Box p={4} display="flex" flexDirection="column" gap={3}>

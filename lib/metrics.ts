@@ -69,11 +69,11 @@ function percentile(arr: number[], p: number) {
     return sorted[idx];
 }
 
-export function getUserCount() {
+function getUserCount() {
     return users.size;
 }
 
-export function getUptime() {
+function getUptime() {
     return Date.now() - startTime;
 }
 

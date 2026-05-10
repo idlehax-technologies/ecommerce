@@ -67,7 +67,7 @@ async function main() {
 
     // fetch metrics
     const res = await fetch(`${BASE_URL}/api/analytics/metrics`);
-    const metrics = await res.json();
+    const { metrics } = await res.json();
 
     console.log("\n=== METRICS ===");
     console.log(JSON.stringify(metrics, null, 2));

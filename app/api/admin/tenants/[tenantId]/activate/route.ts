@@ -21,8 +21,8 @@ export async function POST(
 
         const tenant = await activateTenantUseCase(tenantId);
 
-        return NextResponse.json(tenant);
-    } catch (err) {
+        return NextResponse.json({ tenant });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

@@ -115,8 +115,7 @@ export function confirmPayment(
     const orderResult = ordersDomain.markOrderPaid(
         tenantId,
         orderId,
-        payment.method,
-        payment
+        payment.method
     );
 
     const order = orderResult.order;

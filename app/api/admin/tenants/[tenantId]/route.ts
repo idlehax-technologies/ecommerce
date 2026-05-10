@@ -17,8 +17,8 @@ export async function GET(
 
         const tenant = await getTenantById(tenantId);
 
-        return NextResponse.json(tenant);
-    } catch (err) {
+        return NextResponse.json({ tenant });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

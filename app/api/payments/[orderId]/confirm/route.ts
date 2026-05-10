@@ -42,7 +42,7 @@ export async function POST(
             order: result.order,
         });
 
-    } catch (err) {
+    } catch (err: unknown) {
         recordLatency(Date.now() - start);
         return handleRouteError(err);
     }

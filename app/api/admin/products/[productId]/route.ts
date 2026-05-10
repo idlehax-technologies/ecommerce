@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 
-import { getUserFromRequest } from "@/lib/auth";
 import { requireSuperadmin } from "@/lib/auth/guards";
 
 import {

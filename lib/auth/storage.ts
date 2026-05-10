@@ -1,12 +1,12 @@
 import type { AuthUser } from "@/types/auth";
 
-export interface OtpRecord {
+type OtpRecord = {
     phone: string;
     code: string;
     expiresAt: number;
     attempts: number;
     lastRequestedAt: number;
-}
+};
 
 /**
  * Global anchors so Next.js hot reload does not wipe memory.

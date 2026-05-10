@@ -19,7 +19,3 @@ export type ResolutionRequest = {
 
     reason: string;
 };
-
-export type ResolutionResult = {
-    success: true;
-};

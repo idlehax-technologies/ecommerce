@@ -1,8 +1,5 @@
-// app/api/admin/products/route.ts
-
 import { NextResponse } from "next/server";
 
-import { getUserFromRequest } from "@/lib/auth";
 import { requireSuperadmin } from "@/lib/auth/guards";
 
 import {
@@ -48,7 +45,7 @@ export async function POST(req: Request) {
 
     const product = await createPlatformProduct(dto);
 
-    return NextResponse.json({ product }, { status: 201 });
+    return NextResponse.json({ product });
   } catch (err: unknown) {
     return handleRouteError(err);
   }
