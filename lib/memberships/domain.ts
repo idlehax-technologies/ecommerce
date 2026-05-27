@@ -1,6 +1,6 @@
 import { membershipStore } from "./storage";
 import { toNewMembership } from "./mappers";
-import type { Membership } from "@/types/membership";
+import type { Membership, MembershipView } from "@/types/membership";
 import type { DomainEvent } from "@/types/domainEvent";
 
 import {
@@ -15,8 +15,9 @@ import { authStore } from "../auth/storage";
 import { profileStore } from "../profiles/storage";
 import { tenantStore } from "../tenants/storage";
 
-import { AccessActor } from "@/types/auth";
+import { MembershipActor } from "@/types/auth";
 import { assertCompleteProfile } from "../profiles/guards";
+import { ProfileRequiredError } from "../profiles/errors";
 import { ForbiddenError } from "../auth/errors";
 import { MembershipInvalidStateError, MembershipNotFoundError } from "./errors";
 
@@ -79,7 +80,7 @@ export function requestMembership(
 
     const profile = profileStore.get(userId);
     if (!profile) {
-        throw new Error("Profile must be completed before requesting membership");
+        throw new ProfileRequiredError();
     }
 
     assertCompleteProfile(profile);
@@ -107,7 +108,7 @@ export function requestMembership(
 }
 
 export function approveMembership(
-    actor: AccessActor,
+    actor: MembershipActor,
     membershipId: string
 ): { membership: Membership; event: DomainEvent } {
 
@@ -135,7 +136,7 @@ export function approveMembership(
 }
 
 export function rejectMembership(
-    actor: AccessActor,
+    actor: MembershipActor,
     membershipId: string
 ): { membership: Membership; event: DomainEvent } {
 
@@ -163,7 +164,7 @@ export function rejectMembership(
 }
 
 export function revokeMembership(
-    actor: AccessActor,
+    actor: MembershipActor,
     membershipId: string
 ): { membership: Membership; event: DomainEvent } {
 
@@ -228,7 +229,7 @@ export function updateMembershipRole(
 
 /* ---------------- READ METHODS (UNCHANGED) ---------------- */
 
-export function getActiveMembership(userId: string, membershipId: string) {
+export function getActiveMembership(userId: string, membershipId: string): Membership {
     const m = membershipStore.get(membershipId);
     assertExists(m);
     requireOwnership(m, userId);
@@ -237,19 +238,19 @@ export function getActiveMembership(userId: string, membershipId: string) {
     return m;
 }
 
-export function listPendingMemberships(tenantId: string) {
+export function listPendingMemberships(tenantId: string): Membership[] {
     return membershipStore
         .listByTenant(tenantId)
         .filter((m) => m.status === "PENDING");
 }
 
-export function getMembership(id: string) {
+export function getMembership(id: string): Membership {
     const m = membershipStore.get(id);
     assertExists(m);
     return m;
 }
 
-export function selectMembership(userId: string, membershipId: string) {
+export function selectMembership(userId: string, membershipId: string): void {
     const m = membershipStore.get(membershipId);
 
     assertExists(m);
@@ -262,7 +263,7 @@ export function selectMembership(userId: string, membershipId: string) {
     });
 }
 
-export function getAdminMembershipForTenant(tenantId: string) {
+export function getAdminMembershipForTenant(tenantId: string): Membership {
     const m = membershipStore
         .listByTenant(tenantId)
         .find(
@@ -278,52 +279,11 @@ export function getAdminMembershipForTenant(tenantId: string) {
     return m;
 }
 
-/* ---------------- ENRICHED (UNCHANGED) ---------------- */
+/* ---------------- VIEW MAPPERS ---------------- */
 
-export function listMembershipsEnriched(
-    tenantId: string,
-    limit?: number
-) {
-    const memberships = membershipStore.listByTenant(tenantId);
-
-    const sliced = limit
-        ? memberships.slice(0, limit)
-        : memberships;
-
-    return sliced.map((m) => {
-        const profile = profileStore.get(m.userId);
-        const tenant = tenantStore.get(m.tenantId);
-
-        return {
-            membershipId: m.membershipId,
-            status: m.status,
-            role: m.role,
-            createdAt: m.createdAt,
-            updatedAt: m.updatedAt,
-            tenant: {
-                tenantId: tenant?.tenantId,
-                name: tenant?.name,
-            },
-            user: {
-                userId: m.userId,
-                fullName: profile?.fullName ?? "",
-                phone: profile?.phone ?? "",
-                email: profile?.email ?? "",
-                addressText: profile?.addressText ?? "",
-            },
-        };
-    });
-}
-
-export function getMembershipEnriched(
-    actor: AccessActor,
-    membershipId: string
-) {
-    const m = membershipStore.get(membershipId);
-    assertExists(m);
-
-    assertVisible(actor, m);
-
+export function toMembershipView(
+    m: Membership
+): MembershipView {
     const profile = profileStore.get(m.userId);
     const tenant = tenantStore.get(m.tenantId);
 
@@ -334,8 +294,8 @@ export function getMembershipEnriched(
         createdAt: m.createdAt,
         updatedAt: m.updatedAt,
         tenant: {
-            tenantId: tenant?.tenantId,
-            name: tenant?.name,
+            tenantId: tenant?.tenantId ?? "",
+            name: tenant?.name ?? "",
         },
         user: {
             userId: m.userId,
@@ -347,62 +307,50 @@ export function getMembershipEnriched(
     };
 }
 
-export function listUserMembershipsEnriched(userId: string) {
-    const memberships = membershipStore.listByUser(userId);
+/* ---------------- ENRICHED (UNCHANGED) ---------------- */
 
-    return memberships.map((m) => {
-        const profile = profileStore.get(m.userId);
-        const tenant = tenantStore.get(m.tenantId);
+export function listMembershipsEnriched(
+    tenantId: string,
+    limit?: number
+): MembershipView[] {
+    const memberships = membershipStore.listByTenant(tenantId);
 
-        return {
-            membershipId: m.membershipId,
-            status: m.status,
-            role: m.role,
-            createdAt: m.createdAt,
-            updatedAt: m.updatedAt,
-            tenant: {
-                tenantId: tenant?.tenantId,
-                name: tenant?.name,
-            },
-            user: {
-                userId: m.userId,
-                fullName: profile?.fullName ?? "",
-                phone: profile?.phone ?? "",
-                email: profile?.email ?? "",
-                addressText: profile?.addressText ?? "",
-            },
-        };
-    });
+    const sliced = limit
+        ? memberships.slice(0, limit)
+        : memberships;
+
+    return sliced.map(toMembershipView);
 }
 
-export function listAllMembershipsEnriched(limit?: number) {
+export function getMembershipEnriched(
+    actor: MembershipActor,
+    membershipId: string
+): MembershipView {
+    const membership = membershipStore.get(membershipId);
+
+    assertExists(membership);
+
+    assertVisible(actor, membership);
+
+    return toMembershipView(membership);
+}
+
+export function listUserMembershipsEnriched(
+    userId: string
+): MembershipView[] {
+    const memberships = membershipStore.listByUser(userId);
+
+    return memberships.map(toMembershipView);
+}
+
+export function listAllMembershipsEnriched(
+    limit?: number
+): MembershipView[] {
     const memberships = membershipStore.getAll();
 
     const sliced = limit
         ? memberships.slice(0, limit)
         : memberships;
 
-    return sliced.map((m) => {
-        const profile = profileStore.get(m.userId);
-        const tenant = tenantStore.get(m.tenantId);
-
-        return {
-            membershipId: m.membershipId,
-            status: m.status,
-            role: m.role,
-            createdAt: m.createdAt,
-            updatedAt: m.updatedAt,
-            tenant: {
-                tenantId: tenant?.tenantId,
-                name: tenant?.name,
-            },
-            user: {
-                userId: m.userId,
-                fullName: profile?.fullName ?? "",
-                phone: profile?.phone ?? "",
-                email: profile?.email ?? "",
-                addressText: profile?.addressText ?? "",
-            },
-        };
-    });
+    return sliced.map(toMembershipView);
 }

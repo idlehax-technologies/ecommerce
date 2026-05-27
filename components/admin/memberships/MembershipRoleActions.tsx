@@ -10,7 +10,7 @@ import type { SelectChangeEvent } from "@mui/material/Select";
 import { useState } from "react";
 
 import { updateMembershipRole } from "@/lib/api/memberships";
-import { useSnackbar } from "@/components/common/AppSnackbar";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 
 import type { MembershipView, MembershipRole } from "@/types/membership";
 
@@ -40,8 +40,12 @@ export default function MembershipRoleActions({
             await updateMembershipRole(membershipId, role);
             show("Role updated");
             reload();
-        } catch {
-            show("Update failed", "error");
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                show(err.message, "error");
+            } else {
+                show("Update failed", "error");
+            }
         } finally {
             setLoading(false);
         }
@@ -50,9 +54,9 @@ export default function MembershipRoleActions({
     return (
         <Stack direction="row" spacing={2}>
             <Select size="small" value={role} onChange={handleChange}>
-                <MenuItem value="customer">customer</MenuItem>
-                <MenuItem value="staff">staff</MenuItem>
-                <MenuItem value="admin">admin</MenuItem>
+                <MenuItem value="customer">Customer</MenuItem>
+                <MenuItem value="staff">Staff</MenuItem>
+                <MenuItem value="admin">Admin</MenuItem>
             </Select>
 
             <Button

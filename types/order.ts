@@ -1,12 +1,12 @@
+import { PaymentMethod } from "./payment";
+
 export type OrderStatus =
     | "RESERVED"
     | "PAID"
     | "PICKED_UP"
     | "CANCELLED"
     | "EXPIRED"
-    | "REFUNDED"; // ✅ NEW
-
-export type PaymentMethod = "CASH" | "UPI" | "CARD" | "NET_BANKING";
+    | "REFUNDED";
 
 export type OrderItem = {
     productId: string;
@@ -19,20 +19,30 @@ export type OrderItem = {
 export type Order = {
     orderId: string;
 
-    tenantId: string;     // belongs to one tenant
-    userId: string;       // who placed it
-    placedByStaffId?: string; // POS mode
+    tenantId: string;
+    userId: string;
+
+    placedByStaffId?: string;
 
     items: OrderItem[];
 
     total: number;
     currency: "INR";
 
-    paymentMethod: PaymentMethod;
+    paymentMethod?: PaymentMethod;
+
     status: OrderStatus;
 
     createdAt: string;
     updatedAt: string;
+};
+
+export type CreatePOSOrderDTO = {
+    items: {
+        productId: string;
+        quantity: number;
+    }[];
+    paymentMethod?: PaymentMethod;
 };
 
 export type OrderListItem = Pick<

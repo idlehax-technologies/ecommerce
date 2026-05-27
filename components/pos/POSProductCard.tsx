@@ -21,7 +21,7 @@ type Props = {
 };
 
 export default function POSProductCard({ row }: Props) {
-    const { product, stock, reserved, available, onSelect } = row;
+    const { product, stock, reserved, inCart, available, onSelect } = row;
 
     const price = (product.price / 100).toFixed(2);
     const image = product.images?.[0];
@@ -65,10 +65,10 @@ export default function POSProductCard({ row }: Props) {
                                 size="small"
                             />
 
-                            {reserved > 0 && (
+                            {inCart > 0 && (
                                 <Chip
-                                    label={`${reserved} reserved`}
-                                    color="warning"
+                                    label={`${inCart} in cart`}
+                                    color="info"
                                     size="small"
                                 />
                             )}

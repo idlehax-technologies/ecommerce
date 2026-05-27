@@ -6,6 +6,7 @@ import { getProduct } from "@/lib/products/domain";
 
 import type { Order, OrderItem } from "@/types/order";
 import type { DomainEvent } from "@/types/domainEvent";
+import { PaymentMethod } from "@/types/payment";
 
 type POSItemInput = {
     productId: string;
@@ -16,7 +17,7 @@ type POSInput = {
     tenantId: string;
     staffId: string;
     items: POSItemInput[];
-    paymentMethod?: "CASH" | "UPI" | "CARD" | "NET_BANKING";
+    paymentMethod?: PaymentMethod;
 };
 
 export async function executePOS(input: POSInput): Promise<{
@@ -43,7 +44,7 @@ export async function executePOS(input: POSInput): Promise<{
 
     // reserve stock
     for (const item of orderItems) {
-        tenantInventoryDomain.reserveStock(
+        await tenantInventoryDomain.reserveStock(
             input.tenantId,
             item.productId,
             item.quantity
@@ -55,7 +56,8 @@ export async function executePOS(input: POSInput): Promise<{
             ordersDomain.createOrder(
                 input.tenantId,
                 input.staffId,
-                orderItems
+                orderItems,
+                input.staffId
             );
 
         const enrichedOrder: Order & { placedByStaffId: string } = {
@@ -102,7 +104,7 @@ export async function executePOS(input: POSInput): Promise<{
     } catch (err) {
         // rollback reservation
         for (const item of orderItems) {
-            tenantInventoryDomain.releaseStock(
+            await tenantInventoryDomain.releaseStock(
                 input.tenantId,
                 item.productId,
                 item.quantity

@@ -80,27 +80,27 @@ function seedMemberships() {
 seedMemberships();
 
 export const membershipStore = {
-    get(id: string) {
+    get(id: string): Membership | null {
         return store.get(id) ?? null;
     },
 
-    getAll() {
+    getAll(): Membership[] {
         return Array.from(store.values());
     },
 
-    listByUser(userId: string) {
+    listByUser(userId: string): Membership[] {
         return Array.from(store.values()).filter(
             (m) => m.userId === userId
         );
     },
 
-    listByTenant(tenantId: string) {
+    listByTenant(tenantId: string): Membership[] {
         return Array.from(store.values()).filter(
             (m) => m.tenantId === tenantId
         );
     },
 
-    save(m: Membership) {
+    save(m: Membership): void {
         store.set(m.membershipId, m);
     },
 };

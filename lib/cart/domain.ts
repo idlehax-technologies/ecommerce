@@ -1,25 +1,46 @@
-import type { Cart, AddToCartDTO, UpdateCartItemDTO } from "@/types/cart";
-import type { TenantScopedActor } from "@/types/tenant";
+// lib/cart/domain.ts
 
-import { getCartForTenant, saveCart, clearCart as clearStorage } from "./storage";
+import type {
+    Cart,
+    AddToCartDTO,
+    UpdateCartItemDTO,
+} from "@/types/cart";
+
+import {
+    getCart,
+    saveCart,
+    clearCart as clearStorage,
+} from "./storage";
+
 import { requireItem } from "./guards";
 
 import { getProductForCart } from "@/lib/products/domain";
-import { findTenantProvision } from "../tenantInventory/domain";
-import { getAvailableStock } from "../tenantInventory/reservations";
+
+import { findTenantProvision }
+    from "../tenantInventory/domain";
+
+import { getAvailableStock }
+    from "../tenantInventory/reservations";
 
 import {
     CartProductUnavailableError,
     CartStockExceededError,
-    InvalidQuantityError
+    InvalidQuantityError,
 } from "./errors";
 
 /* =========================================================
    Get cart
    ========================================================= */
 
-export function getCart(actor: TenantScopedActor): Cart {
-    return getCartForTenant(actor.tenantId);
+export function getUserCart(
+    tenantId: string,
+    userId: string
+): Cart {
+
+    return getCart(
+        tenantId,
+        userId
+    );
 }
 
 /* =========================================================
@@ -27,40 +48,57 @@ export function getCart(actor: TenantScopedActor): Cart {
    ========================================================= */
 
 export async function addItem(
-    actor: TenantScopedActor,
+    tenantId: string,
+    userId: string,
     dto: AddToCartDTO
 ): Promise<Cart> {
 
-    const cart = getCartForTenant(actor.tenantId);
+    const cart = getCart(
+        tenantId,
+        userId
+    );
 
-    const product = await getProductForCart(dto.productId);
+    const product =
+        await getProductForCart(
+            dto.productId
+        );
 
-    const provision = findTenantProvision(actor.tenantId, product.productId);
+    const provision =
+        await findTenantProvision(
+            tenantId,
+            product.productId
+        );
 
-    if (!provision || !provision.enabled) {
+    if (
+        !provision ||
+        !provision.enabled
+    ) {
         throw new CartProductUnavailableError();
     }
 
-    const quantityToAdd = dto.quantity ?? 1;
+    const quantityToAdd =
+        dto.quantity ?? 1;
 
     if (quantityToAdd <= 0) {
-        throw new InvalidQuantityError("Quantity must be greater than zero");
+        throw new InvalidQuantityError(
+            "Quantity must be greater than zero"
+        );
     }
 
     const existing = cart.items.find(
-        (i) => i.productId === product.productId
+        (i) =>
+            i.productId ===
+            product.productId
     );
 
     const newQuantity = existing
         ? existing.quantity + quantityToAdd
         : quantityToAdd;
 
-    /**
-     * Step-4 fix:
-     * validate against AVAILABLE stock
-     */
-
-    const available = getAvailableStock(provision);
+    const available =
+        getAvailableStock(
+            provision
+        );
 
     if (newQuantity > available) {
         throw new CartStockExceededError();
@@ -68,7 +106,8 @@ export async function addItem(
 
     if (existing) {
 
-        existing.quantity = newQuantity;
+        existing.quantity =
+            newQuantity;
 
     } else {
 
@@ -78,10 +117,10 @@ export async function addItem(
             price: product.price,
             quantity: newQuantity,
         });
-
     }
 
     saveCart(cart);
+
     return cart;
 }
 
@@ -89,34 +128,53 @@ export async function addItem(
    Update quantity
    ========================================================= */
 
-export function updateItem(
-    actor: TenantScopedActor,
+export async function updateItem(
+    tenantId: string,
+    userId: string,
     productId: string,
     dto: UpdateCartItemDTO
-): Cart {
+): Promise<Cart> {
 
-    const cart = getCartForTenant(actor.tenantId);
+    const cart = getCart(
+        tenantId,
+        userId
+    );
 
-    const item = requireItem(cart, productId);
+    const item = requireItem(
+        cart,
+        productId
+    );
 
     if (dto.quantity <= 0) {
-        cart.items = cart.items.filter(i => i.productId !== productId);
+
+        cart.items = cart.items.filter(
+            (i) =>
+                i.productId !==
+                productId
+        );
+
         saveCart(cart);
+
         return cart;
     }
 
-    const provision = findTenantProvision(actor.tenantId, productId);
+    const provision =
+        await findTenantProvision(
+            tenantId,
+            productId
+        );
 
-    if (!provision || !provision.enabled) {
+    if (
+        !provision ||
+        !provision.enabled
+    ) {
         throw new CartProductUnavailableError();
     }
 
-    /**
-     * Step-4 fix:
-     * use available stock
-     */
-
-    const available = getAvailableStock(provision);
+    const available =
+        getAvailableStock(
+            provision
+        );
 
     if (dto.quantity > available) {
         throw new CartStockExceededError();
@@ -125,6 +183,7 @@ export function updateItem(
     item.quantity = dto.quantity;
 
     saveCart(cart);
+
     return cart;
 }
 
@@ -133,15 +192,24 @@ export function updateItem(
    ========================================================= */
 
 export function removeItem(
-    actor: TenantScopedActor,
+    tenantId: string,
+    userId: string,
     productId: string
 ): Cart {
 
-    const cart = getCartForTenant(actor.tenantId);
+    const cart = getCart(
+        tenantId,
+        userId
+    );
 
-    cart.items = cart.items.filter((i) => i.productId !== productId);
+    cart.items = cart.items.filter(
+        (i) =>
+            i.productId !==
+            productId
+    );
 
     saveCart(cart);
+
     return cart;
 }
 
@@ -149,6 +217,13 @@ export function removeItem(
    Clear cart
    ========================================================= */
 
-export function clearCart(actor: TenantScopedActor): void {
-    clearStorage(actor.tenantId);
+export function clearCart(
+    tenantId: string,
+    userId: string
+): void {
+
+    clearStorage(
+        tenantId,
+        userId
+    );
 }

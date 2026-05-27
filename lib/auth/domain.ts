@@ -9,6 +9,7 @@ const EXPIRY_MS = 2 * 60 * 1000;
 const RESEND_COOLDOWN = 30 * 1000;
 const MAX_ATTEMPTS = 5;
 
+// production OTP generation
 const randomCode = () =>
     Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -34,9 +35,15 @@ function sendOtp(phone: string) {
     console.log(`OTP for ${phone}: ${code}`);
 }
 
-function verifyOtpCode(phone: string, code: string) {
+function verifyOtpCode(
+    phone: string,
+    code: string
+) {
     const rec = otpStoreApi.get(phone);
-    if (!rec) throw new InvalidOtpError();
+
+    if (!rec) {
+        throw new InvalidOtpError();
+    }
 
     if (rec.expiresAt < Date.now()) {
         otpStoreApi.delete(phone);
@@ -49,8 +56,12 @@ function verifyOtpCode(phone: string, code: string) {
     }
 
     if (rec.code !== code) {
-        rec.attempts++;
-        otpStoreApi.save(rec);
+
+        otpStoreApi.save({
+            ...rec,
+            attempts: rec.attempts + 1,
+        });
+
         throw new InvalidOtpError();
     }
 

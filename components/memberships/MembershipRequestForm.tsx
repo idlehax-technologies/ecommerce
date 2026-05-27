@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import {
+    useEffect,
+    useState,
+} from "react";
+
 import {
     Stack,
     Select,
@@ -9,47 +13,140 @@ import {
     Typography,
 } from "@mui/material";
 
-import { requestMembership } from "@/lib/api/memberships";
-import { useSnackbar } from "@/components/common/AppSnackbar";
+import {
+    requestMembership,
+} from "@/lib/api/memberships";
+
+import {
+    fetchTenants,
+} from "@/lib/api/tenants";
+
+import { useSnackbar }
+    from "@/contexts/SnackbarContext";
+
+import type {
+    PublicTenant,
+} from "@/types/tenant";
 
 export default function MembershipRequestForm() {
-    const [tenantId, setTenantId] = useState("");
-    const [loading, setLoading] = useState(false);
-    const { show } = useSnackbar();
+
+    const [tenantId, setTenantId] =
+        useState("");
+
+    const [loading, setLoading] =
+        useState(false);
+
+    const [tenants, setTenants] =
+        useState<PublicTenant[]>([]);
+
+    const { show } =
+        useSnackbar();
+
+    async function load() {
+
+        try {
+
+            const res =
+                await fetchTenants();
+
+            setTenants(
+                res.tenants.filter(
+                    (t) => t.status === "ACTIVE"
+                )
+            );
+
+        } catch (err: unknown) {
+
+            if (err instanceof Error) {
+                show(err.message, "error");
+            } else {
+                show(
+                    "Failed to load tenants",
+                    "error"
+                );
+            }
+        }
+    }
 
     async function submit() {
+
         try {
+
             setLoading(true);
-            await requestMembership(tenantId);
+
+            await requestMembership(
+                tenantId
+            );
+
             show("Request submitted");
-        } catch {
-            show("Request failed", "error");
+
+        } catch (err: unknown) {
+
+            if (err instanceof Error) {
+                show(err.message, "error");
+            } else {
+                show(
+                    "Request failed",
+                    "error"
+                );
+            }
+
         } finally {
             setLoading(false);
         }
     }
 
+    useEffect(() => {
+        load();
+    }, []);
+
     return (
         <Stack spacing={2}>
-            <Typography variant="h6">Request Access</Typography>
+
+            <Typography variant="h6">
+                Request Access
+            </Typography>
 
             <Select
                 value={tenantId}
-                onChange={(e) => setTenantId(e.target.value)}
+                onChange={(e) =>
+                    setTenantId(
+                        e.target.value
+                    )
+                }
                 displayEmpty
             >
-                <MenuItem value="">Select Tenant</MenuItem>
-                <MenuItem value="tenant_alpha">tenant_alpha</MenuItem>
-                <MenuItem value="tenant_mnsnhs">tenant_mnsnhs</MenuItem>
+
+                <MenuItem value="">
+                    Select Tenant
+                </MenuItem>
+
+                {tenants.map((tenant) => (
+
+                    <MenuItem
+                        key={tenant.tenantId}
+                        value={tenant.tenantId}
+                    >
+                        {tenant.name}
+                    </MenuItem>
+
+                ))}
+
             </Select>
 
             <Button
                 variant="contained"
-                disabled={!tenantId || loading}
+                disabled={
+                    !tenantId ||
+                    loading
+                }
                 onClick={submit}
             >
-                {loading ? "Requesting..." : "Request"}
+                {loading
+                    ? "Requesting..."
+                    : "Request"}
             </Button>
+
         </Stack>
     );
 }

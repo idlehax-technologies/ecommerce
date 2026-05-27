@@ -8,3 +8,9 @@ export type StockAdjustmentRequest = {
      */
     newStock: number;
 };
+
+export type AdjustedInventorySnapshot = {
+    productId: string;
+    stock: number;
+    reserved: number;
+};

@@ -1,5 +1,3 @@
-// lib/products/guards.ts
-
 import type { Product } from "@/types/product";
 import {
   ProductNotFoundError,
@@ -13,10 +11,10 @@ export function assertProductExists(
   if (!p) throw new ProductNotFoundError();
 }
 
-export function assertNotDeleted(p: Product) {
+export function assertNotDeleted(p: Product): void {
   if (p.deletedAt) throw new ProductDeletedError();
 }
 
-export function assertActive(p: Product) {
+export function assertActive(p: Product): void {
   if (!p.isActive) throw new ProductInactiveError();
 }

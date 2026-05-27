@@ -14,30 +14,44 @@ const keyOf = (tenantId: string, productId: string) =>
 
 export const tenantInventoryStore = {
 
-    get(tenantId: string, productId: string): TenantInventory | undefined {
-        return store.get(keyOf(tenantId, productId));
-    },
+    get(
+        tenantId: string,
+        productId: string
+    ): TenantInventory | undefined {
 
-    listByTenant(tenantId: string): TenantInventory[] {
-
-        return Array.from(store.values()).filter(
-            (r) => r.tenantId === tenantId
+        const record = store.get(
+            keyOf(tenantId, productId)
         );
 
+        return record
+            ? { ...record }
+            : undefined;
     },
 
-    save(record: TenantInventory) {
-        store.set(keyOf(record.tenantId, record.productId), record);
+    listByTenant(
+        tenantId: string
+    ): TenantInventory[] {
+
+        return Array
+            .from(store.values())
+            .filter((r) => r.tenantId === tenantId)
+            .map((r) => ({ ...r }));
     },
 
-    delete(tenantId: string, productId: string) {
+    save(record: TenantInventory): void {
+        store.set(
+            keyOf(record.tenantId, record.productId),
+            { ...record }
+        );
+    },
+
+    delete(tenantId: string, productId: string): void {
         store.delete(keyOf(tenantId, productId));
     },
 
     /**
      * Atomic mutation helper
      */
-
     update(
         tenantId: string,
         productId: string,
@@ -52,10 +66,10 @@ export const tenantInventoryStore = {
             throw new Error("Provision not found");
         }
 
-        const updated = mutator(record);
+        const updated = mutator({ ...record });
 
-        store.set(key, updated);
+        store.set(key, { ...updated });
 
-        return updated;
+        return { ...updated };
     },
 };

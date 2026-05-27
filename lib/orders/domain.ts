@@ -16,9 +16,11 @@ import {
     InvalidOrderTransitionError,
 } from "./errors";
 
+import { PaymentMethod } from "@/types/payment";
+
 /* ---------------- VALIDATION ---------------- */
 
-function validateOrderItems(items: OrderItem[]) {
+function validateOrderItems(items: OrderItem[]): void {
     if (!items || items.length === 0) {
         throw new EmptyOrderItemsError();
     }
@@ -37,33 +39,52 @@ function computeTotal(items: OrderItem[]): number {
     );
 }
 
-/* ---------------- TRANSITION ---------------- */
+/* ---------------- TRANSITIONS ---------------- */
+
+const ALLOWED_TRANSITIONS: Record<
+    Order["status"],
+    Order["status"][]
+> = {
+    RESERVED: ["PAID", "CANCELLED", "EXPIRED"],
+    PAID: ["PICKED_UP", "REFUNDED"],
+    PICKED_UP: [],
+    CANCELLED: [],
+    EXPIRED: [],
+    REFUNDED: [],
+};
 
 function transition(
     order: Order,
     expected: Order["status"],
-    to: Order["status"]
-) {
+    to: Order["status"],
+    mutate?: () => void
+): {
+    from: Order["status"];
+    to: Order["status"];
+} {
     if (order.status !== expected) {
-        throw new InvalidOrderTransitionError(order.status, to);
+        throw new InvalidOrderTransitionError(
+            order.status,
+            to
+        );
     }
 
-    const allowed: Record<Order["status"], Order["status"][]> = {
-        RESERVED: ["PAID", "CANCELLED", "EXPIRED"],
-        PAID: ["PICKED_UP", "REFUNDED"],
-        PICKED_UP: [],
-        CANCELLED: [],
-        EXPIRED: [],
-        REFUNDED: [],
-    };
-
-    if (!allowed[expected].includes(to)) {
-        throw new InvalidOrderTransitionError(expected, to);
+    if (
+        !ALLOWED_TRANSITIONS[expected]
+            .includes(to)
+    ) {
+        throw new InvalidOrderTransitionError(
+            expected,
+            to
+        );
     }
 
     const from = order.status;
 
     order.status = to;
+
+    mutate?.();
+
     order.updatedAt = new Date().toISOString();
 
     saveOrder(order);
@@ -76,8 +97,12 @@ function transition(
 export function createOrder(
     tenantId: string,
     userId: string,
-    items: OrderItem[]
-): { order: Order; event: DomainEvent } {
+    items: OrderItem[],
+    placedByStaffId?: string
+): {
+    order: Order;
+    event: DomainEvent;
+} {
 
     validateOrderItems(items);
 
@@ -93,10 +118,10 @@ export function createOrder(
         orderId: randomUUID(),
         tenantId,
         userId,
+        placedByStaffId,
         items: [...items],
         total,
         currency: "INR",
-        paymentMethod: "CASH", // or your default
         status: "RESERVED",
         createdAt: now,
         updatedAt: now,
@@ -108,12 +133,12 @@ export function createOrder(
         order,
         event: {
             type: "OrderCreated",
-            order
-        }
+            order,
+        },
     };
 }
 
-/* ---------------- READ ---------------- */
+/* ---------------- READ (Tenant Scoped) ---------------- */
 
 export function getTenantOrder(
     tenantId: string,
@@ -129,10 +154,10 @@ export function getTenantOrder(
     return order;
 }
 
-export function listTenantOrders(
+export async function listTenantOrders(
     tenantId: string,
     limit?: number
-): Order[] {
+): Promise<Order[]> {
     const all = listOrdersByTenant(tenantId);
 
     return limit ? all.slice(0, limit) : all;
@@ -140,21 +165,21 @@ export function listTenantOrders(
 
 /* ---------------- MUTATIONS ---------------- */
 
-/**
- * 🔴 IMPORTANT
- * Payment domain must pass payment object
- */
 export function markOrderPaid(
     tenantId: string,
     orderId: string,
-    method: Order["paymentMethod"],
+    method: PaymentMethod,
 ): { order: Order; event: DomainEvent } {
 
     const order = getTenantOrder(tenantId, orderId);
 
-    const { from, to } = transition(order, "RESERVED", "PAID");
-
-    order.paymentMethod = method;
+    const { from, to } =
+        transition(
+            order,
+            "RESERVED",
+            "PAID",
+            () => { order.paymentMethod = method }
+        );
 
     return {
         order,

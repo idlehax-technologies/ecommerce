@@ -3,6 +3,7 @@ import { requireTenant } from "@/lib/auth/guards";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import { getTenantOrder } from "@/lib/orders/domain";
+import { assertOrderVisible } from "@/lib/orders/guards";
 
 export async function GET(
     req: Request,
@@ -16,9 +17,7 @@ export async function GET(
 
         const order = getTenantOrder(actor.tenantId, orderId);
 
-        if (order.userId !== user.userId) {
-            return new Response("Not found", { status: 404 });
-        }
+        assertOrderVisible(actor, order);
 
         // 🔴 Simple PDF (HTML → printable)
         const html = `
@@ -60,7 +59,7 @@ export async function GET(
 
             <div class="row">
                 <span>Payment</span>
-                <span>${order.paymentMethod}</span>
+                <span>${order.paymentMethod ?? "Pending Confirmation"}</span>
             </div>
         </body>
         </html>

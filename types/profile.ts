@@ -8,12 +8,6 @@ export type UserProfile = {
     updatedAt: string;
 };
 
-export type UpsertProfileInput = {
-    fullName: string;
-    email: string;
-    addressText: string;
-};
-
 export type ProfileDTO = {
     fullName: string;
     email: string;

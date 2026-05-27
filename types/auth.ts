@@ -13,6 +13,12 @@ export type AuthState = {
   loading: boolean;
 };
 
+export type MembershipActor = {
+  userId: string;
+  tenantId: string;
+  role: MembershipRole;
+};
+
 export type TenantActor = {
   type: "tenant";
   membership: {

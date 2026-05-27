@@ -18,7 +18,7 @@ import {
 import type { MembershipView } from "@/types/membership";
 import MembershipStatusBadge from "./MembershipStatusBadge";
 import { useActiveMembership } from "@/hooks/useActiveMembership";
-import { useSnackbar } from "@/components/common/AppSnackbar";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 
 export default function UserMembershipSelector() {
     const [list, setList] = useState<MembershipView[]>([]);
@@ -29,10 +29,19 @@ export default function UserMembershipSelector() {
     const { show } = useSnackbar();
 
     async function load() {
-        setLoading(true);
-        const data = await fetchMyMemberships();
-        setList(data);
-        setLoading(false);
+        try {
+            setLoading(true);
+            const data = await fetchMyMemberships();
+            setList(data.memberships);
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                show(err.message, "error");
+            } else {
+                show("Failed to load memberships", "error");
+            }
+        } finally {
+            setLoading(false);
+        }
     }
 
     useEffect(() => {
@@ -45,8 +54,12 @@ export default function UserMembershipSelector() {
             await selectMembership(id);
             show("Switched tenant");
             await load();
-        } catch {
-            show("Switch failed", "error");
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                show(err.message, "error");
+            } else {
+                show("Switch failed", "error");
+            }
         } finally {
             setSwitchingId(null);
         }

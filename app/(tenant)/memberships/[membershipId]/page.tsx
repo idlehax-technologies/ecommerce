@@ -2,30 +2,58 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Container, CircularProgress } from "@mui/material";
+import { Container, CircularProgress, Typography } from "@mui/material";
 
 import { getMembership } from "@/lib/api/memberships";
 import type { MembershipView } from "@/types/membership";
 import MembershipDetailCard from "@/components/memberships/MembershipDetailCard";
 
 export default function Page() {
-    const { membershipId } = useParams();
-    const [m, setM] = useState<MembershipView | null>(null);
+    const { membershipId } = useParams<{ membershipId: string }>();
+
+    const [membership, setMembership] = useState<MembershipView | null>(null);
+    const [loading, setLoading] = useState(true);
 
     async function load() {
-        const data = await getMembership(membershipId as string);
-        setM(data);
+        try {
+            setLoading(true);
+            const res = await getMembership(membershipId);
+            setMembership(res.membership);
+        } finally {
+            setLoading(false);
+        }
     }
 
     useEffect(() => {
         load();
     }, [membershipId]);
 
-    if (!m) return <CircularProgress />;
+    if (loading) {
+        return <CircularProgress />;
+    }
+
+    if (!membership) {
+        return null;
+    }
 
     return (
-        <Container maxWidth="sm">
-            <MembershipDetailCard m={m} reload={load} />
+        <Container
+            maxWidth="sm"
+            sx={{ py: 4 }}
+        >
+
+            <Typography
+                variant="h5"
+                mb={3}
+            >
+                Membership Details
+            </Typography>
+
+            <MembershipDetailCard
+                m={membership}
+                reload={load}
+            />
+
         </Container>
     );
 }

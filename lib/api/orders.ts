@@ -1,44 +1,100 @@
 import { apiFetch } from "./fetch";
+
 import type { Order } from "@/types/order";
+import { Payment, PaymentMethod } from "@/types/payment";
 
-export const getOrders = () =>
-    apiFetch<Order[]>("/api/orders");
+export async function getOrders(): Promise<{
+    orders: Order[];
+}> {
+    return apiFetch<{ orders: Order[] }>(
+        "/api/orders"
+    );
+}
 
-export const getOrder = (orderId: string) =>
-    apiFetch<Order>(`/api/orders/${orderId}`);
+export async function getOrder(
+    orderId: string
+): Promise<{
+    order: Order;
+}> {
+    return apiFetch<{ order: Order }>(
+        `/api/orders/${orderId}`
+    );
+}
 
-export const payOrder = (
+export async function payOrder(
     orderId: string,
-    method: string
-) =>
-    apiFetch<{ order: Order }>(
+    method: PaymentMethod
+): Promise<{
+    payment: Payment;
+}> {
+    return apiFetch<{ payment: Payment }>(
         `/api/orders/${orderId}/pay`,
         {
             method: "POST",
             body: JSON.stringify({ method }),
         }
     );
+}
 
-export const createPOSOrder = (payload: {
-    items: { productId: string; quantity: number }[];
-    paymentMethod?: string;
-}) =>
-    apiFetch<{ order: Order & { placedByStaffId: string }; }>(
-        `/api/orders/pos`,
+export async function createPOSOrder(payload: {
+    items: {
+        productId: string;
+        quantity: number;
+    }[];
+    paymentMethod?: PaymentMethod;
+}): Promise<{
+    order: Order & {
+        placedByStaffId: string;
+    };
+}> {
+    return apiFetch<{
+        order: Order & {
+            placedByStaffId: string;
+        };
+    }>(
+        "/api/orders/pos",
         {
             method: "POST",
             body: JSON.stringify(payload),
         }
     );
+}
 
-export const cancelOrder = (orderId: string) =>
-    apiFetch(`/api/orders/${orderId}/cancel`, { method: "POST" });
+export async function cancelOrder(
+    orderId: string
+): Promise<{ success: true }> {
+    return apiFetch<{ success: true }>(
+        `/api/orders/${orderId}/cancel`,
+        {
+            method: "POST",
+        }
+    );
+}
 
-export const pickupOrder = (orderId: string) =>
-    apiFetch(`/api/orders/${orderId}/pickup`, { method: "POST" });
+export async function pickupOrder(
+    orderId: string
+): Promise<{ success: true }> {
+    return apiFetch<{ success: true }>(
+        `/api/orders/${orderId}/pickup`,
+        {
+            method: "POST",
+        }
+    );
+}
 
-export const expireOrder = (orderId: string) =>
-    apiFetch(`/api/orders/${orderId}/expire`, { method: "POST" });
+export async function refundOrder(
+    orderId: string
+): Promise<{ success: true }> {
+    return apiFetch<{ success: true }>(
+        `/api/orders/${orderId}/refund`,
+        {
+            method: "POST",
+        }
+    );
+}
 
-export const refundOrder = (orderId: string) =>
-    apiFetch(`/api/orders/${orderId}/refund`, { method: "POST" });
+export function getReceiptUrl(
+    orderId: string
+): string {
+    return `/api/orders/${orderId}/receipt`;
+}

@@ -1,12 +1,15 @@
 "use client";
 
+import { useState, useTransition } from "react";
+
+import { useRouter } from "next/navigation";
+
 import {
     Table, TableHead, TableRow, TableCell, TableBody,
     Button, Typography, TextField, Stack,
     Alert
 } from "@mui/material";
 
-import { useState, useTransition } from "react";
 import { adjustStock } from "@/lib/api/stockAdjustment";
 
 import type { LowStockItem } from "@/types/lowStock";
@@ -22,15 +25,17 @@ type Props = {
 
 export default function LowStockTable({ tenantId, items }: Props) {
 
+    const router = useRouter();
+
     const [pending, start] = useTransition();
 
     const [inputs, setInputs] = useState<Record<string, number | undefined>>({});
 
+    const [errors, setErrors] = useState<Record<string, string>>({});
+
     function setValue(productId: string, value: number | undefined) {
         setInputs(prev => ({ ...prev, [productId]: value }));
     }
-
-    const [errors, setErrors] = useState<Record<string, string>>({});
 
     function resolve(productId: string) {
 
@@ -66,12 +71,17 @@ export default function LowStockTable({ tenantId, items }: Props) {
                     newStock,
                 });
 
-                window.location.reload();
+                router.refresh();
 
-            } catch (err: any) {
+            } catch (err: unknown) {
+
                 setErrors(prev => ({
                     ...prev,
-                    [productId]: err?.message || "Adjustment failed",
+
+                    [productId]:
+                        err instanceof Error
+                            ? err.message
+                            : "Adjustment failed",
                 }));
             }
         });

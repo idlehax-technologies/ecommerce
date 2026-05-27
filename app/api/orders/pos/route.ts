@@ -1,13 +1,26 @@
 import { NextResponse } from "next/server";
 
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireTenant, requireMembershipRole } from "@/lib/auth/guards";
+import {
+    requireTenant,
+    requireMembershipRole
+} from "@/lib/auth/guards";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import { executePOS } from "@/lib/pos/service";
+
+import {
+    assertCreatePOSOrderDTO,
+} from "@/lib/orders/validators";
+
 import { dispatchEvent } from "@/lib/events/dispatcher";
-import { recordLatency, recordRequest, recordUser } from "@/lib/metrics";
+
+import {
+    recordLatency,
+    recordRequest,
+    recordUser,
+} from "@/lib/metrics";
 
 export async function POST(req: Request) {
     const start = Date.now();
@@ -20,10 +33,13 @@ export async function POST(req: Request) {
         });
 
         requireMembershipRole(user, ["staff"]);
+
         const actor = requireTenant(user);
         recordUser(actor.userId);
 
-        const body = await req.json();
+        const body: unknown = await req.json();
+
+        assertCreatePOSOrderDTO(body);
 
         const result = await executePOS({
             tenantId: actor.tenantId,
@@ -33,7 +49,9 @@ export async function POST(req: Request) {
         });
 
         for (const event of result.events) {
-            await dispatchEvent(event, { actorId: actor.userId });
+            await dispatchEvent(event, {
+                actorId: actor.userId
+            });
         }
 
         recordLatency(Date.now() - start);

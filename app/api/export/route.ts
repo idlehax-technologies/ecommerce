@@ -21,7 +21,7 @@ export async function POST(req: Request) {
         const body: unknown = await req.json();
         validateExportRequest(body);
 
-        const result = exportData(actor.tenantId, body);
+        const result = await exportData(actor.tenantId, body);
 
         return new NextResponse(
             result.content,

@@ -46,20 +46,20 @@ export async function provisionProduct(
     return updated;
 }
 
-export function listTenantInventory(
+export async function listTenantInventory(
     tenantId: string,
     limit?: number
-): TenantInventory[] {
+): Promise<TenantInventory[]> {
 
     const all = tenantInventoryStore.listByTenant(tenantId);
 
     return limit ? all.slice(0, limit) : all;
 }
 
-export function findTenantProvision(
+export async function findTenantProvision(
     tenantId: string,
     productId: string
-): TenantInventory | null {
+): Promise<TenantInventory | null> {
 
     return tenantInventoryStore.get(tenantId, productId) ?? null;
 }
@@ -67,11 +67,11 @@ export function findTenantProvision(
 /**
  * Step 4: Reserve stock during checkout
  */
-export function reserveStock(
+export async function reserveStock(
     tenantId: string,
     productId: string,
     quantity: number
-): TenantInventory {
+): Promise<TenantInventory> {
 
     if (typeof quantity !== "number" || Number.isNaN(quantity)) {
         throw new InvalidQuantityError("quantity must be a valid number");
@@ -100,11 +100,11 @@ export function reserveStock(
 /**
  * Commit reservation when order becomes PAID
  */
-export function commitStock(
+export async function commitStock(
     tenantId: string,
     productId: string,
     quantity: number
-): TenantInventory {
+): Promise<TenantInventory> {
 
     if (typeof quantity !== "number" || Number.isNaN(quantity)) {
         throw new InvalidQuantityError("quantity must be a valid number");
@@ -128,11 +128,11 @@ export function commitStock(
 /**
  * Release reservation when order expires or is cancelled
  */
-export function releaseStock(
+export async function releaseStock(
     tenantId: string,
     productId: string,
     quantity: number
-): TenantInventory {
+): Promise<TenantInventory> {
 
     if (typeof quantity !== "number" || Number.isNaN(quantity)) {
         throw new InvalidQuantityError("quantity must be a valid number");

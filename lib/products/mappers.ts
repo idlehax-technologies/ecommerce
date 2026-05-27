@@ -1,5 +1,3 @@
-// lib/products/mappers.ts
-
 import type {
   Product,
   CreateProductDTO,

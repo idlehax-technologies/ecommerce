@@ -31,7 +31,7 @@ export async function POST(
 
         validateStockAdjustmentInput(body);
 
-        const result = adjustStock({
+        const result = await adjustStock({
             tenantId,
             actorId: user.userId,
             request: body,

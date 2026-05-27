@@ -2,8 +2,7 @@ import { randomUUID } from "crypto";
 import type { DomainEvent } from "@/types/domainEvent";
 import type { AuditEventType } from "@/types/audit";
 
-// 🔴 import ONLY internal write
-import { __internal_appendAudit as appendAudit } from "./storage";
+import { appendAudit } from "./domain";
 
 function mapEventType(e: DomainEvent): AuditEventType {
     switch (e.type) {

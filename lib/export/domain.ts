@@ -3,6 +3,7 @@ import { listPaymentsByTenant } from "@/lib/payments/storage";
 import { runTenantReconciliation } from "@/lib/reconciliation/domain";
 
 import type { ExportRequest } from "@/types/export";
+import { ExportGenerationError } from "./errors";
 
 type OrderExportRow = {
     orderId: string;
@@ -29,15 +30,21 @@ type ExportDomainResult = {
     rows: OrderExportRow[] | ReconciliationExportRow[];
 };
 
-export function generateExport(
+function sanitizeFilename(value: string): string {
+    return value.replace(/[^a-zA-Z0-9-_]/g, "");
+}
+
+export async function generateExport(
     tenantId: string,
     request: ExportRequest
-): ExportDomainResult {
+): Promise<ExportDomainResult> {
+
+    const safeTenantId = sanitizeFilename(tenantId);
 
     switch (request.type) {
 
         case "ORDERS": {
-            const orders = listTenantOrders(tenantId);
+            const orders = await listTenantOrders(tenantId);
             const payments = listPaymentsByTenant(tenantId);
 
             const paymentMap = new Map(
@@ -59,13 +66,13 @@ export function generateExport(
             });
 
             return {
-                filename: `orders-${tenantId.replace(/[^a-zA-Z0-9-_]/g, "")}.csv`,
+                filename: `orders-${safeTenantId}.csv`,
                 rows,
             };
         }
 
         case "RECONCILIATION": {
-            const report = runTenantReconciliation(tenantId);
+            const report = await runTenantReconciliation(tenantId);
 
             const rows = report.mismatches.map(m => ({
                 type: m.type,
@@ -78,14 +85,14 @@ export function generateExport(
             }));
 
             return {
-                filename: `reconciliation-${tenantId}.csv`,
+                filename: `reconciliation-${safeTenantId}.csv`,
                 rows,
             };
         }
 
         default: {
             const _exhaustive: never = request.type;
-            throw new Error(`Unknown export type: ${_exhaustive}`);
+            throw new ExportGenerationError(`Unknown export type: ${_exhaustive}`);
         }
     }
 }

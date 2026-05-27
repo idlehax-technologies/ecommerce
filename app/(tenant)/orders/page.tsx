@@ -1,43 +1,56 @@
-import { Container, Typography, Box } from "@mui/material";
+"use client";
 
-import { getUserFromRequest } from "@/lib/auth";
-import { requireTenant, requireAuth } from "@/lib/auth/guards";
+import { useEffect, useState } from "react";
 
-import { listTenantOrdersForUser } from "@/lib/orders/domain";
+import {
+    Container,
+    Typography,
+    Box,
+    CircularProgress,
+} from "@mui/material";
+
+import { getOrders } from "@/lib/api/orders";
 
 import OrdersList from "@/components/orders/OrdersList";
-import type { Order, OrderListItem } from "@/types/order";
 
-function toOrderListItem(order: Order): OrderListItem {
-    return {
-        orderId: order.orderId,
-        total: order.total,
-        status: order.status,
-        createdAt: order.createdAt,
-    };
-}
+import type { OrderListItem } from "@/types/order";
 
-export default async function OrdersPage() {
-    const rawUser = await getUserFromRequest();
+import { toOrderListItem } from "@/lib/mappers/orderView";
 
-    const user = requireAuth(rawUser);
-    const actor = requireTenant(user);
+export default function FulfillmentPage() {
 
-    const orders = listTenantOrdersForUser(
-        actor.tenantId,
-        user.userId
-    );
+    const [orders, setOrders] = useState<OrderListItem[]>([]);
 
-    const rows = orders.map(toOrderListItem);
+    const [loading, setLoading] = useState(true);
+
+    async function load() {
+        try {
+            setLoading(true);
+            const res = await getOrders();
+            setOrders(res.orders.map(toOrderListItem));
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    useEffect(() => {
+        load();
+    }, []);
+
+    if (loading) {
+        return <CircularProgress />;
+    }
 
     return (
         <Container sx={{ mt: 6 }}>
-            <Typography variant="h4" gutterBottom>
-                My Orders
+            <Typography
+                variant="h4"
+                gutterBottom
+            >
+                Orders
             </Typography>
-
             <Box mt={3}>
-                <OrdersList orders={rows} />
+                <OrdersList orders={orders} />
             </Box>
         </Container>
     );

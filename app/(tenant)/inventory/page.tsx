@@ -40,7 +40,7 @@ export default async function TenantInventoryPage() {
             <Paper elevation={2}>
                 <TenantInventoryTable
                     tenantId={actor.tenantId}
-                    rows={view.rows}
+                    rows={view}
                     canEdit={false}
                 />
             </Paper>

@@ -3,7 +3,7 @@ import type { Cart } from "@/types/cart";
 /**
  * We anchor the cart map on globalThis so that:
  * - Next.js hot reload does NOT recreate the store
- * - The in-memory cart behaves like a stable process store (same as products)
+ * - The in-memory cart behaves like a stable process store
  * - We still keep carts ephemeral (no persistence beyond runtime)
  */
 
@@ -15,40 +15,90 @@ const globalForCart = globalThis as GlobalWithCartStore;
 
 /**
  * Reuse existing store if it exists, otherwise create it.
- * This mirrors the product storage pattern but keeps cart semantics.
  */
 const cartStore: Map<string, Cart> =
     globalForCart.__cartStore ?? new Map<string, Cart>();
 
 globalForCart.__cartStore = cartStore;
 
+function keyOf(
+    tenantId: string,
+    userId: string
+): string {
+    return `${tenantId}:${userId}`;
+}
+
+function cloneCart(cart: Cart): Cart {
+    return {
+        ...cart,
+        items: cart.items.map((item) => ({ ...item })),
+    };
+}
+
 /**
- * Cart access is always tenant-scoped.
- * We do NOT expose generic getAll()/get() like a repository,
- * because a cart is an aggregate, not a collection.
+ * Cart access is always:
+ * - tenant-scoped
+ * - user-scoped
  */
 
-export function getCartForTenant(tenantId: string): Cart {
-    let cart = cartStore.get(tenantId);
+export function getCart(
+    tenantId: string,
+    userId: string
+): Cart {
+
+    const key = keyOf(
+        tenantId,
+        userId
+    );
+
+    let cart = cartStore.get(key);
 
     if (!cart) {
+
         cart = {
             tenantId,
+            userId,
             items: [],
             updatedAt: new Date().toISOString(),
         };
 
-        cartStore.set(tenantId, cart);
+        cartStore.set(
+            key,
+            cloneCart(cart)
+        );
     }
 
-    return cart;
+    return cloneCart(cart);
 }
 
-export function saveCart(cart: Cart) {
-    cart.updatedAt = new Date().toISOString();
-    cartStore.set(cart.tenantId, cart);
+export function saveCart(
+    cart: Cart
+): void {
+
+    const updated: Cart = {
+        ...cart,
+        updatedAt: new Date().toISOString(),
+        items: cart.items.map((item) => ({ ...item })),
+    };
+
+    cartStore.set(
+        keyOf(
+            updated.tenantId,
+            updated.userId
+        ),
+        updated
+    );
 }
 
-export function clearCart(tenantId: string) {
-    cartStore.delete(tenantId);
+export function clearCart(
+    tenantId: string,
+    userId: string
+): void {
+
+    cartStore.delete(
+        keyOf(
+            tenantId,
+            userId
+        )
+    );
 }

@@ -1,11 +1,22 @@
 import { NextResponse } from "next/server";
 
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireTenant } from "@/lib/auth/guards";
+import { requireMembershipRole, requireTenant } from "@/lib/auth/guards";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import * as paymentsDomain from "@/lib/payments/domain";
-import { recordLatency, recordRequest, recordUser } from "@/lib/metrics";
+import * as ordersDomain from "@/lib/orders/domain";
+
+import {
+    assertPayOrderDTO,
+} from "@/lib/orders/validators";
+
+import {
+    recordLatency,
+    recordRequest,
+    recordUser,
+} from "@/lib/metrics";
+import { assertOrderVisible } from "@/lib/orders/guards";
 
 export async function POST(
     req: Request,
@@ -22,10 +33,21 @@ export async function POST(
             csrf: true,
         });
 
+        requireMembershipRole(user, ["customer"]);
+
         const actor = requireTenant(user);
         recordUser(actor.userId);
 
-        const body = await req.json();
+        const targetOrder = ordersDomain.getTenantOrder(
+            actor.tenantId,
+            orderId
+        );
+
+        assertOrderVisible(actor, targetOrder);
+
+        const body: unknown = await req.json();
+
+        assertPayOrderDTO(body);
 
         const result = paymentsDomain.recordPayment(
             actor.tenantId,
@@ -36,7 +58,7 @@ export async function POST(
         recordLatency(Date.now() - start);
 
         return NextResponse.json({
-            order: result.order
+            payment: result.payment
         });
 
     } catch (err: unknown) {

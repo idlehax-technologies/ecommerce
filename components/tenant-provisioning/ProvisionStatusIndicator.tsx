@@ -1,5 +1,3 @@
-// components/tenant-provisioning/ProvisionStatusIndicator.tsx
-
 import { Chip } from "@mui/material";
 import type { TenantProvisioningRow } from "@/lib/mappers/tenantProvisioningView";
 

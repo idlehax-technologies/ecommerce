@@ -1,17 +1,17 @@
-import AccessGuard from "@/components/guards/AccessGuard";
-import Navbar from "@/components/Navbar";
+"use client";
 
-export default function TenantLayout({
+import PlatformGuard from "@/components/guards/PlatformGuard";
+import Navbar from "@/components/layout/Navbar";
+
+export default function PlatformLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
     return (
-        <AccessGuard
-            allowSuperadmin
-        >
+        <PlatformGuard>
             <Navbar />
             {children}
-        </AccessGuard>
+        </PlatformGuard>
     );
 }

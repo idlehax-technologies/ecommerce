@@ -7,9 +7,9 @@ export async function GET(req: Request) {
     try {
         const user = await guardRequest(req, { requireAuth: true });
 
-        const data = listUserMembershipsEnriched(user.userId);
+        const memberships = listUserMembershipsEnriched(user.userId);
 
-        return NextResponse.json({ data });
+        return NextResponse.json({ memberships });
     } catch (err: unknown) {
         return handleRouteError(err);
     }

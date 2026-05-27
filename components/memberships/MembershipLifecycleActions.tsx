@@ -14,7 +14,7 @@ import {
     rejectMembership,
     revokeMembership,
 } from "@/lib/api/memberships";
-import { useSnackbar } from "@/components/common/AppSnackbar";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import { MembershipView } from "@/types/membership";
 
 type Props = {
@@ -57,8 +57,12 @@ export default function MembershipLifecycleActions({
             }
 
             reload();
-        } catch {
-            show("Action failed", "error");
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                show(err.message, "error");
+            } else {
+                show("Action failed", "error");
+            }
         } finally {
             close();
         }

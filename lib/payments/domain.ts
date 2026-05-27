@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Payment } from "@/types/payment";
+import type { Order } from "@/types/order";
 import type { DomainEvent } from "@/types/domainEvent";
 
 import {
@@ -10,8 +11,13 @@ import {
 
 import {
     PaymentAlreadyExistsError,
-    PaymentInvalidAmountError
+    PaymentInvalidAmountError,
+    PaymentNotFoundError,
 } from "./errors";
+
+import {
+    InvalidOrderTransitionError,
+} from "@/lib/orders/errors";
 
 import * as ordersDomain from "@/lib/orders/domain";
 
@@ -27,12 +33,23 @@ export function recordPayment(
     method: Payment["method"]
 ): {
     payment: Payment;
-    order: ReturnType<typeof ordersDomain.getTenantOrder>;
+    order: Order;
 } {
 
-    const order = ordersDomain.getTenantOrder(tenantId, orderId);
+    const order = ordersDomain.getTenantOrder(
+        tenantId,
+        orderId
+    );
+
+    if (order.status !== "RESERVED") {
+        throw new InvalidOrderTransitionError(
+            order.status,
+            "PAID"
+        );
+    }
 
     const existing = getPaymentByOrder(orderId);
+
     if (existing) {
         throw new PaymentAlreadyExistsError();
     }
@@ -57,7 +74,7 @@ export function recordPayment(
 
     return {
         payment,
-        order
+        order,
     };
 }
 
@@ -78,62 +95,73 @@ export function confirmPayment(
     orderId: string
 ): {
     payment: Payment;
-    order: ReturnType<typeof ordersDomain.getTenantOrder>;
+    order: Order;
     events: DomainEvent[];
 } {
 
-    const payment = getPaymentByOrder(orderId);
+    const payment =
+        getPaymentByOrder(orderId);
 
     if (!payment) {
-        throw new Error("Payment not found");
+        throw new PaymentNotFoundError();
+    }
+
+    if (payment.tenantId !== tenantId) {
+        throw new PaymentNotFoundError();
     }
 
     // idempotent case
     if (payment.status === "CONFIRMED") {
-        const order = ordersDomain.getTenantOrder(tenantId, orderId);
+
+        const order =
+            ordersDomain.getTenantOrder(
+                tenantId,
+                orderId
+            );
+
+        const paymentConfirmedEvent: DomainEvent = {
+            type: "PaymentConfirmed",
+            order,
+            payment,
+        };
 
         return {
             payment,
             order,
-            events: [
-                {
-                    type: "PaymentConfirmed",
-                    order,
-                    payment
-                }
-            ]
+            events: [paymentConfirmedEvent],
         };
     }
 
-    // STEP 1 — confirm payment
     payment.status = "CONFIRMED";
-    payment.updatedAt = new Date().toISOString();
+    payment.updatedAt =
+        new Date().toISOString();
 
     updatePayment(payment);
 
-    // STEP 2 — transition order (capture event!)
-    const orderResult = ordersDomain.markOrderPaid(
-        tenantId,
-        orderId,
-        payment.method
-    );
+    const orderResult =
+        ordersDomain.markOrderPaid(
+            tenantId,
+            orderId,
+            payment.method
+        );
 
     const order = orderResult.order;
 
-    // 🔴 CRITICAL FIX: capture OrderPaid event
-    const orderPaidEvent = orderResult.event;
+    const paymentConfirmedEvent: DomainEvent = {
+        type: "PaymentConfirmed",
+        order,
+        payment,
+    };
 
-    // STEP 3 — emit BOTH events
+    const orderPaidEvent =
+        orderResult.event;
+
     return {
         payment,
         order,
         events: [
-            {
-                type: "PaymentConfirmed",
-                order,
-                payment
-            },
-            orderPaidEvent
-        ]
+            paymentConfirmedEvent,
+            orderPaidEvent,
+        ],
     };
 }

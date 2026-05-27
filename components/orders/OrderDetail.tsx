@@ -1,13 +1,25 @@
 import { Stack, Typography, Divider, Button } from "@mui/material";
+
 import type { Order } from "@/types/order";
+
 import OrderItemsList from "./OrderItemsList";
 import OrderSummary from "./OrderSummary";
 import OrderPaymentSection from "./OrderPaymentSection";
 import OrderActions from "./OrderActions";
+import { MembershipRole } from "@/types/membership";
 
-export default function OrderDetail({ order }: { order: Order }) {
+export default function OrderDetail({
+    order,
+    reload,
+    actorRole,
+}: {
+    order: Order;
+    reload: () => Promise<void>;
+    actorRole: MembershipRole;
+}) {
     return (
         <Stack spacing={3}>
+
             <Typography variant="h5" fontWeight={600}>
                 Order {order.orderId}
             </Typography>
@@ -24,29 +36,38 @@ export default function OrderDetail({ order }: { order: Order }) {
 
             <OrderSummary order={order} />
 
-            {/* 🔥 Step 5 addition */}
-            {order.status === "RESERVED" && (
-                <>
-                    <Divider />
-                    <OrderPaymentSection orderId={order.orderId} />
-                </>
-            )}
+            {actorRole === "customer" &&
+                order.status === "RESERVED" && (
+                    <>
+                        <Divider />
 
-            {/* 🔥 Step 7: Staff-only actions */}
-            {order.placedByStaffId && (order.status === "RESERVED" || order.status === "PAID") && (
-                <>
-                    <Divider />
-                    <OrderActions order={order} />
-                </>
-            )}
+                        <OrderPaymentSection
+                            orderId={order.orderId}
+                            reload={reload}
+                        />
+                    </>
+                )}
 
-            {/* 🔥 Step 9: Receipt access */}
+            {actorRole === "staff" &&
+                (order.status === "RESERVED" ||
+                    order.status === "PAID") && (
+                    <>
+                        <Divider />
+
+                        <OrderActions
+                            order={order}
+                            reload={reload}
+                        />
+                    </>
+                )}
+
             <Button
                 href={`/orders/${order.orderId}/receipt`}
                 variant="outlined"
             >
                 View Receipt
             </Button>
+
         </Stack>
     );
 }

@@ -11,7 +11,7 @@ export type BaseJob = {
     lastError?: string;
     runAt: string;
     createdAt: string;
-    dedupKey?: string; // ✅ NEW
+    dedupKey?: string;
 };
 
 export type OrderExpiryJob = BaseJob & {

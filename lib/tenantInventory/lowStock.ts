@@ -3,13 +3,13 @@ import type { LowStockReport, LowStockItem } from "@/types/lowStock";
 
 const LOW_STOCK_THRESHOLD = 5;
 
-export function detectLowStock(
+export async function detectLowStock(
     tenantId: string
-): LowStockReport {
+): Promise<LowStockReport> {
 
     const scannedAt = new Date().toISOString();
 
-    const inventory = listTenantInventory(tenantId);
+    const inventory = await listTenantInventory(tenantId);
 
     const items: LowStockItem[] = [];
 

@@ -20,11 +20,7 @@ export default function OrderSummary({ order }: { order: Order }) {
                 </Typography>
 
                 <Typography variant="body2">
-                    {order.status === "RESERVED"
-                        ? "Pending Confirmation"
-                        : order.status === "REFUNDED"
-                            ? "Refunded"
-                            : order.paymentMethod}
+                    {order.paymentMethod ?? "Pending Confirmation"}
                 </Typography>
             </Box>
 

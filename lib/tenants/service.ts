@@ -40,7 +40,7 @@ export async function createTenantUseCase(
     body: unknown
 ): Promise<PublicTenant> {
     assertCreateTenantDTO(body);
-    return createTenant(body as CreateTenantDTO);
+    return createTenant(body);
 }
 
 export async function activateTenantUseCase(tenantId: string) {

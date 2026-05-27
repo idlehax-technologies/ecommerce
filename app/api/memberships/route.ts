@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireAccess } from "@/lib/auth/guards";
+import { requireMembershipRole, requireTenant } from "@/lib/auth/guards";
 import {
     requestMembership,
-    listMembershipsEnriched,
-    listAllMembershipsEnriched
+    listMembershipsEnriched
 } from "@/lib/memberships/domain";
 import { assertRequestMembership } from "@/lib/memberships/validators";
 import { handleRouteError } from "@/lib/http/handleRouteError";
@@ -16,15 +15,14 @@ export async function GET(req: Request) {
     try {
         const user = await guardRequest(req, { requireAuth: true });
 
-        const actor = requireAccess(user, ["staff"]);
+        requireMembershipRole(user, ["staff"]);
+        const actor = requireTenant(user);
 
         const memberships =
-            actor.type === "superadmin"
-                ? listAllMembershipsEnriched(QUERY_LIMITS.MEMBERSHIPS)
-                : listMembershipsEnriched(
-                    actor.membership.tenantId,
-                    QUERY_LIMITS.MEMBERSHIPS
-                );
+            listMembershipsEnriched(
+                actor.tenantId,
+                QUERY_LIMITS.MEMBERSHIPS
+            );
 
         return NextResponse.json({ memberships });
     } catch (err: unknown) {

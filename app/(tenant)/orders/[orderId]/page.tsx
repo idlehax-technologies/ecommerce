@@ -1,39 +1,63 @@
-import { Container } from "@mui/material";
-import { notFound } from "next/navigation";
+"use client";
 
-import { getUserFromRequest } from "@/lib/auth";
-import { requireTenant, requireAuth } from "@/lib/auth/guards";
-import { getTenantOrder } from "@/lib/orders/domain";
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+
+import { Container, CircularProgress } from "@mui/material";
+
+import { getOrder } from "@/lib/api/orders";
 
 import OrderDetail from "@/components/orders/OrderDetail";
 
-type PageProps = {
-    params: Promise<{ orderId: string }>;
-};
+import type { Order } from "@/types/order";
 
-export default async function OrderDetailPage({ params }: PageProps) {
-    const { orderId } = await params;
+import { useActiveMembership } from "@/hooks/useActiveMembership";
 
-    const rawUser = await getUserFromRequest();
-    const user = requireAuth(rawUser);
-    const actor = requireTenant(user);
+export default function OrderDetailPage() {
 
-    let order;
-    try {
-        order = getTenantOrder(actor.tenantId, orderId);
+    const { orderId } = useParams<{ orderId: string }>();
 
-        // 🔥 Step 8 critical guard
-        if (order.userId !== user.userId) {
-            notFound();
+    const { membership, loading: membershipLoading } = useActiveMembership();
+
+    const [order, setOrder] = useState<Order | null>(null);
+
+    const [loading, setLoading] = useState(true);
+
+    async function load() {
+        try {
+            setLoading(true);
+            const res = await getOrder(orderId);
+            setOrder(res.order);
+        } finally {
+            setLoading(false);
         }
+    }
 
-    } catch {
-        notFound();
+    useEffect(() => {
+        load();
+    }, [orderId]);
+
+    if (
+        loading ||
+        membershipLoading
+    ) {
+        return <CircularProgress />;
+    }
+
+    if (
+        !order ||
+        !membership
+    ) {
+        return null;
     }
 
     return (
         <Container sx={{ mt: 6 }}>
-            <OrderDetail order={order} />
+            <OrderDetail
+                order={order}
+                reload={load}
+                actorRole={membership.role}
+            />
         </Container>
     );
 }

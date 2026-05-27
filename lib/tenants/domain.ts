@@ -5,27 +5,17 @@ import {
     assertCanActivate,
     assertCanSuspend,
     assertCanArchive,
-    assertDoesNotExist,
 } from "./guards";
-import { CreateTenantDTO, PublicTenant } from "@/types/tenant";
+import { CreateTenantDTO, PublicTenant, Tenant } from "@/types/tenant";
 
 /**
  * Create → always PENDING
  */
-export function createTenant(dto: CreateTenantDTO): PublicTenant {
-    const t = toNewTenant(dto);
+export function createTenant(
+    dto: CreateTenantDTO
+): PublicTenant {
 
-    const existing = tenantStore.get(t.tenantId);
-    assertDoesNotExist(existing);
-
-    const now = new Date().toISOString();
-
-    const tenant = {
-        ...t,
-        status: "PENDING" as const,
-        createdAt: now,
-        updatedAt: now,
-    };
+    const tenant = toNewTenant(dto);
 
     tenantStore.save(tenant);
 
@@ -52,9 +42,9 @@ export function activateTenant(id: string): PublicTenant {
 
     assertCanActivate(current);
 
-    const updated = {
+    const updated: Tenant = {
         ...current,
-        status: "ACTIVE" as const,
+        status: "ACTIVE",
         updatedAt: new Date().toISOString(),
     };
 
@@ -72,9 +62,9 @@ export function suspendTenant(id: string): PublicTenant {
 
     assertCanSuspend(current);
 
-    const updated = {
+    const updated: Tenant = {
         ...current,
-        status: "SUSPENDED" as const,
+        status: "SUSPENDED",
         updatedAt: new Date().toISOString(),
     };
 
@@ -92,9 +82,9 @@ export function archiveTenant(id: string): PublicTenant {
 
     assertCanArchive(current);
 
-    const updated = {
+    const updated: Tenant = {
         ...current,
-        status: "ARCHIVED" as const,
+        status: "ARCHIVED",
         updatedAt: new Date().toISOString(),
     };
 

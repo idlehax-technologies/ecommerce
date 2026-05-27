@@ -1,7 +1,13 @@
 import { apiFetch } from "./fetch";
 
-export async function assumeTenant(tenantId: string) {
-    return apiFetch(`/api/admin/tenants/${tenantId}/assume`, {
-        method: "POST",
-    });
+export async function assumeTenant(
+    tenantId: string
+): Promise<{ success: true }> {
+
+    return apiFetch<{ success: true }>(
+        `/api/admin/tenants/${tenantId}/assume`,
+        {
+            method: "POST",
+        }
+    );
 }

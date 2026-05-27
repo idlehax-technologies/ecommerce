@@ -11,8 +11,7 @@ const store: AuditLog[] =
 
 globalForAudit.__auditLogs = store;
 
-// 🔴 PRIVATE — NOT EXPORTED
-function appendAudit(log: AuditLog) {
+export function appendAudit(log: AuditLog): void {
     store.push(log);
 }
 
@@ -21,14 +20,14 @@ export function listAuditByTenant(
     tenantId: string,
     limit?: number
 ): AuditLog[] {
+
     const all = store
-        .filter(l => l.tenantId === tenantId)
-        .slice() // avoid mutating original
-        .reverse(); // newest first
+        .filter((l) => l.tenantId === tenantId)
+        .slice()
+        .reverse()
+        .map((l) => ({ ...l }));
 
-    return limit ? all.slice(0, limit) : all;
+    return limit
+        ? all.slice(0, limit)
+        : all;
 }
-
-// 🔴 INTERNAL EXPORT (ONLY FOR PROJECTOR)
-// This keeps it out of public surface but usable internally
-export const __internal_appendAudit = appendAudit;

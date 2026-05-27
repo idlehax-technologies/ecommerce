@@ -7,7 +7,7 @@ export function generateCsrfToken(): string {
     return crypto.randomUUID();
 }
 
-export async function ensureCsrfCookie() {
+export async function ensureCsrfCookie(): Promise<void> {
     const cookieStore = await cookies();
 
     if (!cookieStore.get(CSRF_COOKIE)) {
@@ -22,7 +22,7 @@ export async function ensureCsrfCookie() {
     }
 }
 
-export async function validateCsrf(req: Request) {
+export async function validateCsrf(req: Request): Promise<void> {
     const cookieStore = await cookies();
 
     const cookieToken = cookieStore.get(CSRF_COOKIE)?.value;

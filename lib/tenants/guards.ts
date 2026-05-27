@@ -1,6 +1,5 @@
 import { Tenant } from "@/types/tenant";
 import {
-    TenantAlreadyExistsError,
     TenantNotFoundError,
     TenantAlreadyActiveError,
     TenantCannotActivateError,
@@ -11,19 +10,13 @@ import {
 /**
  * Existence
  */
-
 export function assertExists(t: Tenant | null): asserts t is Tenant {
     if (!t) throw new TenantNotFoundError();
-}
-
-export function assertDoesNotExist(t: Tenant | null): asserts t is null {
-    if (t) throw new TenantAlreadyExistsError();
 }
 
 /**
  * Lifecycle rules
  */
-
 export function assertCanActivate(t: Tenant) {
     if (t.status === "ACTIVE") {
         throw new TenantAlreadyActiveError();

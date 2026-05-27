@@ -1,4 +1,4 @@
-import type { AccessActor, AuthUser } from "@/types/auth";
+import type { AccessActor, AuthUser, MembershipActor } from "@/types/auth";
 import { UnauthorizedError, ForbiddenError, NotInAssumedSessionError } from "./errors";
 import { getMembership } from "@/lib/memberships/domain";
 import { MembershipRole } from "@/types/membership";
@@ -8,7 +8,7 @@ export function requireAuth(user: AuthUser | null): AuthUser {
     return user;
 }
 
-export function requireMembership(user: AuthUser | null) {
+export function requireMembership(user: AuthUser | null): MembershipActor {
     const u = requireAuth(user);
 
     if (!u.activeMembershipId) {
@@ -31,7 +31,7 @@ export function requireMembership(user: AuthUser | null) {
 export function requireMembershipRole(
     user: AuthUser | null,
     roles: MembershipRole[]
-) {
+): MembershipActor {
     const actor = requireMembership(user);
 
     if (!roles.includes(actor.role)) {
@@ -41,7 +41,7 @@ export function requireMembershipRole(
     return actor;
 }
 
-export function requireTenant(user: AuthUser | null) {
+export function requireTenant(user: AuthUser | null): MembershipActor {
     return requireMembership(user);
 }
 

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import ThemeRegistry from "./ThemeRegistry";
-import Footer from "@/components/Footer";
+import Footer from "@/components/layout/Footer";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { SnackbarProvider } from "@/components/common/AppSnackbar";
+import { SnackbarProvider } from "@/contexts/SnackbarContext";
 import { startJobLoop } from "@/lib/jobs/loop";
 
 startJobLoop();

@@ -78,7 +78,7 @@ function seedUsers() {
     ];
 
     for (const u of seed) {
-        userStore.set(u.userId, u);
+        userStore.set(u.userId, { ...u });
     }
 }
 
@@ -90,22 +90,31 @@ seedUsers();
  */
 export const authStore = {
     getById(userId: string): AuthUser | undefined {
-        return userStore.get(userId);
+        const user = userStore.get(userId);
+
+        return user
+            ? { ...user }
+            : undefined;
     },
 
     getAll(): AuthUser[] {
-        return Array.from(userStore.values());
+        return Array
+            .from(userStore.values())
+            .map((u) => ({ ...u }));
     },
 
     findByPhone(phone: string): AuthUser | undefined {
         for (const u of userStore.values()) {
-            if (u.phone === phone) return u;
+            if (u.phone === phone) {
+                return { ...u };
+            }
         }
+
         return undefined;
     },
 
-    save(user: AuthUser) {
-        userStore.set(user.userId, user);
+    save(user: AuthUser): void {
+        userStore.set(user.userId, { ...user });
     },
 };
 
@@ -115,14 +124,18 @@ export const authStore = {
  */
 export const otpStoreApi = {
     get(phone: string): OtpRecord | undefined {
-        return otpStore.get(phone);
+        const record = otpStore.get(phone);
+
+        return record
+            ? { ...record }
+            : undefined;
     },
 
-    save(rec: OtpRecord) {
-        otpStore.set(rec.phone, rec);
+    save(rec: OtpRecord): void {
+        otpStore.set(rec.phone, { ...rec });
     },
 
-    delete(phone: string) {
+    delete(phone: string): void {
         otpStore.delete(phone);
     },
 };

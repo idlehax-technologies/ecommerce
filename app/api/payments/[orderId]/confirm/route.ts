@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireTenant } from "@/lib/auth/guards";
+import { requireMembershipRole, requireTenant } from "@/lib/auth/guards";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import * as paymentsDomain from "@/lib/payments/domain";
+import * as ordersDomain from "@/lib/orders/domain";
 import { dispatchEvent } from "@/lib/events/dispatcher";
 import { recordLatency, recordRequest, recordUser } from "@/lib/metrics";
+import { assertOrderVisible } from "@/lib/orders/guards";
 
 export async function POST(
     req: Request,
@@ -23,8 +25,17 @@ export async function POST(
             csrf: true,
         });
 
+        requireMembershipRole(user, ["customer"]);
+
         const actor = requireTenant(user);
         recordUser(actor.userId);
+
+        const targetOrder = ordersDomain.getTenantOrder(
+            actor.tenantId,
+            orderId
+        );
+
+        assertOrderVisible(actor, targetOrder);
 
         const result = paymentsDomain.confirmPayment(
             actor.tenantId,

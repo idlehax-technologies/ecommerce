@@ -19,7 +19,7 @@ export default async function LowStockPage({ params }: Props) {
 
     requireSuperadmin(rawUser);
 
-    const report = detectLowStock(tenantId);
+    const report = await detectLowStock(tenantId);
 
     return (
         <Box p={4} display="flex" flexDirection="column" gap={3}>

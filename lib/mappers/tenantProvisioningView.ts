@@ -1,5 +1,3 @@
-// lib/mappers/tenantProvisioningView.ts
-
 import type { Product } from "@/types/product";
 import type { TenantInventory } from "@/types/tenantInventory";
 
@@ -12,7 +10,7 @@ export type TenantProvisioningRow = {
     product: Product;
     enabled: boolean;
     stock: number;
-    reserved: number;   // ADD THIS
+    reserved: number;
     isProvisioned: boolean;
 };
 

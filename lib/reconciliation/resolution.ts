@@ -8,25 +8,31 @@ import type { DomainEvent } from "@/types/domainEvent";
 import { getResolutionPolicy } from "./policy";
 import { tenantInventoryStore } from "../tenantInventory/storage";
 import { isAlreadyProcessed, markProcessed } from "./idempotency";
+import {
+    ReconciliationActionNotAllowedError,
+    ReconciliationInvalidInputError,
+    ReconciliationInventoryNotFoundError,
+    ReconciliationUnsupportedActionError
+} from "./errors";
 
 /**
  * Controlled reconciliation entrypoint
  *
  * MUST:
- * - NOT execute side-effects
+ * - NOT dispatch infrastructure side-effects
  * - NOT write audit logs
  * - ONLY return DomainEvents
  */
 export async function resolveMismatch(input: {
     tenantId: string;
-    actorId: string;
+    actorId: string;    // Reserved for future audit/event attribution
     request: ResolutionRequest;
 }): Promise<{ events: DomainEvent[] }> {
 
     const { tenantId, request } = input;
 
     if (!request.idempotencyKey) {
-        throw new Error("idempotencyKey required");
+        throw new ReconciliationInvalidInputError("idempotencyKey required");
     }
 
     if (isAlreadyProcessed(request.idempotencyKey)) {
@@ -36,7 +42,7 @@ export async function resolveMismatch(input: {
     const policy = getResolutionPolicy(request.mismatchType);
 
     if (!policy.allowedActions.includes(request.action)) {
-        throw new Error("Action not allowed for this mismatch");
+        throw new ReconciliationActionNotAllowedError();
     }
 
     const events: DomainEvent[] = [];
@@ -48,7 +54,7 @@ export async function resolveMismatch(input: {
          */
         case "CONFIRM_PAYMENT": {
             if (!request.orderId) {
-                throw new Error("orderId required");
+                throw new ReconciliationInvalidInputError("orderId required");
             }
 
             const result = paymentsDomain.confirmPayment(
@@ -68,7 +74,7 @@ export async function resolveMismatch(input: {
          */
         case "CREATE_PAYMENT": {
             if (!request.orderId) {
-                throw new Error("orderId required");
+                throw new ReconciliationInvalidInputError("orderId required");
             }
 
             paymentsDomain.recordPayment(
@@ -87,7 +93,7 @@ export async function resolveMismatch(input: {
          */
         case "CANCEL_ORDER": {
             if (!request.orderId) {
-                throw new Error("orderId required");
+                throw new ReconciliationInvalidInputError("orderId required");
             }
 
             const result = ordersDomain.cancelOrder(
@@ -111,19 +117,19 @@ export async function resolveMismatch(input: {
          */
         case "ADJUST_INVENTORY": {
             if (!request.productId) {
-                throw new Error("productId required");
+                throw new ReconciliationInvalidInputError("productId required");
             }
 
-            const record = inventoryDomain.findTenantProvision(
+            const record = await inventoryDomain.findTenantProvision(
                 tenantId,
                 request.productId
             );
 
             if (!record) {
-                throw new Error("Inventory not found");
+                throw new ReconciliationInventoryNotFoundError();
             }
 
-            const orders = ordersDomain.listTenantOrders(tenantId);
+            const orders = await ordersDomain.listTenantOrders(tenantId);
 
             let expectedReserved = 0;
 
@@ -169,6 +175,6 @@ export async function resolveMismatch(input: {
         }
 
         default:
-            throw new Error("Unsupported resolution action");
+            throw new ReconciliationUnsupportedActionError("Unsupported resolution action");
     }
 }

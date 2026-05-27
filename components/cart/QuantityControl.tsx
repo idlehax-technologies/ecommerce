@@ -37,8 +37,13 @@ export default function QuantityControl({ productId, stock }: Props) {
         try {
             setLoading(true);
             await add(productId);
-        } catch (err: any) {
-            setError(err?.message ?? "Failed to add item");
+        } catch (err: unknown) {
+
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError("Failed to add item");
+            }
         } finally {
             setLoading(false);
         }
@@ -50,8 +55,13 @@ export default function QuantityControl({ productId, stock }: Props) {
         try {
             setLoading(true);
             await update(productId, quantity + 1);
-        } catch (err: any) {
-            setError(err?.message ?? "Failed to update quantity");
+        } catch (err: unknown) {
+
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError("Failed to update quantity");
+            }
         } finally {
             setLoading(false);
         }
@@ -68,8 +78,13 @@ export default function QuantityControl({ productId, stock }: Props) {
             } else {
                 await update(productId, quantity - 1);
             }
-        } catch (err: any) {
-            setError(err?.message ?? "Failed to update quantity");
+        } catch (err: unknown) {
+
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError("Failed to update quantity");
+            }
         } finally {
             setLoading(false);
         }

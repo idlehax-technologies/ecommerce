@@ -5,7 +5,6 @@ import * as tenantInventoryDomain from "@/lib/tenantInventory/domain";
 import { cartItemToOrderItem } from "@/lib/orders/mappers";
 import { requireCartNotEmpty } from "./guards";
 
-import type { CheckoutInput } from "@/types/checkout";
 import type { Order } from "@/types/order";
 import type { DomainEvent } from "@/types/domainEvent";
 
@@ -26,43 +25,60 @@ import type { DomainEvent } from "@/types/domainEvent";
  */
 
 export async function executeCheckout(
-    input: CheckoutInput
-): Promise<{ order: Order; event: DomainEvent }> {
-
-    const actor = { tenantId: input.tenantId } as any;
+    tenantId: string,
+    userId: string
+): Promise<{
+    order: Order;
+    event: DomainEvent;
+}> {
 
     // STEP 1 — Load cart
-    const cart = cartDomain.getCart(actor);
+
+    const cart = cartDomain.getUserCart(
+        tenantId,
+        userId
+    );
 
     requireCartNotEmpty(cart);
 
-    const orderItems = cart.items.map(cartItemToOrderItem);
+    const orderItems = cart.items.map(
+        cartItemToOrderItem
+    );
 
     // STEP 2 — Reserve inventory BEFORE order creation
+
     for (const item of orderItems) {
-        tenantInventoryDomain.reserveStock(
-            input.tenantId,
+
+        await tenantInventoryDomain.reserveStock(
+            tenantId,
             item.productId,
             item.quantity
         );
     }
 
-    let result: { order: Order; event: DomainEvent };
+    let result: {
+        order: Order;
+        event: DomainEvent;
+    };
 
     try {
+
         // STEP 3 — Create order AFTER inventory secured
+
         result = ordersDomain.createOrder(
-            input.tenantId,
-            input.userId,
+            tenantId,
+            userId,
             orderItems
         );
 
-    } catch (err) {
+    } catch (err: unknown) {
 
         // STEP 4 — Rollback reservation on failure
+
         for (const item of orderItems) {
-            tenantInventoryDomain.releaseStock(
-                input.tenantId,
+
+            await tenantInventoryDomain.releaseStock(
+                tenantId,
                 item.productId,
                 item.quantity
             );
@@ -72,7 +88,11 @@ export async function executeCheckout(
     }
 
     // STEP 5 — Clear cart AFTER successful order creation
-    cartDomain.clearCart(actor);
+
+    cartDomain.clearCart(
+        tenantId,
+        userId
+    );
 
     // 🚨 CRITICAL: DO NOT execute event here
     // Event execution must happen in route via dispatchEvent

@@ -1,40 +1,67 @@
 import { apiFetch } from "./fetch";
-import type { Product, CreateProductDTO, UpdateProductDTO } from "@/types/product";
 
-export async function listProducts(): Promise<Product[]> {
-    const data = await apiFetch<{ products: Product[] }>("/api/admin/products");
-    return data.products;
+import type {
+    Product,
+    CreateProductDTO,
+    UpdateProductDTO,
+} from "@/types/product";
+
+export async function listProducts(): Promise<{
+    products: Product[];
+}> {
+    return apiFetch<{ products: Product[] }>(
+        "/api/admin/products"
+    );
 }
 
-export async function createProduct(body: CreateProductDTO): Promise<Product> {
-    const data = await apiFetch<{ product: Product }>("/api/admin/products", {
-        method: "POST",
-        body: JSON.stringify(body),
-    });
-    return data.product;
+export async function createProduct(
+    body: CreateProductDTO
+): Promise<{
+    product: Product;
+}> {
+    return apiFetch<{ product: Product }>(
+        "/api/admin/products",
+        {
+            method: "POST",
+            body: JSON.stringify(body),
+        }
+    );
 }
 
-export async function getProduct(productId: string): Promise<Product> {
-    const data = await apiFetch<{ product: Product }>(`/api/admin/products/${productId}`);
-    return data.product;
+export async function getProduct(
+    productId: string
+): Promise<{
+    product: Product;
+}> {
+    return apiFetch<{ product: Product }>(
+        `/api/admin/products/${productId}`
+    );
 }
 
 export async function updateProduct(
     productId: string,
     patch: UpdateProductDTO
-): Promise<Product> {
-    const data = await apiFetch<{ product: Product }>(
+): Promise<{
+    product: Product;
+}> {
+    return apiFetch<{ product: Product }>(
         `/api/admin/products/${productId}`,
         {
             method: "PATCH",
             body: JSON.stringify(patch),
         }
     );
-    return data.product;
 }
 
-export async function deleteProduct(productId: string): Promise<void> {
-    await apiFetch(`/api/admin/products/${productId}`, {
-        method: "DELETE",
-    });
+export async function deleteProduct(
+    productId: string
+): Promise<{
+    success: true;
+}> {
+    return apiFetch<{ success: true }>(
+        `/api/admin/products/${productId}`,
+        {
+            method: "DELETE",
+        }
+    );
 }

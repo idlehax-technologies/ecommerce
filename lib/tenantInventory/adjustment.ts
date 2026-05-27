@@ -6,7 +6,7 @@ import {
     markInventoryProcessed
 } from "./idempotency";
 
-import type { StockAdjustmentRequest } from "@/types/stockAdjustment";
+import type { AdjustedInventorySnapshot, StockAdjustmentRequest } from "@/types/stockAdjustment";
 import type { DomainEvent } from "@/types/domainEvent";
 
 import { InventoryInvariantViolationError } from "./errors";
@@ -28,18 +28,14 @@ import { InventoryInvariantViolationError } from "./errors";
  * - return DomainEvent for dispatcher
  */
 
-export function adjustStock(input: {
+export async function adjustStock(input: {
     tenantId: string;
-    actorId: string;
+    actorId: string;    // Unused argument
     request: StockAdjustmentRequest;
-}): {
-    updated: {
-        productId: string;
-        stock: number;
-        reserved: number;
-    };
+}): Promise<{
+    updated: AdjustedInventorySnapshot;
     event?: DomainEvent;
-} {
+}> {
     const { tenantId, request } = input;
 
     // ------------------------------

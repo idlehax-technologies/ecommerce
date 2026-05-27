@@ -18,3 +18,9 @@ export class ProfileIncompleteError extends ProfileDomainError {
         super(message, 400);
     }
 }
+
+export class ProfileRequiredError extends ProfileDomainError {
+    constructor(message = "Profile must be completed before requesting membership") {
+        super(message, 400);
+    }
+}

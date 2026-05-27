@@ -33,14 +33,17 @@ export async function runScheduler() {
                 ...j,
                 status: "SUCCESS",
             }));
-        } catch (err: any) {
+        } catch (err: unknown) {
             const nextAttempts = claimed.attempts + 1;
 
             jobStore.update(claimed.jobId, (j) => ({
                 ...j,
                 status: nextAttempts >= MAX_ATTEMPTS ? "FAILED" : "PENDING",
                 attempts: nextAttempts,
-                lastError: err?.message ?? "Unknown error",
+                lastError:
+                    err instanceof Error
+                        ? err.message
+                        : "Unknown error",
                 runAt: new Date(Date.now() + 5000).toISOString(),
             }));
         }

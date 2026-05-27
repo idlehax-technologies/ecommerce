@@ -1,6 +1,8 @@
-import { MembershipRole } from "./membership";
-
-type TenantStatus = "PENDING" | "ACTIVE" | "SUSPENDED" | "ARCHIVED";
+export type TenantStatus =
+    | "PENDING"
+    | "ACTIVE"
+    | "SUSPENDED"
+    | "ARCHIVED";
 
 export type Tenant = {
     tenantId: string;
@@ -22,14 +24,4 @@ export type CreateTenantDTO = {
 
 export type UpdateTenantDTO = {
     name: string;
-};
-
-/**
- * This is NOT transport data.
- * This is runtime execution identity produced by requireTenant().
- */
-export type TenantScopedActor = {
-    userId: string;
-    role: MembershipRole;
-    tenantId: string;
 };

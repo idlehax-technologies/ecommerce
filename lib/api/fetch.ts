@@ -1,5 +1,16 @@
 import { getCsrfToken } from "@/contexts/AuthContext";
 
+function isErrorResponse(
+    data: unknown
+): data is { error: string } {
+    return (
+        typeof data === "object" &&
+        data !== null &&
+        "error" in data &&
+        typeof data.error === "string"
+    );
+}
+
 export async function apiFetch<T>(
     url: string,
     options: RequestInit = {}
@@ -14,18 +25,16 @@ export async function apiFetch<T>(
         ...options,
     });
 
-    const data = await res.json().catch(() => ({}));
+    const data: unknown = await res
+        .json()
+        .catch(() => ({}));
 
     if (!res.ok) {
-        const message =
-            typeof data === "object" &&
-                data &&
-                "error" in data &&
-                typeof (data as any).error === "string"
-                ? (data as any).error
-                : "Request failed";
-
-        throw new Error(message);
+        throw new Error(
+            isErrorResponse(data)
+                ? data.error
+                : "Request failed"
+        );
     }
 
     return data as T;

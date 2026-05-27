@@ -21,7 +21,7 @@ globalForOrders.__ordersByTenant = ordersByTenant;
 /**
  * Save order
  */
-export function saveOrder(order: Order) {
+export function saveOrder(order: Order): void {
 
     const snapshot = { ...order };
 
@@ -58,7 +58,7 @@ export function listOrdersByTenant(tenantId: string): Order[] {
 
     const tenantBucket = ordersByTenant.get(tenantId)
 
-    if (!tenantBucket) return []
+    if (!tenantBucket) return [];
 
     return Array.from(tenantBucket.values()).map(o => ({ ...o }))
 }

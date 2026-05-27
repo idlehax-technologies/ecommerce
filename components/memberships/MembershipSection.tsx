@@ -11,13 +11,16 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import MembershipTable from "./MembershipTable";
 import { MembershipView } from "@/types/membership";
 
+type Props = {
+    title: string;
+    data: MembershipView[];
+};
+
 export default function MembershipSection({
     title,
     data,
-}: {
-    title: string;
-    data: MembershipView[];
-}) {
+}: Props) {
+
     return (
         <Accordion defaultExpanded>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>

@@ -1,9 +1,11 @@
-// components/tenant-provisioning/EnableToggle.tsx
-
 "use client";
 
-import { Switch, Tooltip } from "@mui/material";
+import { useState } from "react";
+
+import { Alert, Snackbar, Switch, Tooltip } from "@mui/material";
+
 import { provisionProduct } from "@/lib/api/tenantInventory";
+
 import type { TenantProvisioningRow } from "@/lib/mappers/tenantProvisioningView";
 
 type Props = {
@@ -14,6 +16,9 @@ type Props = {
 };
 
 export default function EnableToggle({ tenantId, row, onChange, disabled }: Props) {
+
+    const [error, setError] = useState<string | null>(null);
+
     const isBlocked = row.reserved > 0 && row.enabled;
 
     async function toggle(e: React.ChangeEvent<HTMLInputElement>) {
@@ -27,9 +32,12 @@ export default function EnableToggle({ tenantId, row, onChange, disabled }: Prop
             });
 
             onChange(enabled);
-        } catch (err) {
-            console.error(err);
-            // optional: show snackbar if you already have one
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError("Failed to update provisioning");
+            }
         }
     }
 
@@ -41,13 +49,30 @@ export default function EnableToggle({ tenantId, row, onChange, disabled }: Prop
         />
     );
 
-    if (isBlocked) {
-        return (
-            <Tooltip title="Cannot disable while orders are pending">
-                <span>{toggleSwitch}</span>
-            </Tooltip>
-        );
-    }
+    return (
+        <>
+            {isBlocked ? (
+                <Tooltip title="Cannot disable while orders are pending">
+                    <span>
+                        {toggleSwitch}
+                    </span>
+                </Tooltip>
+            ) : (
+                toggleSwitch
+            )}
 
-    return toggleSwitch;
+            <Snackbar
+                open={!!error}
+                autoHideDuration={3000}
+                onClose={() => setError(null)}
+            >
+                <Alert
+                    severity="error"
+                    onClose={() => setError(null)}
+                >
+                    {error}
+                </Alert>
+            </Snackbar>
+        </>
+    );
 }

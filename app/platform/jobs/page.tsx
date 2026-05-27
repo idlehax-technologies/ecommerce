@@ -1,4 +1,4 @@
-import { Container, Typography, Paper } from "@mui/material";
+import { Container, Typography } from "@mui/material";
 
 import { getUserFromRequest } from "@/lib/auth";
 import { requireSuperadmin } from "@/lib/auth/guards";
@@ -19,9 +19,7 @@ export default async function JobsPage() {
                 Jobs
             </Typography>
 
-            <Paper>
-                <JobsTable jobs={jobs} />
-            </Paper>
+            <JobsTable jobs={jobs} />
         </Container>
     );
 }

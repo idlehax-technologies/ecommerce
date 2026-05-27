@@ -1,8 +1,9 @@
 import { getCsrfToken } from "@/contexts/AuthContext";
+import type { ExportRequest } from "@/types/export";
 
-export async function exportCSV(payload: {
-    type: "ORDERS" | "RECONCILIATION";
-}) {
+export async function exportCSV(
+    payload: ExportRequest
+): Promise<void> {
     // apiFetch enforces JSON parsing, so we use raw fetch but still reuse CSRF via apiFetch headers pattern
     const res = await fetch("/api/export", {
         method: "POST",
@@ -15,15 +16,22 @@ export async function exportCSV(payload: {
     });
 
     if (!res.ok) {
-        // try to extract error using same pattern as apiFetch
+        // Try extracting structured backend error.
+        // Fallback safely if response is not JSON.
         let message = "Export failed";
         try {
-            const data = await res.json();
-            if (data && typeof data.error === "string") {
+            const data: unknown =
+                await res.json();
+            if (
+                data &&
+                typeof data === "object" &&
+                "error" in data &&
+                typeof data.error === "string"
+            ) {
                 message = data.error;
             }
         } catch {
-            // ignore, fallback message
+            // Ignore parse failure and keep fallback message
         }
         throw new Error(message);
     }

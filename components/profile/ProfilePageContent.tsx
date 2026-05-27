@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import {
     Container,
     Paper,
@@ -15,41 +16,59 @@ import UserMembershipSelector from "@/components/memberships/UserMembershipSelec
 import MembershipRequestForm from "@/components/memberships/MembershipRequestForm";
 
 import { fetchProfile } from "@/lib/api/profiles";
+import { ProfileDTO } from "@/types/profile";
 
-export default function ProfilePageLayout() {
-    const [hasProfile, setHasProfile] = useState<boolean | null>(null);
+export default function ProfilePageContent() {
+
+    const [profile, setProfile] = useState<ProfileDTO | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    async function load() {
+        try {
+            setLoading(true);
+            const res = await fetchProfile();
+            setProfile(res.profile);
+        } finally {
+            setLoading(false);
+        }
+    }
 
     useEffect(() => {
-        fetchProfile().then((p) => {
-            setHasProfile(!!p);
-        });
+        load();
     }, []);
 
-    if (hasProfile === null) {
+    if (loading) {
         return <CircularProgress />;
     }
 
     return (
         <Container maxWidth="md" sx={{ py: 4 }}>
             <Stack spacing={4}>
-                {/* PROFILE */}
+
                 <Paper sx={{ p: 3 }}>
-                    <Typography variant="h6">Profile</Typography>
+                    <Typography variant="h6">
+                        Profile
+                    </Typography>
+
                     <Divider sx={{ my: 2 }} />
+
                     <ProfileForm
-                        onSaved={async () => {
-                            const p = await fetchProfile();
-                            setHasProfile(!!p);
+                        profile={profile}
+                        onSaved={(profile) => {
+                            setProfile(profile);
                         }}
                     />
                 </Paper>
 
-                {/* MEMBERSHIP SECTION */}
-                {hasProfile ? (
+                {profile ? (
                     <>
                         <Paper sx={{ p: 3 }}>
-                            <Typography variant="h6">Memberships</Typography>
+                            <Typography variant="h6">
+                                Memberships
+                            </Typography>
+
                             <Divider sx={{ my: 2 }} />
+
                             <UserMembershipSelector />
                         </Paper>
 

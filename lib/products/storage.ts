@@ -27,7 +27,6 @@ function seedIfEmpty() {
     if (store.size > 0) return;
 
     const now = new Date().toISOString();
-    const tenantId = "tenant-demo"; // matches your tenant-scoped model
 
     const demoProducts: Product[] = [
         {
@@ -168,18 +167,23 @@ seedIfEmpty();
  */
 export const productStore = {
     get(id: string): Product | undefined {
-        return store.get(id);
+        const product = store.get(id);
+
+        return product
+            ? { ...product }
+            : undefined;
     },
 
     getAll(): Product[] {
-        return Array.from(store.values());
+        return Array.from(store.values())
+            .map(p => ({ ...p }));
     },
 
-    save(p: Product) {
-        store.set(p.productId, p);
+    save(p: Product): void {
+        store.set(p.productId, { ...p });
     },
 
-    delete(id: string) {
+    delete(id: string): void {
         store.delete(id);
     },
 };

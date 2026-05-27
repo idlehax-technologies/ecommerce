@@ -8,7 +8,7 @@ const store: Map<string, Job> =
 globalStore.__jobStore = store;
 
 export const jobStore = {
-    save(job: Job) {
+    save(job: Job): void {
         store.set(job.jobId, job);
     },
 
@@ -27,7 +27,7 @@ export const jobStore = {
         return undefined;
     },
 
-    update(jobId: string, updater: (j: Job) => Job) {
+    update(jobId: string, updater: (j: Job) => Job): void {
         const job = store.get(jobId);
         if (!job) return;
 

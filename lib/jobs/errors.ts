@@ -8,13 +8,13 @@ export abstract class JobDomainError extends Error {
 }
 
 export class JobNotFoundError extends JobDomainError {
-    constructor() {
-        super("Job not found", 404);
+    constructor(message = "Job not found") {
+        super(message, 404);
     }
 }
 
 export class JobRetryNotAllowedError extends JobDomainError {
-    constructor() {
-        super("Job cannot be retried in its current state", 409);
+    constructor(message = "Job cannot be retried in its current state") {
+        super(message, 409);
     }
 }

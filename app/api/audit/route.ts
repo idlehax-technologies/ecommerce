@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { guardRequest } from "@/lib/security/requestGuard";
 import { requireTenant, requireMembershipRole } from "@/lib/auth/guards";
 import { handleRouteError } from "@/lib/http/handleRouteError";
-import { listAuditByTenant } from "@/lib/audit/storage";
+import { getAuditLogs } from "@/lib/audit/domain";
 
 import { QUERY_LIMITS } from "@/lib/config/queryLimits";
 
@@ -13,7 +13,7 @@ export async function GET(req: Request) {
         requireMembershipRole(user, ["admin", "staff"]);
         const actor = requireTenant(user);
 
-        const logs = listAuditByTenant(
+        const logs = getAuditLogs(
             actor.tenantId,
             QUERY_LIMITS.AUDIT
         );

@@ -13,8 +13,11 @@ jobExecutors.ORDER_EXPIRY = async (job) => {
         const result = orders.expireOrder(tenantId, orderId);
 
         await dispatchEvent(result.event, { actorId: "system" });
-    } catch (err: any) {
-        if (err?.name === "InvalidOrderTransitionError") return;
+    } catch (err: unknown) {
+        if (
+            err instanceof Error &&
+            err.name === "InvalidOrderTransitionError"
+        ) return;
         throw err;
     }
 };

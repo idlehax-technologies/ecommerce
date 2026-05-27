@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import {
     Paper,
     Stack,
@@ -9,10 +11,17 @@ import {
     Button,
 } from "@mui/material";
 
-import type { OrderStatus, OrderListItem } from "@/types/order";
+import type {
+    OrderStatus,
+    OrderListItem,
+} from "@/types/order";
 
-function getStatusColor(status: OrderStatus) {
+function getStatusColor(
+    status: OrderStatus
+) {
+
     switch (status) {
+
         case "PICKED_UP":
         case "PAID":
             return "success";
@@ -32,10 +41,14 @@ function getStatusColor(status: OrderStatus) {
     }
 }
 
-export default function OrderRow({ order }: { order: OrderListItem }) {
+export default function OrderRow({
+    order,
+}: {
+    order: OrderListItem;
+}) {
     return (
         <Paper
-            component="a"
+            component={Link}
             href={`/orders/${order.orderId}`}
             sx={{
                 p: 2,
@@ -44,15 +57,28 @@ export default function OrderRow({ order }: { order: OrderListItem }) {
                 display: "block",
             }}
         >
-            <Stack direction="row" spacing={1} alignItems="center">
+
+            <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+            >
+
                 <Typography fontWeight={600}>
                     Order {order.orderId}
                 </Typography>
 
-                <Divider orientation="vertical" flexItem />
+                <Divider
+                    orientation="vertical"
+                    flexItem
+                />
 
-                <Typography variant="body2" color="text.secondary">
-                    {new Date(order.createdAt).toLocaleString()}
+                <Typography
+                    variant="body2"
+                    color="text.secondary"
+                >
+                    {new Date(order.createdAt)
+                        .toLocaleString()}
                 </Typography>
 
                 <Typography fontWeight={500}>
@@ -63,7 +89,9 @@ export default function OrderRow({ order }: { order: OrderListItem }) {
                     label={order.status}
                     color={getStatusColor(order.status)}
                     size="small"
-                    sx={{ width: "fit-content" }}
+                    sx={{
+                        width: "fit-content",
+                    }}
                 />
 
                 <Button
@@ -72,7 +100,9 @@ export default function OrderRow({ order }: { order: OrderListItem }) {
                 >
                     Receipt
                 </Button>
+
             </Stack>
+
         </Paper>
     );
 }

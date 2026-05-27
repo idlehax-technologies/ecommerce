@@ -16,8 +16,8 @@ export async function GET(req: Request) {
 
         const report = getReconciliationReport(actor.tenantId);
 
-        return NextResponse.json(report);
-    } catch (err) {
+        return NextResponse.json({ report });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

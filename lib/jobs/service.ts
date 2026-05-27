@@ -8,7 +8,7 @@ export function enqueueJob<T extends JobType>(
     payload: Extract<Job, { type: T }>["payload"],
     runAt: string,
     dedupKey?: string
-) {
+): void {
     if (dedupKey) {
         const existing = jobStore.findByDedupKey(dedupKey);
         if (existing && existing.status !== "FAILED") return;
@@ -68,11 +68,11 @@ export function enqueueJob<T extends JobType>(
     jobStore.save(job);
 }
 
-export function listJobs() {
+export function listJobs(): Job[] {
     return jobStore.list();
 }
 
-export function retryJob(jobId: string) {
+export function retryJob(jobId: string): void {
     const job = jobStore.get(jobId);
 
     if (!job) {

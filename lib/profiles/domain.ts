@@ -1,6 +1,6 @@
 import { profileStore } from "./storage";
 import { toNewProfile } from "./mappers";
-import type { UpsertProfileInput, UserProfile } from "@/types/profile";
+import type { ProfileDTO, UserProfile } from "@/types/profile";
 import { assertCompleteProfile } from "./guards";
 
 export function getProfile(userId: string): UserProfile | null {
@@ -10,7 +10,7 @@ export function getProfile(userId: string): UserProfile | null {
 export function upsertProfile(
     userId: string,
     phone: string,
-    input: UpsertProfileInput
+    input: ProfileDTO
 ): UserProfile {
     assertCompleteProfile(input);
 

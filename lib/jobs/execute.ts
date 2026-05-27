@@ -1,3 +1,5 @@
+import "./executors";
+
 import type { Job } from "@/types/job";
 import { jobExecutors } from "./registry";
 
@@ -9,5 +11,9 @@ export async function execute(job: Job): Promise<void> {
             return jobExecutors.MEMBERSHIP_EXPIRY(job);
         case "NOTIFICATION_DISPATCH":
             return jobExecutors.NOTIFICATION_DISPATCH(job);
+        default: {
+            const _exhaustive: never = job;
+            throw new Error(`Unhandled job type: ${_exhaustive}`);
+        }
     }
 }

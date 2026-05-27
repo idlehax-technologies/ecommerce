@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+
 import {
     Stack,
     TextField,
@@ -9,95 +10,157 @@ import {
     Typography,
 } from "@mui/material";
 
-import { fetchMemberships } from "@/lib/api/memberships";
-import MembershipSection from "./MembershipSection";
-import { MembershipView } from "@/types/membership";
+import MembershipSection
+    from "./MembershipSection";
 
-const STATUSES = ["ALL", "PENDING", "APPROVED", "REJECTED", "REVOKED", "EXPIRED"] as const;
+import type { MembershipView }
+    from "@/types/membership";
 
-export default function MembershipDashboard() {
-    const [data, setData] = useState<MembershipView[]>([]);
-    const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState<typeof STATUSES[number]>("ALL");
+const STATUSES = [
+    "ALL",
+    "PENDING",
+    "APPROVED",
+    "REJECTED",
+    "REVOKED",
+    "EXPIRED",
+] as const;
 
-    async function load() {
-        const res = await fetchMemberships();
-        setData(res);
-    }
+type Props = {
+    memberships: MembershipView[];
+};
 
-    useEffect(() => {
-        load();
-    }, []);
+export default function MembershipDashboard({
+    memberships,
+}: Props) {
+
+    const [search, setSearch] =
+        useState("");
+
+    const [statusFilter, setStatusFilter] =
+        useState<typeof STATUSES[number]>("ALL");
 
     const filtered = useMemo(() => {
-        return data
+
+        return memberships
             .filter((m) => {
-                if (statusFilter !== "ALL" && m.status !== statusFilter) {
+
+                if (
+                    statusFilter !== "ALL" &&
+                    m.status !== statusFilter
+                ) {
                     return false;
                 }
 
-                const q = search.toLowerCase();
+                const q =
+                    search.toLowerCase();
 
                 return (
-                    m.user.fullName.toLowerCase().includes(q) ||
-                    m.user.phone.includes(q) ||
-                    m.user.email.toLowerCase().includes(q)
+                    m.user.fullName
+                        .toLowerCase()
+                        .includes(q) ||
+
+                    m.user.phone
+                        .includes(q) ||
+
+                    m.user.email
+                        .toLowerCase()
+                        .includes(q) ||
+
+                    m.role
+                        .toLowerCase()
+                        .includes(q)
                 );
             })
-            .sort((a, b) =>
-                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            .sort(
+                (a, b) =>
+                    new Date(b.createdAt).getTime() -
+                    new Date(a.createdAt).getTime()
             );
-    }, [data, search, statusFilter]);
+
+    }, [
+        memberships,
+        search,
+        statusFilter,
+    ]);
 
     const grouped = {
-        PENDING: filtered.filter((m) => m.status === "PENDING"),
-        APPROVED: filtered.filter((m) => m.status === "APPROVED"),
-        REJECTED: filtered.filter((m) => m.status === "REJECTED"),
-        REVOKED: filtered.filter((m) => m.status === "REVOKED"),
-        EXPIRED: filtered.filter((m) => m.status === "EXPIRED"),
+        PENDING:
+            filtered.filter(
+                (m) => m.status === "PENDING"
+            ),
+
+        APPROVED:
+            filtered.filter(
+                (m) => m.status === "APPROVED"
+            ),
+
+        REJECTED:
+            filtered.filter(
+                (m) => m.status === "REJECTED"
+            ),
+
+        REVOKED:
+            filtered.filter(
+                (m) => m.status === "REVOKED"
+            ),
+
+        EXPIRED:
+            filtered.filter(
+                (m) => m.status === "EXPIRED"
+            ),
     };
 
     return (
         <Stack spacing={3}>
-            {/* SEARCH */}
+
             <TextField
-                label="Search (name / phone / email)"
+                label="Search memberships"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) =>
+                    setSearch(e.target.value)
+                }
                 fullWidth
             />
 
-            {/* FILTER */}
             <ToggleButtonGroup
                 value={statusFilter}
                 exclusive
-                onChange={(_, val) => val && setStatusFilter(val)}
                 size="small"
+                onChange={(_, val) => {
+                    if (val) {
+                        setStatusFilter(val);
+                    }
+                }}
             >
-                {STATUSES.map((s) => (
-                    <ToggleButton key={s} value={s}>
-                        {s}
+
+                {STATUSES.map((status) => (
+                    <ToggleButton
+                        key={status}
+                        value={status}
+                    >
+                        {status}
                     </ToggleButton>
                 ))}
+
             </ToggleButtonGroup>
 
-            {/* SECTIONS */}
-            {Object.entries(grouped).map(([status, list]) =>
-                list.length ? (
-                    <MembershipSection
-                        key={status}
-                        title={`${status} (${list.length})`}
-                        data={list}
-                    />
-                ) : null
+            {Object.entries(grouped).map(
+                ([status, list]) =>
+                    list.length ? (
+                        <MembershipSection
+                            key={status}
+                            title={`${status} (${list.length})`}
+                            data={list}
+                        />
+                    ) : null
             )}
 
-            {/* EMPTY STATE */}
             {filtered.length === 0 && (
                 <Typography color="text.secondary">
                     No memberships found.
                 </Typography>
             )}
+
         </Stack>
     );
 }

@@ -1,45 +1,53 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+
 import OrderReceipt from "@/components/orders/OrderReceipt";
 
-import { getUserFromRequest } from "@/lib/auth";
-import { requireTenant, requireAuth } from "@/lib/auth/guards";
-import { getTenantOrder } from "@/lib/orders/domain";
+import { getOrder } from "@/lib/api/orders";
 
-import { notFound } from "next/navigation";
+import type { Order } from "@/types/order";
+import { Box, CircularProgress } from "@mui/material";
 
-type PageProps = {
-    params: Promise<{ orderId: string }>;
-};
+export default function ReceiptPage() {
+    const { orderId } = useParams<{ orderId: string }>();
 
-export default async function ReceiptPage({ params }: PageProps) {
-    const { orderId } = await params;
+    const [order, setOrder] = useState<Order | null>(null);
 
-    const rawUser = await getUserFromRequest();
-    const user = requireAuth(rawUser);
-    const actor = requireTenant(user);
+    const [loading, setLoading] = useState(true);
 
-    let order;
-
-    try {
-        order = getTenantOrder(actor.tenantId, orderId);
-
-        // 🔴 Step 8 guard reuse
-        if (order.userId !== user.userId) {
-            notFound();
+    async function load() {
+        try {
+            setLoading(true);
+            const res = await getOrder(orderId);
+            setOrder(res.order);
+        } finally {
+            setLoading(false);
         }
-    } catch {
-        notFound();
+    }
+
+    useEffect(() => {
+        load();
+    }, [orderId]);
+
+    if (loading) {
+        return <CircularProgress />;
+    }
+
+    if (!order) {
+        return null;
     }
 
     return (
-        <html>
-            <body
-                style={{
-                    background: "#f5f5f5",
-                    padding: "40px 0",
-                }}
-            >
-                <OrderReceipt order={order} />
-            </body>
-        </html>
+        <Box
+            sx={{
+                background: "#f5f5f5",
+                padding: "40px 0",
+                minHeight: "100vh",
+            }}
+        >
+            <OrderReceipt order={order} />
+        </Box>
     );
 }

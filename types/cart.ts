@@ -7,6 +7,7 @@ export type CartItem = {
 
 export type Cart = {
     tenantId: string;
+    userId: string;
     items: CartItem[];
     updatedAt: string;
 };
@@ -27,4 +28,4 @@ export type CartContextValue = {
     update: (id: string, q: number) => Promise<void>;
     remove: (id: string) => Promise<void>;
     clear: () => Promise<void>;
-}
+};

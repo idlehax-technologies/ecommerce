@@ -15,9 +15,13 @@ export default function OtpVerifyForm({ phone }: { phone: string }) {
     const handleVerify = async () => {
         try {
             await verifyOtp(phone, code);
-            router.replace("/");
-        } catch (e: any) {
-            setError(e.message);
+            router.replace("/home");
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError("Failed to verify OTP");
+            }
         }
     };
 

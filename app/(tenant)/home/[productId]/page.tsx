@@ -1,5 +1,3 @@
-// app/(tenant)/products/[productId]/page.tsx
-
 import { notFound } from "next/navigation";
 import { Container } from "@mui/material";
 import { getUserFromRequest } from "@/lib/auth";

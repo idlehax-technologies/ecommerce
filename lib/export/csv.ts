@@ -1,4 +1,4 @@
-export function toCSV(rows: Record<string, unknown>[]): string {
+export function toCSV(rows: readonly Record<string, unknown>[]): string {
     if (rows.length === 0) {
         return "no_data\n";
     }

@@ -16,6 +16,4 @@ export type ResolutionRequest = {
     orderId?: string;
     paymentId?: string;
     productId?: string;
-
-    reason: string;
 };

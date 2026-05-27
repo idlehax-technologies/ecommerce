@@ -1572,6 +1572,17 @@ These events decouple domains and establish integration points for:
 Application services do not perform cross-domain side effects directly.  
 All side effects are derived from domain events through the dispatcher.
 
+Cross-domain communication follows a minimal-data principle.
+
+Domains exchange only the information required to enforce invariants.
+
+Example:
+
+- Orders domain receives `payment.method`
+- Orders domain does not depend on the full Payment aggregate
+
+This minimizes cross-domain coupling and preserves domain isolation.
+
 ---
 
 ### Event Dispatching Layer
@@ -1612,6 +1623,23 @@ Events are constructed only by the domain that owns the relevant data:
 - Payments domain emits `PaymentConfirmed` (payment lifecycle event)
 
 This prevents invalid event construction and ensures type-safe domain boundaries.
+
+---
+
+### Replayable Event Semantics
+
+The system intentionally allows replayable command-outcome events for idempotent flows.
+
+Example:
+
+Repeated `confirmPayment()` calls may re-emit `PaymentConfirmed`
+while preserving invariant-safe state transitions.
+
+This reflects a deliberate design choice:
+
+events may represent command outcomes rather than strictly unique historical transitions.
+
+Downstream consumers are therefore designed to tolerate replay semantics safely.
 
 ---
 
@@ -1717,59 +1745,246 @@ The system is organized around **execution planes**, **domain ownership**, and *
 
 ## 1. Execution Planes
 
-### Tenant Runtime (User-facing)
+The application is organized into explicit execution planes with isolated routing,
+authorization semantics, and runtime responsibilities.
 
-Handles all tenant-scoped operations.
+This separation prevents semantic overlap between:
 
-- Cart
-- Checkout
-- Orders (history, receipt)
-- POS (staff)
-- Fulfillment
-- Storefront (SSR products)
-- Memberships
-- Profile
-- Reconciliation (read + resolution UI)
+- authentication
+- onboarding
+- tenant participation
+- platform authority
+- commerce discovery
+- operational capability access
 
-```
-app/(tenant)/*
-```
+Each plane owns:
+
+- its routing semantics
+- its authorization model
+- its operational boundaries
+- its UI/runtime responsibilities
 
 ---
 
-### Platform Runtime (Superadmin)
+### Public Plane
+
+Unauthenticated public-facing surface.
+
+Responsibilities:
+
+- landing/discovery surface
+- authentication entrypoint
+- future marketing/commerce presentation layer
+
+Routes:
+
+`app/page.tsx`  
+`app/login/*`
+
+Characteristics:
+
+- no tenant context
+- no membership context
+- no navbar/session shell
+- no operational capabilities
+- no authenticated runtime state
+
+---
+
+### Identity / Onboarding Plane
+
+Authenticated but non-operational user surface.
+
+Responsibilities:
+
+- profile completion
+- membership requests
+- active tenant switching
+
+Routes:
+
+`app/profile/*`
+
+Characteristics:
+
+- requires authentication
+- does NOT require active tenant membership
+- superadmin excluded
+- onboarding-oriented, not operational
+- isolated from commerce/runtime capabilities
+
+Guard model:
+
+`<AuthGuard>`
+
+Behavior:
+
+- unauthenticated → `/login`
+- superadmin → `/platform/tenants`
+- authenticated tenant actors → allowed
+
+---
+
+### Tenant Capability Plane
+
+Tenant-scoped operational runtime.
+
+Handles all tenant-scoped operations.
+
+Capabilities include:
+
+- Home commerce surface (projection-oriented storefront/runtime feed)
+- SSR tenant-scoped commerce discovery
+- cart
+- checkout
+- orders (history, receipt)
+- POS (staff)
+- fulfillment
+- analytics
+- reconciliation (read + resolution UI)
+- memberships
+- inventory visibility
+- staff/admin operations
+
+Routes:
+
+`app/(tenant)/*`
+
+Characteristics:
+
+- requires active approved membership
+- capability-scoped authorization
+- tenant isolation enforced structurally
+- superadmin redirected out of tenant plane
+- commerce-oriented runtime
+- operational execution surface
+
+Authorization is explicitly declared per module through layout-scoped guards.
+
+Examples:
+
+- Home → customer/staff/admin
+- POS → staff
+- Reconciliation → staff
+- Inventory → admin/staff
+
+Guard model:
+
+`<TenantGuard allowRoles=[...]>`
+
+Behavior:
+
+- unauthenticated → `/login`
+- superadmin → `/platform/tenants`
+- no active membership → `/profile`
+- role mismatch → `/home`
+
+Storefront direction:
+
+The storefront is evolving toward a compositional commerce-discovery surface rather than a flat product listing page.
+
+The `/home` surface is intended to support:
+
+- recommendations
+- featured products
+- category sections
+- search-result mode
+- recently purchased products
+- projection-driven commerce feeds
+
+while preserving a stable commerce shell and tenant-scoped execution semantics.
+
+---
+
+### Platform Authority Plane
+
+Platform-level superadmin runtime.
 
 Handles platform-level control and cross-tenant operations.
 
-- Product catalog management
-- Tenant lifecycle management
-- Tenant inventory provisioning
-- Low-stock monitoring
-- Stock adjustment
+Capabilities include:
 
-```
-app/platform/*
-```
+- product catalog management
+- tenant lifecycle management
+- tenant inventory provisioning
+- low-stock monitoring
+- stock adjustment
+- cross-tenant administration
+
+Routes:
+
+`app/platform/*`
+
+Characteristics:
+
+- superadmin-only
+- no tenant participation semantics
+- isolated from onboarding and commerce runtime
+- platform authority execution surface
+
+Guard model:
+
+`<PlatformGuard>`
+
+Behavior:
+
+- unauthenticated → `/login`
+- tenant actors → `/home`
+- superadmin → allowed
 
 ---
 
 ### API Layer (Transport Only)
 
-All routes are transport-level adapters:
+All routes are transport-level adapters.
 
-- No business logic
-- No invariant enforcement
-- Only orchestration + delegation
+Routes:
 
-```
-app/api/*
-```
+`app/api/*`
+
+Responsibilities:
+
+- request orchestration
+- transport normalization
+- authentication extraction
+- response serialization
+- delegation into domain/service layers
+
+API routes explicitly do NOT own:
+
+- business logic
+- invariant enforcement
+- transactional correctness
+- authorization assumptions
+
+All business rules remain inside:
+
+- guards
+- domain
+- application services
+
+The API layer defines explicit transport contracts through structured response envelopes.
+
+Examples:
+
+- `{ order }`
+- `{ membership }`
+- `{ tenant }`
+- `{ metrics }`
 
 Includes:
 
 - Tenant APIs (cart, orders, checkout, payments)
 - Platform APIs (admin/tenants/*, inventory control)
 - Reconciliation APIs (detect + resolve)
+
+Architectural guarantees:
+
+- routes are orchestration-only
+- routes never own invariants
+- transport contracts are explicit and typed
+- domain remains source of truth
+- client never controls transactional state
 
 ---
 
@@ -1778,6 +1993,26 @@ Includes:
 All business logic lives inside `lib/`.
 
 Each module is a **self-contained domain boundary**.
+
+### Service Layer Legitimacy
+
+Services are introduced only when they provide meaningful application-level responsibility such as:
+
+- orchestration across aggregates
+- execution-plane boundaries
+- transport normalization
+- policy coordination
+- near-term evolution pressure (pagination, filtering, caching, etc.)
+
+The system intentionally avoids service files that merely rename domain functions without adding architectural value.
+
+This preserves:
+
+- clear ownership boundaries
+- lower indirection cost
+- stronger structural clarity
+
+---
 
 ### Domain Modules
 
@@ -1856,6 +2091,43 @@ lib/api/*
 
 ---
 
+### Transport Contract Strategy
+
+All client wrappers are designed around explicit typed transport contracts.
+
+Principles:
+
+- Every route returns structured resource-oriented envelopes:
+  - `{ order }`
+  - `{ tenant }`
+  - `{ membership }`
+  - `{ metrics }`
+  - etc.
+
+- Mutation endpoints return resulting resources instead of fragmented metadata (`success`, `orderId`, etc.) wherever meaningful.
+
+- Wrappers explicitly type API payloads using `apiFetch<T>()`.
+
+- Transport payloads are treated as compile-time contracts rather than runtime assumptions.
+
+This enables:
+
+- Structural refactor safety
+- Compile-time detection of payload mismatches
+- Predictable API semantics across UI and route boundaries
+
+The system intentionally evolves toward:
+
+Route Contract
+↓
+Typed Wrapper Contract
+↓
+Typed UI Consumption
+
+with minimal implicit or untyped transport behavior.
+
+---
+
 ## 4. UI Layer (Components)
 
 Pure UI components:
@@ -1864,20 +2136,48 @@ Pure UI components:
 components/*
 ```
 
-- No business logic
-- No domain decisions
-- Express user intent only
+Principles:
 
-Grouped by domain:
+- no business logic
+- no invariant ownership
+- no transactional authority
+- express user intent only
 
-- cart
-- orders
-- products
-- pos
-- reconciliation
-- lowStock
-- tenant-provisioning
+Grouped by execution surface and domain ownership.
+
+Execution surfaces (e.g. `home`) compose runtime experiences.
+
+Domain-oriented component groups (e.g. `products`) contain reusable business-domain UI primitives consumed by those surfaces.
+
+Examples:
+
 - admin
+- analytics
+- audit
+- auth
+- cart
+- checkout
+- export
+- guards
+- home
+- layout
+- lowStock
+- memberships
+- orders
+- pos
+- products
+- profile
+- reconciliation
+- session
+- tenant-provisioning
+
+Layout-oriented persistent UI surfaces (e.g. Navbar, CartWidget) belong under:
+
+```
+components/layout/*
+```
+
+instead of domain-oriented namespaces.
 
 ---
 
@@ -1903,14 +2203,78 @@ Includes:
 
 ### Auth & Guards
 
-- identity resolution
-- role enforcement
-- tenant derivation
-- permission checks
+The system uses explicit execution-plane guards instead of a single generic authorization layer.
+
+Guards are applied at layout boundaries instead of page-level duplication.
+
+This establishes:
+
+- explicit execution ownership
+- capability-scoped authorization
+- centralized redirect semantics
+- render-safe client authorization boundaries
+
+Guard types:
+
+#### AuthGuard
+
+Used for authenticated onboarding/identity surfaces.
+
+Responsibilities:
+
+- require authentication
+- exclude superadmin
+- redirect unauthenticated users to `/login`
+
+Used for:
+
+- `/profile`
+
+---
+
+#### TenantGuard
+
+Used for tenant operational capability surfaces.
+
+Responsibilities:
+
+- require active approved membership
+- enforce tenant-scoped role capabilities
+- redirect:
+  - unauthenticated → `/login`
+  - superadmin → `/platform/tenants`
+  - non-member → `/profile`
+  - role mismatch → `/home`
+
+Authorization is explicitly capability-scoped per module.
+
+Examples:
+
+- customer/staff/admin → storefront
+- staff → POS
+- staff → reconciliation
+
+---
+
+#### PlatformGuard
+
+Used for platform authority runtime.
+
+Responsibilities:
+
+- require superadmin
+- redirect tenant actors to `/home`
+- redirect unauthenticated users to `/login`
+
+Used for:
+
+- `app/platform/*`
+
+---
 
 ### Access Control Strategy
 
-Two distinct guard types exist:
+Two distinct server-side authorization guard types exist:
 
 1. requireAccess (flexible)
    - Allows tenant users (role-checked)
@@ -1930,10 +2294,14 @@ Other writes → strict (tenant-only unless explicitly handled via admin routes)
 
 This separation prevents unintended privilege escalation while keeping superadmin capabilities explicit and controlled.
 
+---
+
 ### HTTP Layer
 
 - centralized error handling
 - domain error → HTTP mapping
+
+---
 
 ### Observability Layer
 
@@ -1942,10 +2310,20 @@ This separation prevents unintended privilege escalation while keeping superadmi
 - no domain coupling
 - no persistence dependency
 
+---
+
 ### Contexts
+
+Client-side application state and UI infrastructure:
 
 - AuthContext
 - CartContext (UI state only, not source of truth)
+- SnackbarContext (global application feedback infrastructure)
+
+The system intentionally separates:
+
+- application state infrastructure
+- presentational UI components
 
 ---
 
@@ -1976,6 +2354,19 @@ Future (Step 21):
 - All cross-tenant access is explicitly guarded inside domain
 - Read paths may normalize state (e.g., expiry) to reflect real-time truth
 - Guards define access, domain enforces correctness
+- Transport contracts are explicit and resource-oriented
+- Compile-time correctness is preferred over runtime discovery
+- Domain boundaries exchange only minimal required data
+- Services exist only when representing meaningful application/use-case boundaries
+- Thin alias wrappers without orchestration pressure are avoided
+- Authentication, onboarding, tenant participation, and platform authority are treated as separate execution concerns
+- Execution planes are isolated structurally, not merely through redirects or UI assumptions
+- Authorization is execution-plane scoped, not globally generic
+- Layout boundaries define runtime admission semantics
+- Guards are applied at layout boundaries instead of page-level duplication
+- Capability access is explicit, role-scoped, and declared per module
+- Superadmin does not participate in tenant/member semantics
+- Storefront is evolving toward a compositional commerce-discovery surface rather than a flat product listing
 
 ---
 
@@ -1983,102 +2374,114 @@ Future (Step 21):
 
 .
 ├── app
-│   ├── (tenant)                     # Tenant runtime (user-facing)
+│   ├── (tenant)                     # Tenant capability runtime (member-scoped)
 │   │   ├── analytics/
 │   │   ├── audit/
 │   │   ├── cart/
 │   │   ├── checkout/
-│   │   ├── fulfillment/
+│   │   ├── home/                    # Commerce discovery surface
+│   │   │   ├── [productId]/
+│   │   │   ├── layout.tsx           # Home capability boundary
+│   │   │   └── page.tsx
 │   │   ├── inventory/
-│   │   ├── memberships/
+│   │   ├── memberships/             # Staff membership management runtime
+│   │   │   ├── [membershipId]/
+│   │   │   └── layout.tsx
 │   │   ├── orders/
 │   │   │   └── [orderId]/receipt/
 │   │   ├── pos/
-│   │   ├── products/
-│   │   ├── profile/
+│   │   │   └── layout.tsx           # Staff-only POS capability boundary
 │   │   ├── reconciliation/
-│   │   └── layout.tsx
+│   │   │   └── layout.tsx           # Staff reconciliation capability boundary
+│   │   └── layout.tsx               # Shared tenant runtime shell
 │   │
-│   ├── platform                     # Superadmin runtime
-│   │   ├── products/
-│   │   │   ├── new/
-│   │   │   └── [productId]/
-│   │   └── tenants/
-│   │       ├── new/
-│   │       └── [tenantId]/
-│   │           └── inventory/
-│   │               └── low-stock/
-│   │
-│   ├── api                          # Transport layer (routes only)
-│   │   ├── admin/
-│   │   │   ├── memberships/[membershipId]/role/
+│   ├── api                          # Transport-only route layer
+│   │   ├── admin                    # Platform authority APIs
+│   │   │   ├── jobs/
+│   │   │   ├── memberships/
+│   │   │   ├── metrics/
 │   │   │   ├── products/
-│   │   │   └── tenants/[tenantId]/inventory/
-│   │   │       ├── adjust/
-│   │   │       └── low-stock/
+│   │   │   └── tenants/
+│   │   │       └── [tenantId]/
+│   │   │           └── inventory/
 │   │   │
 │   │   ├── analytics/
 │   │   ├── audit/
 │   │   ├── auth/
 │   │   ├── cart/
 │   │   ├── checkout/
-│   │   ├── export/                  # Step 18
+│   │   ├── export/
 │   │   ├── memberships/
-│   │   │   ├── active/
-│   │   │   ├── me/
-│   │   │   ├── pending/
-│   │   │   └── select/
 │   │   ├── orders/
-│   │   │   ├── [orderId]/
-│   │   │   └── pos/
-│   │   ├── payments/[orderId]/confirm/
+│   │   ├── payments/
 │   │   ├── profile/
-│   │   └── reconciliation/
-│   │       └── resolve/
+│   │   ├── reconciliation/
+│   │   └── tenants/
 │   │
-│   ├── login/
-│   ├── layout.tsx
+│   ├── login/                       # Public authentication entrypoint
+│   ├── platform                     # Superadmin execution runtime
+│   │   ├── jobs/
+│   │   ├── memberships/
+│   │   ├── products/
+│   │   │   ├── [productId]/
+│   │   │   └── new/
+│   │   ├── tenants/
+│   │   │   ├── [tenantId]/
+│   │   │   │   └── inventory/
+│   │   │   │       └── low-stock/
+│   │   │   └── new/
+│   │   └── layout.tsx               # Platform authority boundary
+│   │
+│   ├── profile/                     # Authenticated onboarding runtime
+│   │   └── layout.tsx               # Auth-only onboarding boundary
+│   │
+│   ├── layout.tsx                   # Global application shell
+│   ├── page.tsx                     # Public landing surface
 │   └── ThemeRegistry.tsx
 │
-├── components                      # Pure UI (no business logic)
+├── components                       # Pure UI layer (no business logic)
 │   ├── admin/
+│   │   ├── jobs/
+│   │   ├── memberships/
+│   │   └── products/
+│   │
 │   ├── analytics/
 │   ├── audit/
 │   ├── auth/
 │   ├── cart/
 │   ├── checkout/
-│   ├── common/
-│   ├── export/                     # Step 18
-│   ├── guards/
+│   ├── export/
+│   ├── guards/                      # Execution-plane authorization guards
+│   ├── layout/                      # Shared layout/runtime UI surfaces
 │   ├── lowStock/
 │   ├── memberships/
 │   ├── orders/
 │   ├── pos/
-│   ├── products/
+│   ├── products/                    # Reusable product-domain UI primitives
 │   ├── profile/
 │   ├── reconciliation/
-│   ├── session/
-│   ├── tenant/
 │   └── tenant-provisioning/
 │
-├── contexts                        # Client state (UI only)
+├── contexts                         # Client-side UI/application state
 │   ├── AuthContext.tsx
-│   └── CartContext.tsx
+│   ├── CartContext.tsx
+│   └── SnackbarContext.tsx
 │
 ├── hooks
 │   └── useActiveMembership.ts
 │
-├── lib                             # Core system (ALL domain logic)
+├── lib                              # Core system / domain layer
 │   ├── analytics/
-│   ├── api/                        # Client API wrappers
+│   ├── api/                         # Typed client API wrappers
 │   ├── audit/
 │   ├── auth/
 │   ├── cart/
 │   ├── checkout/
-│   ├── events/                     # Event dispatcher
-│   ├── export/                     # Step 18
+│   ├── config/
+│   ├── events/                      # Domain event dispatching
+│   ├── export/
 │   ├── http/
-│   ├── jobs/                       # Step 17 (background runner)
+│   ├── jobs/                        # Background execution runtime
 │   ├── mappers/
 │   ├── memberships/
 │   ├── notifications/
@@ -2092,69 +2495,64 @@ Future (Step 21):
 │   ├── tenantInventory/
 │   └── tenants/
 │
-├── tests                           # Step 19 (isolation test suite)
+├── tests                            # Isolation and correctness verification
 │   ├── isolation/
-│   │   ├── concurrency.test.ts
-│   │   ├── guards.test.ts
-│   │   ├── inventory.test.ts
-│   │   ├── jobs.test.ts
-│   │   ├── memberships.test.ts
-│   │   ├── orders.test.ts
-│   │   ├── payments.test.ts
-│   │   └── reconciliation.test.ts
 │   └── setup.ts
 │
-├── types                           # Shared contracts
+├── types                            # Shared system contracts
 │   ├── analytics.ts
 │   ├── audit.ts
 │   ├── auth.ts
 │   ├── cart.ts
 │   ├── checkout.ts
 │   ├── domainEvent.ts
-│   ├── export.ts                   # Step 18
-│   ├── job.ts                      # Step 17
+│   ├── export.ts
+│   ├── job.ts
 │   ├── lowStock.ts
 │   ├── membership.ts
+│   ├── metrics.ts
 │   ├── notification.ts
 │   ├── order.ts
+│   ├── otp.ts
 │   ├── payment.ts
 │   ├── product.ts
 │   ├── profile.ts
 │   ├── reconciliation.ts
+│   ├── reconciliationPolicy.ts
+│   ├── reconciliationResolution.ts
+│   ├── session.ts
 │   ├── stockAdjustment.ts
 │   ├── tenant.ts
 │   └── tenantInventory.ts
 │
 ├── docs/
-│   └── checkout-api.md
-│
 ├── public/
-├── proxy.ts                        # Middleware replacement (Next.js 16)
-├── next.config.ts
-├── package.json
+├── scripts/                         # Operational/load-testing scripts
+├── proxy.ts                         # Next.js middleware replacement
 ├── README.md
+├── package.json
 ├── tsconfig.json
 └── vitest.config.ts
 
 The domain modules represent the core business capabilities:
 
-- Auth (identity and session management)
-- Tenants (tenant lifecycle and platform control)
-- Memberships (access, roles, and lifecycle)
-- Profiles (user data and completeness)
-- Products (platform-owned catalog)
-- TenantInventory (entitlement and stock management)
-- Cart (pre-order aggregation and validation)
-- Checkout (application service orchestration)
-- Orders (transactional state machine and lifecycle)
+- Auth (identity, authentication, and session management)
+- Tenants (tenant lifecycle and platform authority control)
+- Memberships (tenant participation, access, roles, and lifecycle)
+- Profiles (user onboarding, profile data, and completeness)
+- Products (platform-owned catalog and canonical product data)
+- TenantInventory (tenant entitlement, allocation, reservation, and stock management)
+- Cart (server-authoritative pre-order aggregation and validation)
+- Checkout (application-service orchestration boundary)
+- Orders (transactional state machine and lifecycle management)
 - Payments (payment recording and confirmation)
-- Reconciliation (cross-aggregate consistency checks and resolution)
-- Analytics (snapshot-based read models)
-- Audit (append-only event traceability)
-- Notifications (event-driven user communication)
-- Jobs (idempotent background execution layer for lifecycle transitions and async side effects)
+- Reconciliation (cross-aggregate consistency detection and resolution)
+- Analytics (snapshot-based tenant read models)
+- Audit (append-only event traceability projection)
+- Notifications (event-driven user communication and dispatch abstraction)
+- Jobs (idempotent background execution runtime for lifecycle transitions and async side effects)
 - Export (deterministic snapshot-based data export service)
-- Security (request boundary enforcement via guardRequest: auth, CSRF, rate limiting)
+- Security (request-boundary enforcement via auth, CSRF, and rate limiting guards)
 
 ---
 
@@ -2182,8 +2580,11 @@ Seed data loads automatically.
 - Explicit domain ownership
 - No premature abstractions
 - Observability without violating domain boundaries
+- Compile-time transport integrity over implicit runtime assumptions
+- Structural transparency over hidden wrapper behavior
+- Explicit contracts over inferred payloads
 
-The system is designed to survive scale, not just function in demos.
+The system is designed around correctness, execution isolation, and long-term scalability rather than short-term feature velocity.
 
 ---
 

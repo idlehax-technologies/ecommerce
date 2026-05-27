@@ -4,15 +4,15 @@ import { listTenantInventory } from "@/lib/tenantInventory/domain";
 
 import type { ReconciliationMismatch, ReconciliationReport } from "@/types/reconciliation";
 
-export function runTenantReconciliation(
+export async function runTenantReconciliation(
     tenantId: string
-): ReconciliationReport {
+): Promise<ReconciliationReport> {
 
     const scannedAt = new Date().toISOString();
 
-    const orders = listTenantOrders(tenantId);
+    const orders = await listTenantOrders(tenantId);
     const payments = listPaymentsByTenant(tenantId);
-    const inventory = listTenantInventory(tenantId);
+    const inventory = await listTenantInventory(tenantId);
 
     const mismatches: ReconciliationMismatch[] = [];
 

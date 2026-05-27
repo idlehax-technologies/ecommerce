@@ -1,24 +1,42 @@
-import type { UpsertProfileInput } from "@/types/profile";
+import type { ProfileDTO } from "@/types/profile";
+
 import { ProfileInvalidInputError } from "./errors";
+
+function isNonEmptyString(
+    value: unknown
+): value is string {
+    return (
+        typeof value === "string" &&
+        value.trim().length > 0
+    );
+}
 
 export function assertProfileInput(
     body: unknown
-): asserts body is UpsertProfileInput {
+): asserts body is ProfileDTO {
     if (!body || typeof body !== "object") {
-        throw new ProfileInvalidInputError("Invalid request body");
+        throw new ProfileInvalidInputError(
+            "Invalid request body"
+        );
     }
 
     const b = body as Record<string, unknown>;
 
-    if (typeof b.fullName !== "string") {
-        throw new ProfileInvalidInputError("Invalid fullName");
+    if (!isNonEmptyString(b.fullName)) {
+        throw new ProfileInvalidInputError(
+            "Full name must be a non-empty string"
+        );
     }
 
-    if (typeof b.email !== "string") {
-        throw new ProfileInvalidInputError("Invalid email");
+    if (!isNonEmptyString(b.email)) {
+        throw new ProfileInvalidInputError(
+            "Email must be a non-empty string"
+        );
     }
 
-    if (typeof b.addressText !== "string") {
-        throw new ProfileInvalidInputError("Invalid addressText");
+    if (!isNonEmptyString(b.addressText)) {
+        throw new ProfileInvalidInputError(
+            "Address must be a non-empty string"
+        );
     }
 }

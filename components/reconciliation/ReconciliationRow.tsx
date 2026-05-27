@@ -8,11 +8,13 @@ import { resolveReconciliation } from "@/lib/api/reconciliation";
 import { getResolutionPolicy } from "@/lib/reconciliation/policy";
 import { ResolutionActionType } from "@/types/reconciliationResolution";
 
-type Props = {
+export default function ReconciliationRow({
+    mismatch,
+    reload,
+}: {
     mismatch: ReconciliationMismatch;
-};
-
-export default function ReconciliationRow({ mismatch }: Props) {
+    reload: () => Promise<void>;
+}) {
 
     const [pending, start] = useTransition();
 
@@ -31,10 +33,9 @@ export default function ReconciliationRow({ mismatch }: Props) {
                 orderId: mismatch.orderId,
                 paymentId: mismatch.paymentId,
                 productId: mismatch.productId,
-                reason: "manual_fix",
             });
 
-            window.location.reload();
+            await reload();
         });
     }
 

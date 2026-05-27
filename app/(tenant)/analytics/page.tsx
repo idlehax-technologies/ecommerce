@@ -1,42 +1,67 @@
-import { Container, Typography, Stack, Divider } from "@mui/material";
+"use client";
 
-import { getUserFromRequest } from "@/lib/auth";
-import { requireTenant, requireMembershipRole } from "@/lib/auth/guards";
+import { Container, Typography, Stack, Divider, CircularProgress } from "@mui/material";
 
-import { getTenantAnalytics } from "@/lib/analytics/service";
+import { getAnalytics } from "@/lib/api/analytics";
 
 import AnalyticsSummaryView from "@/components/analytics/AnalyticsSummary";
 import ProductTable from "@/components/analytics/ProductTable";
+import { useEffect, useState } from "react";
+import { TenantAnalytics } from "@/types/analytics";
 
-export default async function AnalyticsPage() {
+export default function AnalyticsPage() {
 
-    const rawUser = await getUserFromRequest();
+    const [analytics, setAnalytics] = useState<TenantAnalytics | null>(null);
 
-    requireMembershipRole(rawUser, ["admin", "staff"]);
+    const [loading, setLoading] = useState(true);
 
-    const actor = requireTenant(rawUser);
+    async function load() {
+        try {
+            setLoading(true);
+            const res = await getAnalytics();
+            setAnalytics(res.analytics);
+        } finally {
+            setLoading(false);
+        }
+    }
 
-    const analytics = getTenantAnalytics(actor.tenantId);
+    useEffect(() => {
+        load();
+    }, []);
+
+    if (loading) {
+        return <CircularProgress />;
+    }
+
+    if (!analytics) {
+        return null;
+    }
 
     return (
         <Container sx={{ mt: 6 }}>
+
             <Typography variant="h4" gutterBottom>
                 Analytics
             </Typography>
 
             <Stack spacing={4}>
+
                 <AnalyticsSummaryView summary={analytics.summary} />
 
                 <Divider />
 
                 <div>
+
                     <Typography variant="h6" gutterBottom>
                         Top Products
                     </Typography>
 
                     <ProductTable products={analytics.topProducts} />
+
                 </div>
+
             </Stack>
+
         </Container>
     );
 }

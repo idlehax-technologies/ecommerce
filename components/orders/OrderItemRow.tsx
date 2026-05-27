@@ -2,8 +2,6 @@ import { Paper, Box, Typography } from "@mui/material";
 import type { OrderItem } from "@/types/order";
 
 export default function OrderItemRow({ item }: { item: OrderItem }) {
-    const total = item.price * item.quantity;
-
     return (
         <Paper sx={{ p: 2, display: "flex", justifyContent: "space-between" }}>
             <Box>
@@ -17,7 +15,7 @@ export default function OrderItemRow({ item }: { item: OrderItem }) {
             </Box>
 
             <Typography>
-                ₹ {(total / 100).toFixed(2)}
+                ₹ {((item.price * item.quantity) / 100).toFixed(2)}
             </Typography>
         </Paper>
     );

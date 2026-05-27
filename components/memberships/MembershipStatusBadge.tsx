@@ -13,7 +13,7 @@ export default function MembershipStatusBadge({
         APPROVED: { label: "Approved", color: "success" as const },
         REJECTED: { label: "Rejected", color: "error" as const },
         REVOKED: { label: "Revoked", color: "default" as const },
-        EXPIRED: { label: "Expired", color: "default" as const }, // ✅ NEW
+        EXPIRED: { label: "Expired", color: "default" as const },
     };
 
     const cfg = map[status];

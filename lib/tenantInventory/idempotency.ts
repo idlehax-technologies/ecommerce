@@ -14,6 +14,6 @@ export function isInventoryProcessed(key: string): boolean {
     return store.has(key);
 }
 
-export function markInventoryProcessed(key: string) {
+export function markInventoryProcessed(key: string): void {
     store.set(key, true);
 }

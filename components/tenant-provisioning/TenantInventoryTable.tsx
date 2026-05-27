@@ -1,5 +1,3 @@
-// components/tenant-provisioning/TenantInventoryTable.tsx
-
 "use client";
 
 import {

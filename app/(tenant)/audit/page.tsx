@@ -1,24 +1,48 @@
-import { Container, Typography, Box } from "@mui/material";
-import { getUserFromRequest } from "@/lib/auth";
-import { requireTenant, requireMembershipRole } from "@/lib/auth/guards";
-import { listAuditByTenant } from "@/lib/audit/storage";
+"use client";
+
+import { Container, Typography, Box, CircularProgress } from "@mui/material";
+
+import { getAuditLogs } from "@/lib/api/audit";
+
 import AuditTimeline from "@/components/audit/AuditTimeline";
+import { useEffect, useState } from "react";
+import { AuditLog } from "@/types/audit";
 
-export default async function AuditPage() {
+export default function AuditPage() {
 
-    const rawUser = await getUserFromRequest();
-    requireMembershipRole(rawUser, ["admin", "staff"]);
-    const actor = requireTenant(rawUser);
+    const [logs, setLogs] = useState<AuditLog[]>([]);
 
-    const logs = listAuditByTenant(actor.tenantId);
+    const [loading, setLoading] = useState(true);
+
+    async function load() {
+        try {
+            setLoading(true);
+            const res = await getAuditLogs();
+            setLogs(res.logs);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    useEffect(() => {
+        load();
+    }, []);
+
+    if (loading) {
+        return <CircularProgress />;
+    }
 
     return (
         <Container sx={{ mt: 6 }}>
-            <Typography variant="h4">Audit Logs</Typography>
+
+            <Typography variant="h4">
+                Audit Logs
+            </Typography>
 
             <Box mt={3}>
                 <AuditTimeline logs={logs} />
             </Box>
+
         </Container>
     );
 }

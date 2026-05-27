@@ -4,34 +4,37 @@ import { Card, CardContent, Typography, Stack, Divider } from "@mui/material";
 import type { MembershipView } from "@/types/membership";
 import MembershipStatusBadge from "./MembershipStatusBadge";
 import MembershipLifecycleActions from "./MembershipLifecycleActions";
-import MembershipRoleActions from "./MembershipRoleActions";
-import { useAuth } from "@/contexts/AuthContext";
+
+type Props = {
+    m: MembershipView;
+    reload: () => void;
+};
 
 export default function MembershipDetailCard({
     m,
     reload,
-}: {
-    m: MembershipView;
-    reload: () => void;
-}) {
-    const { user } = useAuth();
+}: Props) {
+
     return (
         <Card>
             <CardContent>
                 <Stack spacing={3}>
-                    {/* <Typography variant="h6">Membership Details</Typography> */}
                     {/* HEADER */}
                     <Stack>
                         <Typography variant="h5">
-                            {m.user.fullName || "Unnamed User"}
+                            {m.user.fullName}
                         </Typography>
 
                         <Typography color="text.secondary">
-                            {m.user.email} • {m.user.phone}
+                            {m.user.phone} • {m.user.email}
                         </Typography>
 
                         <Typography variant="caption" color="text.secondary">
                             Created: {new Date(m.createdAt).toLocaleString()}
+                        </Typography>
+
+                        <Typography variant="caption" color="text.secondary">
+                            Updated: {new Date(m.updatedAt).toLocaleString()}
                         </Typography>
                     </Stack>
 
@@ -68,7 +71,7 @@ export default function MembershipDetailCard({
                         </Typography>
 
                         <Typography>
-                            <strong>Address:</strong> {m.user.addressText || "-"}
+                            <strong>Address:</strong> {m.user.addressText}
                         </Typography>
                     </Stack>
 
@@ -93,13 +96,6 @@ export default function MembershipDetailCard({
                             membership={m}
                             reload={reload}
                         />
-
-                        {user?.isSuperadmin && (
-                            <MembershipRoleActions
-                                membership={m}
-                                reload={reload}
-                            />
-                        )}
                     </Stack>
                 </Stack>
             </CardContent>

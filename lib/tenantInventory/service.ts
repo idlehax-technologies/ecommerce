@@ -7,14 +7,6 @@ import {
 } from "@/lib/mappers/tenantProvisioningView";
 
 /**
- * Read-model returned to UI / routes.
- * This is NOT a domain entity.
- */
-type TenantProvisioningView = {
-    rows: TenantProvisioningRow[];
-};
-
-/**
  * Application Use-Case:
  * Build the provisioning view for a tenant.
  *
@@ -26,11 +18,13 @@ type TenantProvisioningView = {
  * This layer composes them.
  */
 export async function getTenantProvisioningView(
-    tenantId: string
-): Promise<TenantProvisioningView> {
+    tenantId: string,
+    limit?: number
+): Promise<TenantProvisioningRow[]> {
+
     const [products, tenantInventory] = await Promise.all([
         listProducts(),
-        Promise.resolve(listTenantInventory(tenantId)),
+        listTenantInventory(tenantId, limit),
     ]);
 
     const byProduct = new Map(
@@ -38,8 +32,11 @@ export async function getTenantProvisioningView(
     );
 
     const rows: TenantProvisioningRow[] = products.map((p) =>
-        toTenantProvisioningRow(p, byProduct.get(p.productId))
+        toTenantProvisioningRow(
+            p,
+            byProduct.get(p.productId)
+        )
     );
 
-    return { rows };
+    return rows;
 }

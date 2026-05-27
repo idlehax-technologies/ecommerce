@@ -28,13 +28,19 @@ async function runUserFlow() {
             body: JSON.stringify({}),
         });
 
-        const checkoutData = await checkoutRes.json();
+        const checkoutData: {
+            order: {
+                orderId: string;
+            };
+        } = await checkoutRes.json();
 
-        if (!checkoutData.orderId) return;
+        if (!checkoutData.order?.orderId) {
+            return;
+        }
 
         // 3. Confirm payment
         await fetch(
-            `${BASE_URL}/api/payments/${checkoutData.orderId}/confirm`,
+            `${BASE_URL}/api/payments/${checkoutData.order.orderId}/confirm`,
             {
                 method: "POST",
                 headers: HEADERS,
@@ -66,7 +72,7 @@ async function main() {
     console.log("Load test finished");
 
     // fetch metrics
-    const res = await fetch(`${BASE_URL}/api/analytics/metrics`);
+    const res = await fetch(`${BASE_URL}/api/admin/metrics`);
     const { metrics } = await res.json();
 
     console.log("\n=== METRICS ===");

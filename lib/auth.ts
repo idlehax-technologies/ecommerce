@@ -4,13 +4,22 @@ import type { AuthUser } from "@/types/auth";
 import type { SessionPayload } from "@/types/session";
 import { authStore } from "@/lib/auth/storage";
 
-function isTokenPayload(v: unknown): v is SessionPayload {
-  if (!v || typeof v !== "object") return false;
-  const x = v as any;
+function isTokenPayload(
+  payload: unknown
+): payload is SessionPayload {
+
+  if (
+    !payload ||
+    typeof payload !== "object"
+  ) {
+    return false;
+  }
+
+  const obj = payload as Record<string, unknown>;
 
   return (
-    typeof x.userId === "string" &&
-    typeof x.phone === "string"
+    typeof obj.userId === "string" &&
+    typeof obj.phone === "string"
   );
 }
 

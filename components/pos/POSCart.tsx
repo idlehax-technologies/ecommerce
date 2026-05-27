@@ -15,15 +15,8 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import DeleteIcon from "@mui/icons-material/Delete";
-
-type Row = {
-    product: {
-        productId: string;
-        title: string;
-        price: number;
-    };
-    stock: number;
-};
+import { PaymentMethod } from "@/types/payment";
+import { TenantProvisioningRow } from "@/lib/mappers/tenantProvisioningView";
 
 export default function POSCart({
     cart,
@@ -32,11 +25,11 @@ export default function POSCart({
     onSubmit,
 }: {
     cart: Record<string, number>;
-    rows: Row[];
+    rows: TenantProvisioningRow[];
     onUpdate: (productId: string, qty: number) => void;
-    onSubmit: (method?: string) => void;
+    onSubmit: (method?: PaymentMethod) => void;
 }) {
-    const [method, setMethod] = useState<string | null>(null);
+    const [method, setMethod] = useState<PaymentMethod | null>(null);
 
     const items = Object.entries(cart) as [string, number][];
 
@@ -52,7 +45,10 @@ export default function POSCart({
 
             {items.map(([id, qty]) => {
                 const row = rows.find((r) => r.product.productId === id);
+
                 if (!row) return null;
+
+                const remaining = row.stock - row.reserved - qty;
 
                 return (
                     <Box
@@ -73,11 +69,11 @@ export default function POSCart({
                             </IconButton>
 
                             <Typography>
-                                {qty} reserved • {row.stock - qty} left
+                                {qty} in cart • {remaining} left
                             </Typography>
 
                             <IconButton
-                                disabled={qty >= row.stock}
+                                disabled={remaining <= 0}
                                 onClick={() => onUpdate(id, qty + 1)}
                             >
                                 <AddIcon />
@@ -103,7 +99,9 @@ export default function POSCart({
             <ToggleButtonGroup
                 exclusive
                 value={method}
-                onChange={(_, v) => setMethod(v)}
+                onChange={(_, v: PaymentMethod | null) =>
+                    setMethod(v)
+                }
                 size="small"
             >
                 <ToggleButton value="CASH">Cash</ToggleButton>

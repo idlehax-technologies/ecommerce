@@ -21,8 +21,8 @@ export type MembershipView = {
     membershipId: string;
     status: MembershipStatus;
     role: MembershipRole;
-    createdAt: string,
-    updatedAt: string,
+    createdAt: string;
+    updatedAt: string;
     tenant: { tenantId: string; name: string };
     user: {
         userId: string;

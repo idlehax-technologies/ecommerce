@@ -26,7 +26,7 @@ export function getPaymentByOrder(orderId: string): Payment | null {
     return paymentsByOrder.get(orderId) ?? null;
 }
 
-export function savePayment(payment: Payment) {
+export function savePayment(payment: Payment): void {
     const snapshot = { ...payment };
 
     paymentsById.set(snapshot.paymentId, snapshot);

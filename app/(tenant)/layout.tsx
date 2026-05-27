@@ -1,5 +1,5 @@
-import Navbar from "@/components/Navbar";
-import CartWidget from "@/components/tenant/CartWidget";
+import Navbar from "@/components/layout/Navbar";
+import CartWidget from "@/components/layout/CartWidget";
 import { CartProvider } from "@/contexts/CartContext";
 
 export default function TenantLayout({

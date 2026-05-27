@@ -39,17 +39,22 @@ function seedTenants() {
 
 seedTenants();
 
-
 export const tenantStore = {
     get(id: string) {
-        return store.get(id) ?? null;
+        const tenant = store.get(id);
+
+        return tenant
+            ? { ...tenant }
+            : null;
     },
 
     getAll() {
-        return Array.from(store.values());
+        return Array
+            .from(store.values())
+            .map((t) => ({ ...t }));
     },
 
     save(t: Tenant) {
-        store.set(t.tenantId, t);
+        store.set(t.tenantId, { ...t });
     },
 };

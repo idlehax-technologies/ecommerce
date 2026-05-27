@@ -1,19 +1,19 @@
 "use client";
 
-import { Snackbar, Alert } from "@mui/material";
-import { createContext, useContext, useState } from "react";
+import { Snackbar, Alert, AlertColor } from "@mui/material";
+import { createContext, useCallback, useContext, useState } from "react";
 
 type SnackbarState = {
     message: string;
-    severity: "success" | "error" | "info";
+    severity: AlertColor;
 };
 
-const Ctx = createContext<{
+const SnackbarContext = createContext<{
     show: (msg: string, severity?: SnackbarState["severity"]) => void;
 } | null>(null);
 
 export function useSnackbar() {
-    const c = useContext(Ctx);
+    const c = useContext(SnackbarContext);
     if (!c) throw new Error("Snackbar not provided");
     return c;
 }
@@ -21,22 +21,32 @@ export function useSnackbar() {
 export function SnackbarProvider({ children }: { children: React.ReactNode }) {
     const [state, setState] = useState<SnackbarState | null>(null);
 
-    function show(message: string, severity: SnackbarState["severity"] = "success") {
+    const show = useCallback((
+        message: string,
+        severity: SnackbarState["severity"] = "success"
+    ) => {
         setState({ message, severity });
+    }, []);
+
+    function close() {
+        setState(null);
     }
 
     return (
-        <Ctx.Provider value={{ show }}>
+        <SnackbarContext.Provider value={{ show }}>
             {children}
             <Snackbar
                 open={!!state}
                 autoHideDuration={3000}
-                onClose={() => setState(null)}
+                onClose={close}
             >
-                <Alert severity={state?.severity || "success"}>
+                <Alert
+                    severity={state?.severity || "success"}
+                    onClose={close}
+                >
                     {state?.message}
                 </Alert>
             </Snackbar>
-        </Ctx.Provider>
+        </SnackbarContext.Provider>
     );
 }

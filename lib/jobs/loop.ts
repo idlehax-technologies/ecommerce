@@ -10,7 +10,7 @@ export function startJobLoop() {
         try {
             const { runScheduler } = await import("./runner");
             await runScheduler();
-        } catch (err) {
+        } catch (err: unknown) {
             console.error("Job loop error:", err);
         } finally {
             setTimeout(tick, INTERVAL);

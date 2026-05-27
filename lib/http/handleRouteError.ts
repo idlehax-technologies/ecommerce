@@ -11,6 +11,8 @@ import { PaymentDomainError } from "../payments/errors";
 import { TenantInventoryDomainError } from "../tenantInventory/errors";
 import { recordError } from "../metrics";
 import { JobDomainError } from "../jobs/errors";
+import { ReconciliationDomainError } from "../reconciliation/errors";
+import { ExportDomainError } from "../export/errors";
 
 /**
  * Central HTTP error translator.
@@ -30,7 +32,9 @@ export function handleRouteError(err: unknown) {
         err instanceof OrderDomainError ||
         err instanceof PaymentDomainError ||
         err instanceof TenantInventoryDomainError ||
-        err instanceof JobDomainError
+        err instanceof JobDomainError ||
+        err instanceof ReconciliationDomainError ||
+        err instanceof ExportDomainError
     ) {
         return NextResponse.json(
             { error: err.message },
