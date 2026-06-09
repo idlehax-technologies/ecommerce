@@ -1,21 +1,9 @@
 import { NextResponse } from "next/server";
-import { handleRouteError } from "@/lib/http/handleRouteError";
-import { listAllTenants, createTenantUseCase } from "@/lib/tenants/service";
-
 import { guardRequest } from "@/lib/security/requestGuard";
 import { requireSuperadmin } from "@/lib/auth/guards";
-
-export async function GET(req: Request) {
-    try {
-        const user = await guardRequest(req, { requireAuth: true });
-        requireSuperadmin(user);
-
-        const tenants = await listAllTenants();
-        return NextResponse.json({ tenants });
-    } catch (err: unknown) {
-        return handleRouteError(err);
-    }
-}
+import { handleRouteError } from "@/lib/http/handleRouteError";
+import { createTenantUseCase } from "@/lib/tenants/service";
+import { validateCreateTenant } from "@/lib/tenants/validators";
 
 export async function POST(req: Request) {
     try {
@@ -25,7 +13,9 @@ export async function POST(req: Request) {
         });
         requireSuperadmin(user);
 
-        const body = await req.json();
+        const body: unknown = await req.json();
+        validateCreateTenant(body);
+
         const tenant = await createTenantUseCase(body);
 
         return NextResponse.json({ tenant });

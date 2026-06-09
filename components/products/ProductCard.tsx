@@ -60,7 +60,7 @@ export default function ProductCard({ row }: Props) {
       <CardActions>
         <Button
           component={Link}
-          href={`/products/${product.productId}`}
+          href={`/home/${product.productId}`}
           size="small"
           fullWidth
           variant="outlined"

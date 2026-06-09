@@ -19,6 +19,9 @@ function seedTenants() {
         {
             tenantId: "tenant_alpha",
             name: "Alpha School",
+            address: "Newtown, AA-IIB",
+            state: "West Bengal",
+            gstin: undefined,
             status: "ACTIVE",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -26,6 +29,9 @@ function seedTenants() {
         {
             tenantId: "tenant_mnsnhs",
             name: "Michaelnagar Shikshaniketan",
+            address: "Michaelnagar, Airport",
+            state: "West Bengal",
+            gstin: "GST987654321",
             status: "ACTIVE",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -40,7 +46,7 @@ function seedTenants() {
 seedTenants();
 
 export const tenantStore = {
-    get(id: string) {
+    get(id: string): Tenant | null {
         const tenant = store.get(id);
 
         return tenant
@@ -48,13 +54,13 @@ export const tenantStore = {
             : null;
     },
 
-    getAll() {
+    getAll(): Tenant[] {
         return Array
             .from(store.values())
             .map((t) => ({ ...t }));
     },
 
-    save(t: Tenant) {
+    save(t: Tenant): void {
         store.set(t.tenantId, { ...t });
     },
 };

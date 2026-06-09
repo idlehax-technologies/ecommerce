@@ -5,7 +5,7 @@ import type {
     AdjustedInventorySnapshot,
 } from "@/types/stockAdjustment";
 
-export async function adjustStock(
+export async function adjustStockBy(
     tenantId: string,
     payload: StockAdjustmentRequest
 ): Promise<{

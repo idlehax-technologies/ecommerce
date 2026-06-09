@@ -19,6 +19,16 @@ function isNonEmptyString(
     );
 }
 
+function isValidStockAdjustment(
+    value: unknown
+): value is number {
+    return (
+        typeof value === "number" &&
+        Number.isFinite(value) &&
+        value !== 0
+    );
+}
+
 export function validateProvisionInput(
     body: unknown
 ): asserts body is ProvisionProductDTO {
@@ -43,16 +53,6 @@ export function validateProvisionInput(
     if (typeof obj.enabled !== "boolean") {
         throw new InvalidInventoryInputError(
             "enabled must be boolean"
-        );
-    }
-
-    if (
-        typeof obj.stock !== "number" ||
-        !Number.isFinite(obj.stock) ||
-        obj.stock < 0
-    ) {
-        throw new InvalidInventoryInputError(
-            "stock must be a non-negative number"
         );
     }
 }
@@ -84,18 +84,9 @@ export function validateStockAdjustmentInput(
         );
     }
 
-    if (
-        typeof obj.newStock !== "number" ||
-        !Number.isFinite(obj.newStock)
-    ) {
+    if (!isValidStockAdjustment(obj.delta)) {
         throw new InvalidInventoryInputError(
-            "newStock must be a valid number"
-        );
-    }
-
-    if (obj.newStock < 0) {
-        throw new InvalidInventoryInputError(
-            "stock cannot be negative"
+            "Delta must be a non-zero number"
         );
     }
 }

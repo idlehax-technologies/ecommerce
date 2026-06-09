@@ -4,6 +4,7 @@ import { requireProvision } from "./guards";
 import {
     CannotDisableWithActiveReservationsError,
     InvalidQuantityError,
+    InventoryInvariantViolationError,
     ProvisionNotFoundError,
 } from "./errors";
 
@@ -13,19 +14,39 @@ import {
     releaseReservation
 } from "./reservations";
 
-import { getProduct } from "@/lib/products/domain";
+import { getActiveProduct } from "@/lib/products/domain";
 
 import type {
     TenantInventory,
     ProvisionProductDTO,
 } from "@/types/tenantInventory";
 
+export function assertValidQuantity(
+    quantity: unknown
+): asserts quantity is number {
+
+    if (
+        typeof quantity !== "number" ||
+        !Number.isFinite(quantity)
+    ) {
+        throw new InvalidQuantityError(
+            "Quantity must be a valid number"
+        );
+    }
+
+    if (quantity <= 0) {
+        throw new InvalidQuantityError(
+            "Quantity must be a positive number"
+        );
+    }
+}
+
 export async function provisionProduct(
     tenantId: string,
     dto: ProvisionProductDTO
 ): Promise<TenantInventory> {
 
-    await getProduct(dto.productId);
+    await getActiveProduct(dto.productId);
 
     const existing = tenantInventoryStore.get(tenantId, dto.productId);
 
@@ -73,20 +94,12 @@ export async function reserveStock(
     quantity: number
 ): Promise<TenantInventory> {
 
-    if (typeof quantity !== "number" || Number.isNaN(quantity)) {
-        throw new InvalidQuantityError("quantity must be a valid number");
-    }
+    assertValidQuantity(quantity);
 
-    if (quantity <= 0) {
-        throw new InvalidQuantityError("quantity must be greater than 0");
-    }
-
-    return tenantInventoryStore.update(
+    const updated = tenantInventoryStore.update(
         tenantId,
         productId,
         (record) => {
-
-            requireProvision(record, productId);
 
             if (!record.enabled) {
                 throw new ProvisionNotFoundError(productId);
@@ -95,6 +108,10 @@ export async function reserveStock(
             return applyReservation(record, quantity);
         }
     );
+
+    requireProvision(updated, productId);
+
+    return updated;
 }
 
 /**
@@ -106,13 +123,7 @@ export async function commitStock(
     quantity: number
 ): Promise<TenantInventory> {
 
-    if (typeof quantity !== "number" || Number.isNaN(quantity)) {
-        throw new InvalidQuantityError("quantity must be a valid number");
-    }
-
-    if (quantity <= 0) {
-        throw new InvalidQuantityError("quantity must be greater than 0");
-    }
+    assertValidQuantity(quantity);
 
     const record = tenantInventoryStore.get(tenantId, productId);
 
@@ -134,13 +145,7 @@ export async function releaseStock(
     quantity: number
 ): Promise<TenantInventory> {
 
-    if (typeof quantity !== "number" || Number.isNaN(quantity)) {
-        throw new InvalidQuantityError("quantity must be a valid number");
-    }
-
-    if (quantity <= 0) {
-        throw new InvalidQuantityError("quantity must be greater than 0");
-    }
+    assertValidQuantity(quantity);
 
     const record = tenantInventoryStore.get(tenantId, productId);
 
@@ -151,4 +156,26 @@ export async function releaseStock(
     tenantInventoryStore.save(updated);
 
     return updated;
+}
+
+export async function reconcileReservedQuantity(
+    record: TenantInventory,
+    expectedReserved: number
+): Promise<TenantInventory> {
+
+    if (record.stock < expectedReserved) {
+        throw new InventoryInvariantViolationError(
+            "stock cannot be less than reserved"
+        );
+    }
+
+    const corrected: TenantInventory = {
+        ...record,
+        reserved: expectedReserved,
+        updatedAt: new Date().toISOString(),
+    };
+
+    tenantInventoryStore.save(corrected);
+
+    return corrected;
 }

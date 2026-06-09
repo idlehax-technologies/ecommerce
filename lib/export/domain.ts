@@ -1,5 +1,5 @@
 import { listTenantOrders } from "@/lib/orders/domain";
-import { listPaymentsByTenant } from "@/lib/payments/storage";
+import { listTenantPayments } from "@/lib/payments/domain";
 import { runTenantReconciliation } from "@/lib/reconciliation/domain";
 
 import type { ExportRequest } from "@/types/export";
@@ -45,7 +45,7 @@ export async function generateExport(
 
         case "ORDERS": {
             const orders = await listTenantOrders(tenantId);
-            const payments = listPaymentsByTenant(tenantId);
+            const payments = listTenantPayments(tenantId);
 
             const paymentMap = new Map(
                 payments.map(p => [p.orderId, p])

@@ -19,28 +19,29 @@ import { mapToPOSRows } from "@/lib/mappers/posView";
 
 import type { POSRow } from "@/lib/mappers/posView";
 import type { TenantProvisioningRow } from "@/lib/mappers/tenantProvisioningView";
-
 import type { PaymentMethod } from "@/types/payment";
+import type { Tenant } from "@/types/tenant";
 
 import { useActiveMembership } from "@/hooks/useActiveMembership";
+import { fetchTenant } from "@/lib/api/tenants";
 
 type POSRowWithAction = POSRow & {
     onSelect: () => void;
 };
 
 export default function POSClient() {
-    const { membership, loading: membershipLoading } = useActiveMembership();
+    const { membership, loading: mLoading } = useActiveMembership();
 
     const [rows, setRows] = useState<TenantProvisioningRow[]>([]);
-
+    const [tenant, setTenant] = useState<Tenant | null>(null);
     const [cart, setCart] = useState<Record<string, number>>({});
 
     const [error, setError] = useState<string | null>(null);
-
     const [loading, setLoading] = useState(true);
 
     async function load() {
         if (!membership) {
+            setLoading(false);
             return;
         }
 
@@ -48,8 +49,11 @@ export default function POSClient() {
             setLoading(true);
             const res = await getTenantInventoryView(membership.tenantId);
             setRows(res.rows);
+
+            const tenantRes = await fetchTenant(membership.tenantId);
+            setTenant(tenantRes.tenant);
         } catch {
-            setError("Failed to load products");
+            setError("Failed to load POS data");
         } finally {
             setLoading(false);
         }
@@ -132,12 +136,15 @@ export default function POSClient() {
 
     if (
         loading ||
-        membershipLoading
+        mLoading
     ) {
         return <CircularProgress />;
     }
 
-    if (!membership) {
+    if (
+        !membership ||
+        !tenant
+    ) {
         return null;
     }
 
@@ -154,6 +161,7 @@ export default function POSClient() {
                     <POSCart
                         cart={cart}
                         rows={rows}
+                        hasGst={!!tenant.gstin}
                         onUpdate={update}
                         onSubmit={submit}
                     />

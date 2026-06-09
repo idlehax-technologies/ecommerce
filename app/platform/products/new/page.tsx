@@ -1,45 +1,33 @@
-"use client";
+import {
+  Container,
+  Typography,
+  Paper,
+} from "@mui/material";
 
-import { Container, Typography, Paper, Alert, CircularProgress } from "@mui/material";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { getUserFromRequest } from "@/lib/auth";
+import { requireSuperadmin } from "@/lib/auth/guards";
 
-import type { CreateProductDTO } from "@/types/product";
-import { createProduct } from "@/lib/api/productManagement";
 import ProductForm from "@/components/admin/products/ProductForm";
 
-export default function NewProductPage() {
-  const router = useRouter();
+export default async function NewProductPage() {
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleCreate(values: CreateProductDTO) {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const product = await createProduct(values);
-
-      router.push(`/platform/products/${product.productId}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create product");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const rawUser = await getUserFromRequest();
+  requireSuperadmin(rawUser);
 
   return (
-    <Container sx={{ py: 4 }}>
+    <Container
+      maxWidth="md"
+      sx={{ py: 4 }}
+    >
+      <Typography
+        variant="h5"
+        mb={3}
+      >
+        New Product
+      </Typography>
+
       <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" mb={2}>
-          Create Product
-        </Typography>
-
-        {loading && <CircularProgress />}
-        {error && <Alert severity="error">{error}</Alert>}
-
-        <ProductForm mode="create" onSubmit={handleCreate} />
+        <ProductForm mode="create" />
       </Paper>
     </Container>
   );

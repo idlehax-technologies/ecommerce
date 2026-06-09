@@ -55,7 +55,7 @@ export default function POSProductCard({ row }: Props) {
                         </Typography>
 
                         <Typography>
-                            ₹ {price}
+                            ₹{price}
                         </Typography>
 
                         {/* 🔥 Stock + reservation feedback */}

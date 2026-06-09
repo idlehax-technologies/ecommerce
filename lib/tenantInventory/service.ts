@@ -1,4 +1,4 @@
-import { listProducts } from "@/lib/products/domain";
+import { listActiveProducts } from "@/lib/products/domain";
 import { listTenantInventory } from "./domain";
 
 import {
@@ -23,7 +23,7 @@ export async function getTenantProvisioningView(
 ): Promise<TenantProvisioningRow[]> {
 
     const [products, tenantInventory] = await Promise.all([
-        listProducts(),
+        listActiveProducts(),
         listTenantInventory(tenantId, limit),
     ]);
 

@@ -6,28 +6,38 @@ import { useParams } from "next/navigation";
 import { Container, CircularProgress } from "@mui/material";
 
 import { getOrder } from "@/lib/api/orders";
+import { fetchTenant } from "@/lib/api/tenants";
 
 import OrderDetail from "@/components/orders/OrderDetail";
 
-import type { Order } from "@/types/order";
-
 import { useActiveMembership } from "@/hooks/useActiveMembership";
 
+import type { Order } from "@/types/order";
+import type { Tenant } from "@/types/tenant";
+
 export default function OrderDetailPage() {
-
     const { orderId } = useParams<{ orderId: string }>();
-
-    const { membership, loading: membershipLoading } = useActiveMembership();
+    const { membership, loading: mLoading } = useActiveMembership();
 
     const [order, setOrder] = useState<Order | null>(null);
+    const [tenant, setTenant] = useState<Tenant | null>(null);
 
     const [loading, setLoading] = useState(true);
 
     async function load() {
+        if (!membership) {
+            setLoading(false);
+            return;
+        }
+
         try {
             setLoading(true);
-            const res = await getOrder(orderId);
-            setOrder(res.order);
+            const orderRes = await getOrder(orderId);
+            setOrder(orderRes.order);
+
+            const tenantRes = await fetchTenant(membership.tenantId);
+            setTenant(tenantRes.tenant);
+
         } finally {
             setLoading(false);
         }
@@ -35,18 +45,19 @@ export default function OrderDetailPage() {
 
     useEffect(() => {
         load();
-    }, [orderId]);
+    }, [orderId, membership]);
 
     if (
         loading ||
-        membershipLoading
+        mLoading
     ) {
         return <CircularProgress />;
     }
 
     if (
         !order ||
-        !membership
+        !membership ||
+        !tenant
     ) {
         return null;
     }
@@ -57,6 +68,7 @@ export default function OrderDetailPage() {
                 order={order}
                 reload={load}
                 actorRole={membership.role}
+                hasGst={!!tenant.gstin}
             />
         </Container>
     );

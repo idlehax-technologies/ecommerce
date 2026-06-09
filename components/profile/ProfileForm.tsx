@@ -81,6 +81,8 @@ export default function ProfileForm({
 
             <TextField
                 label="Address"
+                multiline
+                minRows={3}
                 value={form.addressText}
                 onChange={(e) =>
                     setForm({ ...form, addressText: e.target.value })

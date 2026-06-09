@@ -115,7 +115,7 @@ export default function CartRow({
                 >
 
                     <Typography>
-                        ₹ {(item.price / 100).toFixed(2)}
+                        ₹{(item.price / 100).toFixed(2)}
                     </Typography>
 
                     {removeItem && registerUndo && (

@@ -21,11 +21,13 @@ import { TenantProvisioningRow } from "@/lib/mappers/tenantProvisioningView";
 export default function POSCart({
     cart,
     rows,
+    hasGst,
     onUpdate,
     onSubmit,
 }: {
     cart: Record<string, number>;
     rows: TenantProvisioningRow[];
+    hasGst: boolean;
     onUpdate: (productId: string, qty: number) => void;
     onSubmit: (method?: PaymentMethod) => void;
 }) {
@@ -93,7 +95,8 @@ export default function POSCart({
             <Divider />
 
             <Typography fontWeight={600}>
-                ₹ {(total / 100).toFixed(2)}
+                Total: ₹{(total / 100).toFixed(2)}
+                {hasGst && " (incl. GST)"}
             </Typography>
 
             <ToggleButtonGroup

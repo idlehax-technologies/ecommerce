@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
 import {
   Typography,
   Button,
@@ -7,21 +10,59 @@ import {
   Container,
   Snackbar,
   Paper,
+  CircularProgress,
 } from "@mui/material";
 
-import Link from "next/link";
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
 
+import { useActiveMembership } from "@/hooks/useActiveMembership";
 import { useCart } from "@/contexts/CartContext";
+
 import CartList from "@/components/cart/CartList";
 import CartSummary from "@/components/cart/CartSummary";
-import { useState } from "react";
+
+import { fetchTenant } from "@/lib/api/tenants";
+import type { Tenant } from "@/types/tenant";
 
 export default function CartPage() {
+  const { membership, loading: mLoading } = useActiveMembership();
   const { cart, remove, clear } = useCart();
 
+  const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [loading, setLoading] = useState(true);
   const [undoAction, setUndoAction] = useState<(() => void) | null>(null);
   const [open, setOpen] = useState(false);
+
+  async function load() {
+    if (!membership) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await fetchTenant(membership.tenantId);
+      setTenant(res.tenant);
+
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, [membership]);
+
+  if (mLoading || loading) {
+    return <CircularProgress />;
+  }
+
+  if (
+    !membership ||
+    !tenant
+  ) {
+    return null;
+  }
 
   if (!cart || cart.items.length === 0) {
     return (
@@ -65,7 +106,10 @@ export default function CartPage() {
 
         <Divider sx={{ my: 2 }} />
 
-        <CartSummary items={cart.items} />
+        <CartSummary
+          items={cart.items}
+          hasGst={!!tenant.gstin}
+        />
 
         <Button
           variant="outlined"

@@ -1,6 +1,12 @@
 import { randomUUID } from "crypto";
 import type { DomainEvent } from "@/types/domainEvent";
-import type { Order, OrderItem } from "@/types/order";
+
+import type {
+    Order,
+    ItemSnapshot,
+    SellerSnapshot,
+    CustomerSnapshot,
+} from "@/types/order";
 
 import {
     saveOrder,
@@ -17,10 +23,13 @@ import {
 } from "./errors";
 
 import { PaymentMethod } from "@/types/payment";
+import { assertInvoiceState, assertUniqueInvoiceNumber, assertUniqueOrderNumber } from "./guards";
 
-/* ---------------- VALIDATION ---------------- */
+function now(): string {
+    return new Date().toISOString();
+}
 
-function validateOrderItems(items: OrderItem[]): void {
+function validateOrderItems(items: ItemSnapshot[]): void {
     if (!items || items.length === 0) {
         throw new EmptyOrderItemsError();
     }
@@ -32,11 +41,63 @@ function validateOrderItems(items: OrderItem[]): void {
     }
 }
 
-function computeTotal(items: OrderItem[]): number {
+function computeTotal(items: ItemSnapshot[]): number {
     return items.reduce(
         (sum, item) => sum + item.price * item.quantity,
         0
     );
+}
+
+function generateOrderNumber(): string {
+    return `ORD-${randomUUID()
+        .replace(/-/g, "")
+        .slice(0, 8)
+        .toUpperCase()}`;
+}
+
+function getFinancialYear(
+    date: Date
+): string {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+
+    const startYear =
+        month >= 4
+            ? year
+            : year - 1;
+
+    const endYear =
+        startYear + 1;
+
+    return `FY${String(startYear).slice(-2)}${String(endYear).slice(-2)}`;
+}
+
+function getInvoiceSequence(
+    invoiceNumber: string
+): number {
+    const [, , sequence] = invoiceNumber.split("-");
+
+    return Number(sequence);
+}
+
+function getNextInvoiceSequence(
+    orders: Order[],
+    financialYear: string
+): number {
+    const maxSequence =
+        orders
+            .filter((order) => order.invoiceNumber?.startsWith(`INV-${financialYear}-`))
+            .map((order) => getInvoiceSequence(order.invoiceNumber!))
+            .reduce((max, current) => Math.max(max, current), 0);
+
+    return maxSequence + 1;
+}
+
+function generateInvoiceNumber(
+    financialYear: string,
+    sequence: number
+): string {
+    return `INV-${financialYear}-${String(sequence).padStart(5, "0")}`;
 }
 
 /* ---------------- TRANSITIONS ---------------- */
@@ -85,7 +146,7 @@ function transition(
 
     mutate?.();
 
-    order.updatedAt = new Date().toISOString();
+    order.updatedAt = now();
 
     saveOrder(order);
 
@@ -94,37 +155,51 @@ function transition(
 
 /* ---------------- CREATE ---------------- */
 
-export function createOrder(
+export async function createOrder(
     tenantId: string,
     userId: string,
-    items: OrderItem[],
+    seller: SellerSnapshot,
+    customer: CustomerSnapshot,
+    items: ItemSnapshot[],
     placedByStaffId?: string
-): {
+): Promise<{
     order: Order;
     event: DomainEvent;
-} {
-
+}> {
     validateOrderItems(items);
 
     const total = computeTotal(items);
-
     if (total <= 0) {
         throw new OrderTotalMismatchError();
     }
 
-    const now = new Date().toISOString();
+    const orders = await listTenantOrders(tenantId);
+    const orderNumber = generateOrderNumber();
+    assertUniqueOrderNumber(orders, orderNumber);
+
+    const timestamp = now();
 
     const order: Order = {
         orderId: randomUUID(),
+        orderNumber,
+
         tenantId,
         userId,
+
+        seller,
+        customer,
+
         placedByStaffId,
+
         items: [...items],
+
         total,
         currency: "INR",
+
         status: "RESERVED",
-        createdAt: now,
-        updatedAt: now,
+
+        createdAt: timestamp,
+        updatedAt: timestamp,
     };
 
     saveOrder(order);
@@ -165,20 +240,56 @@ export async function listTenantOrders(
 
 /* ---------------- MUTATIONS ---------------- */
 
-export function markOrderPaid(
+export async function markOrderPaid(
     tenantId: string,
     orderId: string,
     method: PaymentMethod,
-): { order: Order; event: DomainEvent } {
-
+): Promise<{
+    order: Order;
+    event: DomainEvent;
+}> {
     const order = getTenantOrder(tenantId, orderId);
+    const orders = await listTenantOrders(tenantId);
+
+    assertInvoiceState(order);
+
+    const issuedAt =
+        !order.invoiceNumber
+            ? new Date()
+            : undefined;
+
+    const financialYear =
+        issuedAt
+            ? getFinancialYear(issuedAt)
+            : undefined;
+
+    const sequence =
+        financialYear
+            ? getNextInvoiceSequence(orders, financialYear)
+            : undefined;
+
+    const invoiceNumber =
+        financialYear && sequence
+            ? generateInvoiceNumber(financialYear, sequence)
+            : undefined;
+
+    if (invoiceNumber) {
+        assertUniqueInvoiceNumber(orders, invoiceNumber);
+    }
 
     const { from, to } =
         transition(
             order,
             "RESERVED",
             "PAID",
-            () => { order.paymentMethod = method }
+            () => {
+                order.paymentMethod = method;
+
+                if (invoiceNumber && issuedAt) {
+                    order.invoiceNumber = invoiceNumber;
+                    order.invoiceIssuedAt = issuedAt.toISOString();
+                }
+            }
         );
 
     return {

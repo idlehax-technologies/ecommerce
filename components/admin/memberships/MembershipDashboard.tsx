@@ -16,7 +16,7 @@ import type { MembershipView }
 import MembershipSection
     from "./MembershipSection";
 
-const STATUSES = [
+const SECTIONS = [
     "ALL",
     "PENDING",
     "APPROVED",
@@ -37,44 +37,43 @@ export default function MembershipDashboard({
         useState("");
 
     const [statusFilter, setStatusFilter] =
-        useState<typeof STATUSES[number]>("ALL");
+        useState<typeof SECTIONS[number]>("ALL");
 
     const filtered = useMemo(() => {
 
-        return memberships
-            .filter((m) => {
+        const q =
+            search.toLowerCase();
 
-                if (
-                    statusFilter !== "ALL" &&
-                    m.status !== statusFilter
-                ) {
-                    return false;
-                }
+        return memberships.filter((m) => {
 
-                const q =
-                    search.toLowerCase();
+            if (
+                statusFilter !== "ALL" &&
+                m.status !== statusFilter
+            ) {
+                return false;
+            }
 
-                return (
-                    m.user.fullName
-                        .toLowerCase()
-                        .includes(q) ||
+            return (
+                m.user.fullName
+                    .toLowerCase()
+                    .includes(q) ||
 
-                    m.user.phone
-                        .includes(q) ||
+                m.user.phone
+                    .includes(q) ||
 
-                    m.user.email
-                        .toLowerCase()
-                        .includes(q) ||
+                m.user.email
+                    .toLowerCase()
+                    .includes(q) ||
 
-                    m.tenant.name
-                        .toLowerCase()
-                        .includes(q) ||
+                m.tenant.name
+                    .toLowerCase()
+                    .includes(q) ||
 
-                    m.role
-                        .toLowerCase()
-                        .includes(q)
-                );
-            })
+                m.role
+                    .toLowerCase()
+                    .includes(q)
+            );
+        })
             .sort(
                 (a, b) =>
                     new Date(b.createdAt).getTime() -
@@ -137,7 +136,7 @@ export default function MembershipDashboard({
                 }}
             >
 
-                {STATUSES.map((status) => (
+                {SECTIONS.map((status) => (
                     <ToggleButton
                         key={status}
                         value={status}

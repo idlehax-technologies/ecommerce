@@ -28,7 +28,6 @@ export default function EnableToggle({ tenantId, row, onChange, disabled }: Prop
             await provisionProduct(tenantId, {
                 productId: row.product.productId,
                 enabled,
-                stock: row.stock,
             });
 
             onChange(enabled);

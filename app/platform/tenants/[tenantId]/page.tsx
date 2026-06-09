@@ -1,32 +1,37 @@
-// app/platform/tenants/[tenantId]/page.tsx
-
-import Link from "next/link";
-import { Container, Stack, Card, CardContent, Typography, Button, Chip } from "@mui/material";
-
 import {
-    getTenantById,
-    activateTenantUseCase,
-    suspendTenantUseCase,
-    archiveTenantUseCase,
-    assumeTenantAdminUseCase,
-} from "@/lib/tenants/service";
+    Container,
+    Typography,
+    Paper,
+    Stack,
+    Button,
+} from "@mui/material";
+
 import { getUserFromRequest } from "@/lib/auth";
 import { requireSuperadmin } from "@/lib/auth/guards";
+
+import {
+    activateTenantUseCase,
+    archiveTenantUseCase,
+    assumeTenantAdminUseCase,
+    getTenantById,
+    suspendTenantUseCase
+} from "@/lib/tenants/service";
+
+import TenantForm from "@/components/admin/tenants/TenantForm";
+import TenantStatusBadge from "@/components/admin/tenants/TenantStatusBadge";
+import TenantLifecycleActions from "@/components/admin/tenants/TenantLifecycleActions";
+import Link from "next/link";
 
 type PageProps = {
     params: Promise<{ tenantId: string }>;
 };
 
-/**
- * Tenant Management Page (Superadmin Only)
- */
-
-export default async function TenantDetailPage({ params }: PageProps) {
-    const { tenantId } = await params;
+export default async function EditTenantPage({ params }: PageProps) {
 
     const rawUser = await getUserFromRequest();
-
     requireSuperadmin(rawUser);
+
+    const { tenantId } = await params;
 
     const tenant = await getTenantById(tenantId);
 
@@ -51,92 +56,74 @@ export default async function TenantDetailPage({ params }: PageProps) {
     }
 
     return (
-        <Container maxWidth="sm" sx={{ py: 6 }}>
-            <Card>
-                <CardContent>
-                    <Stack spacing={3}>
+        <Container
+            maxWidth="md"
+            sx={{ py: 4 }}
+        >
+            <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+                mb={3}
+            >
+                <Typography variant="h5">
+                    Edit Tenant
+                </Typography>
 
-                        {/* Header + Action */}
-                        <Stack
-                            direction="row"
-                            justifyContent="space-between"
-                            alignItems="center"
-                        >
-                            <Typography variant="h5">
-                                {tenant.name}
-                            </Typography>
+                <Stack
+                    direction="row"
+                    spacing={1}
+                    alignItems="center"
+                >
+                    <Link
+                        href={`/platform/tenants/${tenantId}/inventory`}
+                        style={{ textDecoration: "none" }}
+                    >
+                        <Button variant="outlined">
+                            Inventory
+                        </Button>
+                    </Link>
 
-                            <Link
-                                href={`/platform/tenants/${tenantId}/inventory/low-stock`}
-                                style={{ textDecoration: "none" }}
-                            >
-                                <Button>
-                                    Low Stock
-                                </Button>
-                            </Link>
-                        </Stack>
+                    <TenantStatusBadge
+                        status={tenant.status}
+                    />
 
-                        <Chip
-                            label={tenant.status}
-                            color={
-                                tenant.status === "ACTIVE"
-                                    ? "success"
-                                    : tenant.status === "SUSPENDED"
-                                        ? "warning"
-                                        : tenant.status === "ARCHIVED"
-                                            ? "default"
-                                            : "default"
-                            }
-                            sx={{ width: "fit-content" }}
-                        />
+                    <TenantLifecycleActions
+                        tenant={tenant}
+                        activate={activate}
+                        suspend={suspend}
+                        archive={archive}
+                        assume={assume}
+                    />
+                </Stack>
+            </Stack>
 
-                        <Stack direction="row" spacing={2}>
-                            {/* Activate: allowed from PENDING & SUSPENDED */}
-                            {(tenant.status === "PENDING" || tenant.status === "SUSPENDED") && (
-                                <form action={activate}>
-                                    <Button type="submit" variant="contained">
-                                        Activate
-                                    </Button>
-                                </form>
-                            )}
+            <Typography
+                variant="body2"
+                color="text.secondary"
+            >
+                Created:{" "}
+                {new Date(
+                    tenant.createdAt
+                ).toLocaleString()}
+            </Typography>
 
-                            {/* Suspend: only from ACTIVE */}
-                            {tenant.status === "ACTIVE" && (
-                                <form action={suspend}>
-                                    <Button type="submit" color="warning" variant="contained">
-                                        Suspend
-                                    </Button>
-                                </form>
-                            )}
+            <Typography
+                variant="body2"
+                color="text.secondary"
+            >
+                Updated:{" "}
+                {new Date(
+                    tenant.updatedAt
+                ).toLocaleString()}
+            </Typography>
 
-                            {/* Archive: allowed from anything except ARCHIVED */}
-                            {tenant.status !== "ARCHIVED" && (
-                                <form action={archive}>
-                                    <Button type="submit" color="error" variant="outlined">
-                                        Archive
-                                    </Button>
-                                </form>
-                            )}
-
-                            <form action={assume}>
-                                <Button type="submit" variant="outlined">
-                                    Assume as Admin
-                                </Button>
-                            </form>
-                        </Stack>
-                        <Link href={`/platform/tenants/${tenantId}/inventory`} style={{ textDecoration: "none" }}>
-                            <Button variant="contained">
-                                Go to inventory
-                            </Button>
-                        </Link>
-                        <Link href="/platform/tenants" style={{ textDecoration: "none" }}>
-                            <Button variant="contained">
-                                Back
-                            </Button>
-                        </Link>
-                    </Stack>
-                </CardContent>
-            </Card>
+            <Paper sx={{ p: 3 }}>
+                <TenantForm
+                    mode="edit"
+                    tenant={tenant}
+                />
+            </Paper>
         </Container>
     );
 }

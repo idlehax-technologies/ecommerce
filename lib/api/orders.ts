@@ -93,8 +93,8 @@ export async function refundOrder(
     );
 }
 
-export function getReceiptUrl(
+export function getInvoiceUrl(
     orderId: string
 ): string {
-    return `/api/orders/${orderId}/receipt`;
+    return `/api/orders/${orderId}/invoice`;
 }

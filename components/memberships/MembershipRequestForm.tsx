@@ -1,9 +1,6 @@
 "use client";
 
-import {
-    useEffect,
-    useState,
-} from "react";
+import { useEffect, useState } from "react";
 
 import {
     Stack,
@@ -13,82 +10,47 @@ import {
     Typography,
 } from "@mui/material";
 
-import {
-    requestMembership,
-} from "@/lib/api/memberships";
+import { requestMembership } from "@/lib/api/memberships";
 
-import {
-    fetchTenants,
-} from "@/lib/api/tenants";
+import { fetchActiveTenants } from "@/lib/api/tenants";
 
-import { useSnackbar }
-    from "@/contexts/SnackbarContext";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 
-import type {
-    PublicTenant,
-} from "@/types/tenant";
+import type { PublicTenant } from "@/types/tenant";
 
 export default function MembershipRequestForm() {
 
-    const [tenantId, setTenantId] =
-        useState("");
+    const [tenantId, setTenantId] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [tenants, setTenants] = useState<PublicTenant[]>([]);
 
-    const [loading, setLoading] =
-        useState(false);
-
-    const [tenants, setTenants] =
-        useState<PublicTenant[]>([]);
-
-    const { show } =
-        useSnackbar();
+    const { show } = useSnackbar();
 
     async function load() {
-
         try {
-
-            const res =
-                await fetchTenants();
-
-            setTenants(
-                res.tenants.filter(
-                    (t) => t.status === "ACTIVE"
-                )
-            );
+            const res = await fetchActiveTenants();
+            setTenants(res.tenants);
 
         } catch (err: unknown) {
-
             if (err instanceof Error) {
                 show(err.message, "error");
             } else {
-                show(
-                    "Failed to load tenants",
-                    "error"
-                );
+                show("Failed to load tenants", "error");
             }
         }
     }
 
     async function submit() {
-
         try {
-
             setLoading(true);
-
-            await requestMembership(
-                tenantId
-            );
-
+            await requestMembership(tenantId);
             show("Request submitted");
 
         } catch (err: unknown) {
-
             if (err instanceof Error) {
                 show(err.message, "error");
             } else {
-                show(
-                    "Request failed",
-                    "error"
-                );
+                show("Request failed", "error");
             }
 
         } finally {
@@ -102,7 +64,6 @@ export default function MembershipRequestForm() {
 
     return (
         <Stack spacing={2}>
-
             <Typography variant="h6">
                 Request Access
             </Typography>
@@ -116,22 +77,17 @@ export default function MembershipRequestForm() {
                 }
                 displayEmpty
             >
-
                 <MenuItem value="">
                     Select Tenant
                 </MenuItem>
-
                 {tenants.map((tenant) => (
-
                     <MenuItem
                         key={tenant.tenantId}
                         value={tenant.tenantId}
                     >
                         {tenant.name}
                     </MenuItem>
-
                 ))}
-
             </Select>
 
             <Button
@@ -146,7 +102,6 @@ export default function MembershipRequestForm() {
                     ? "Requesting..."
                     : "Request"}
             </Button>
-
         </Stack>
     );
 }

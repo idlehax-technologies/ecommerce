@@ -1,12 +1,11 @@
 import * as paymentsDomain from "@/lib/payments/domain";
 import * as ordersDomain from "@/lib/orders/domain";
-import * as inventoryDomain from "@/lib/tenantInventory/domain";
+import * as tenantInventoryDomain from "@/lib/tenantInventory/domain";
 
 import type { ResolutionRequest } from "@/types/reconciliationResolution";
 import type { DomainEvent } from "@/types/domainEvent";
 
 import { getResolutionPolicy } from "./policy";
-import { tenantInventoryStore } from "../tenantInventory/storage";
 import { isAlreadyProcessed, markProcessed } from "./idempotency";
 import {
     ReconciliationActionNotAllowedError,
@@ -57,7 +56,7 @@ export async function resolveMismatch(input: {
                 throw new ReconciliationInvalidInputError("orderId required");
             }
 
-            const result = paymentsDomain.confirmPayment(
+            const result = await paymentsDomain.confirmPayment(
                 tenantId,
                 request.orderId
             );
@@ -120,7 +119,7 @@ export async function resolveMismatch(input: {
                 throw new ReconciliationInvalidInputError("productId required");
             }
 
-            const record = await inventoryDomain.findTenantProvision(
+            const record = await tenantInventoryDomain.findTenantProvision(
                 tenantId,
                 request.productId
             );
@@ -148,13 +147,11 @@ export async function resolveMismatch(input: {
                 reserved: record.reserved
             };
 
-            const corrected = {
-                ...record,
-                reserved: expectedReserved,
-                updatedAt: new Date().toISOString(),
-            };
-
-            tenantInventoryStore.save(corrected);
+            const corrected =
+                await tenantInventoryDomain.reconcileReservedQuantity(
+                    record,
+                    expectedReserved
+                );
 
             const after = {
                 stock: corrected.stock,

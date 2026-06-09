@@ -28,9 +28,9 @@ import { InventoryInvariantViolationError } from "./errors";
  * - return DomainEvent for dispatcher
  */
 
-export async function adjustStock(input: {
+export async function adjustStockBy(input: {
     tenantId: string;
-    actorId: string;    // Unused argument
+    actorId: string; // Reserved for future audit/observability
     request: StockAdjustmentRequest;
 }): Promise<{
     updated: AdjustedInventorySnapshot;
@@ -67,10 +67,10 @@ export async function adjustStock(input: {
         tenantId,
         request.productId,
         (record) => {
-            requireProvision(record, request.productId);
 
-            // invariant: stock >= reserved
-            if (request.newStock < record.reserved) {
+            const newStock = record.stock + request.delta;
+
+            if (newStock < record.reserved) {
                 throw new InventoryInvariantViolationError(
                     "stock cannot be less than reserved"
                 );
@@ -83,11 +83,13 @@ export async function adjustStock(input: {
 
             return {
                 ...record,
-                stock: request.newStock,
+                stock: newStock,
                 updatedAt: new Date().toISOString(),
             };
         }
     );
+
+    requireProvision(updated, request.productId);
 
     if (before === null) {
         throw new InventoryInvariantViolationError(

@@ -36,3 +36,21 @@ export class InvalidOrderTransitionError extends OrderDomainError {
         super(`Invalid order transition: ${from} → ${to}`, 400);
     }
 }
+
+export class InvalidOrderInvoiceStateError extends OrderDomainError {
+    constructor(message = "Invalid invoice state") {
+        super(message, 500);
+    }
+}
+
+export class OrderNumberAlreadyExistsError extends OrderDomainError {
+    constructor(message = "Order number already exists") {
+        super(message, 409);
+    }
+}
+
+export class InvoiceNumberAlreadyExistsError extends OrderDomainError {
+    constructor(message = "Invoice number already exists") {
+        super(message, 409);
+    }
+}

@@ -7,7 +7,7 @@ import ProductGrid from "@/components/products/ProductGrid";
 export default async function ProductsPage() {
     const actor = requireTenant(await getUserFromRequest());
 
-    const { rows } = await getTenantProvisioningView(actor.tenantId);
+    const rows = await getTenantProvisioningView(actor.tenantId);
 
     // Only visible products
     const visible = rows.filter(r => r.enabled);

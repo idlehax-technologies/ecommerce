@@ -1,20 +1,17 @@
 import { NextResponse } from "next/server";
 
-import { handleRouteError }
-    from "@/lib/http/handleRouteError";
+import { handleRouteError } from "@/lib/http/handleRouteError";
 
-import { listAllTenants }
-    from "@/lib/tenants/service";
+import { listActiveTenants } from "@/lib/tenants/domain";
 
-import { guardRequest }
-    from "@/lib/security/requestGuard";
+import { guardRequest } from "@/lib/security/requestGuard";
 
 export async function GET(req: Request) {
 
     try {
         await guardRequest(req, { requireAuth: true });
 
-        const tenants = await listAllTenants();
+        const tenants = await listActiveTenants();
 
         return NextResponse.json({ tenants });
 

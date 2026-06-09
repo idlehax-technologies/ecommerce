@@ -5,6 +5,16 @@ import type {
 
 import { ProductInvalidInputError } from "./errors";
 
+import {
+  PRODUCT_CATEGORIES,
+  type ProductCategory,
+} from "./categories";
+
+import {
+  GST_RATES,
+  type GstRate,
+} from "./gst";
+
 function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
 }
@@ -22,15 +32,29 @@ function isPositiveMoney(v: unknown): v is number {
   return typeof v === "number" && Number.isFinite(v) && v > 0;
 }
 
+function isGstRate(
+  value: unknown
+): value is GstRate {
+  return GST_RATES.includes(
+    value as GstRate
+  );
+}
+
+export function isProductCategory(
+  value: unknown
+): value is ProductCategory {
+  return PRODUCT_CATEGORIES.some(
+    category => category.name === value
+  );
+}
+
 function assertNoForbiddenFields(obj: Record<string, unknown>) {
   const forbidden = [
     "productId",
     "currency",
-    "isActive",
-    "isDeleted",
+    "status",
     "createdAt",
     "updatedAt",
-    "deletedAt",
   ];
 
   for (const key of forbidden) {
@@ -61,59 +85,47 @@ export function validateCreateProduct(
     );
   }
 
-  if (
-    "description" in body &&
-    body.description !== undefined &&
-    typeof body.description !== "string"
-  ) {
+  if (!isGstRate(body.gstRate)) {
     throw new ProductInvalidInputError(
-      "Description must be a string"
+      "GST rate must be a valid GST slab"
+    );
+  }
+
+  if (!isNonEmptyString(body.hsnCode)) {
+    throw new ProductInvalidInputError(
+      "HSN code must be a non-empty string"
+    );
+  }
+
+  if (!isNonEmptyString(body.description)) {
+    throw new ProductInvalidInputError(
+      "Description must be a non-empty string"
+    );
+  }
+
+  if (!isProductCategory(body.category)) {
+    throw new ProductInvalidInputError(
+      "Category must be a valid product category"
     );
   }
 
   if (
-    "sku" in body &&
-    body.sku !== undefined &&
-    typeof body.sku !== "string"
+    !Array.isArray(body.images) ||
+    body.images.length === 0 ||
+    body.images.some(img => !isNonEmptyString(img))
   ) {
     throw new ProductInvalidInputError(
-      "SKU must be a string"
+      "Images must contain at least one image"
     );
   }
 
   if (
-    "category" in body &&
-    body.category !== undefined &&
-    typeof body.category !== "string"
+    !Array.isArray(body.tags) ||
+    body.tags.length === 0 ||
+    body.tags.some(tag => !isNonEmptyString(tag))
   ) {
     throw new ProductInvalidInputError(
-      "Category must be a string"
-    );
-  }
-
-  if (
-    "images" in body &&
-    body.images !== undefined &&
-    (
-      !Array.isArray(body.images) ||
-      body.images.some(img => typeof img !== "string")
-    )
-  ) {
-    throw new ProductInvalidInputError(
-      "Images must be an array of strings"
-    );
-  }
-
-  if (
-    "tags" in body &&
-    body.tags !== undefined &&
-    (
-      !Array.isArray(body.tags) ||
-      body.tags.some(tag => typeof tag !== "string")
-    )
-  ) {
-    throw new ProductInvalidInputError(
-      "Tags must be an array of strings"
+      "Tags must contain at least one tag"
     );
   }
 }
@@ -146,10 +158,10 @@ export function validateUpdateProduct(
   if (
     "description" in body &&
     body.description !== undefined &&
-    typeof body.description !== "string"
+    !isNonEmptyString(body.description)
   ) {
     throw new ProductInvalidInputError(
-      "Description must be a string"
+      "Description must be a non-empty string"
     );
   }
 
@@ -164,22 +176,32 @@ export function validateUpdateProduct(
   }
 
   if (
-    "sku" in body &&
-    body.sku !== undefined &&
-    typeof body.sku !== "string"
+    "gstRate" in body &&
+    body.gstRate !== undefined &&
+    !isGstRate(body.gstRate)
   ) {
     throw new ProductInvalidInputError(
-      "SKU must be a string"
+      "GST rate must be a valid GST slab"
+    );
+  }
+
+  if (
+    "hsnCode" in body &&
+    body.hsnCode !== undefined &&
+    !isNonEmptyString(body.hsnCode)
+  ) {
+    throw new ProductInvalidInputError(
+      "HSN code must be a non-empty string"
     );
   }
 
   if (
     "category" in body &&
     body.category !== undefined &&
-    typeof body.category !== "string"
+    !isProductCategory(body.category)
   ) {
     throw new ProductInvalidInputError(
-      "Category must be a string"
+      "Category must be a valid product category"
     );
   }
 
@@ -188,11 +210,11 @@ export function validateUpdateProduct(
     body.images !== undefined &&
     (
       !Array.isArray(body.images) ||
-      body.images.some(img => typeof img !== "string")
+      body.images.some(img => !isNonEmptyString(img))
     )
   ) {
     throw new ProductInvalidInputError(
-      "Images must be an array of strings"
+      "Images must be a non-empty array of non-empty strings"
     );
   }
 
@@ -201,11 +223,11 @@ export function validateUpdateProduct(
     body.tags !== undefined &&
     (
       !Array.isArray(body.tags) ||
-      body.tags.some(tag => typeof tag !== "string")
+      body.tags.some(tag => !isNonEmptyString(tag))
     )
   ) {
     throw new ProductInvalidInputError(
-      "Tags must be an array of strings"
+      "Tags must be a non-empty array of non-empty strings"
     );
   }
 }

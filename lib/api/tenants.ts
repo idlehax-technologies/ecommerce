@@ -1,89 +1,36 @@
-import { apiFetch } from "./fetch";
-
 import type {
     CreateTenantDTO,
+    UpdateTenantDTO,
+    Tenant,
     PublicTenant,
 } from "@/types/tenant";
 
-export const tenantAdminApi = {
+import { apiFetch } from "./fetch";
 
-    create: (
-        body: CreateTenantDTO
-    ): Promise<{
-        tenant: PublicTenant;
-    }> =>
-        apiFetch<{
-            tenant: PublicTenant;
-        }>(
-            "/api/admin/tenants",
-            {
-                method: "POST",
-                body: JSON.stringify(body),
-            }
-        ),
+export async function createTenant(
+    dto: CreateTenantDTO
+): Promise<{ tenant: Tenant }> {
+    return apiFetch<{ tenant: Tenant }>(
+        "/api/admin/tenants",
+        {
+            method: "POST",
+            body: JSON.stringify(dto),
+        }
+    );
+}
 
-    list: (): Promise<{
-        tenants: PublicTenant[];
-    }> =>
-        apiFetch<{
-            tenants: PublicTenant[];
-        }>(
-            "/api/admin/tenants"
-        ),
-
-    get: (
-        tenantId: string
-    ): Promise<{
-        tenant: PublicTenant;
-    }> =>
-        apiFetch<{
-            tenant: PublicTenant;
-        }>(
-            `/api/admin/tenants/${tenantId}`
-        ),
-
-    activate: (
-        tenantId: string
-    ): Promise<{
-        tenant: PublicTenant;
-    }> =>
-        apiFetch<{
-            tenant: PublicTenant;
-        }>(
-            `/api/admin/tenants/${tenantId}/activate`,
-            {
-                method: "POST",
-            }
-        ),
-
-    suspend: (
-        tenantId: string
-    ): Promise<{
-        tenant: PublicTenant;
-    }> =>
-        apiFetch<{
-            tenant: PublicTenant;
-        }>(
-            `/api/admin/tenants/${tenantId}/suspend`,
-            {
-                method: "POST",
-            }
-        ),
-
-    archive: (
-        tenantId: string
-    ): Promise<{
-        tenant: PublicTenant;
-    }> =>
-        apiFetch<{
-            tenant: PublicTenant;
-        }>(
-            `/api/admin/tenants/${tenantId}/archive`,
-            {
-                method: "POST",
-            }
-        ),
-};
+export async function updateTenant(
+    tenantId: string,
+    dto: UpdateTenantDTO
+): Promise<{ tenant: Tenant }> {
+    return apiFetch<{ tenant: Tenant }>(
+        `/api/admin/tenants/${tenantId}`,
+        {
+            method: "PATCH",
+            body: JSON.stringify(dto),
+        }
+    );
+}
 
 /* -------------------------------------------------------------------------- */
 /* PUBLIC                                                                      */
@@ -99,7 +46,7 @@ export const tenantAdminApi = {
  * Returns authoritative tenant data from server state.
  * Client may further filter/group for presentation purposes.
  */
-export async function fetchTenants(): Promise<{
+export async function fetchActiveTenants(): Promise<{
     tenants: PublicTenant[];
 }> {
 
@@ -107,5 +54,17 @@ export async function fetchTenants(): Promise<{
         tenants: PublicTenant[];
     }>(
         "/api/tenants"
+    );
+}
+
+export async function fetchTenant(
+    tenantId: string
+): Promise<{
+    tenant: Tenant;
+}> {
+    return apiFetch<{
+        tenant: Tenant;
+    }>(
+        `/api/tenants/${tenantId}`
     );
 }

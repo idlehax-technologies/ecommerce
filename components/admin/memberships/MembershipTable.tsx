@@ -54,19 +54,19 @@ export default function MembershipTable({
                     <TableRow key={m.membershipId}>
 
                         <TableCell>
-                            {m.user.fullName || "-"}
+                            {m.user.fullName}
                         </TableCell>
 
                         <TableCell>
-                            {m.user.phone || "-"}
+                            {m.user.phone}
                         </TableCell>
 
                         <TableCell>
-                            {m.user.email || "-"}
+                            {m.user.email}
                         </TableCell>
 
                         <TableCell>
-                            {m.tenant.name || "-"}
+                            {m.tenant.name}
                         </TableCell>
 
                         <TableCell>

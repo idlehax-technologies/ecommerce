@@ -1,9 +1,10 @@
 import {
-    createProduct as createDomainProduct,
-    listProducts as listDomainProducts,
-    getProduct as getDomainProduct,
-    updateProduct as updateDomainProduct,
-    softDeleteProduct as softDeleteDomainProduct,
+    createProduct,
+    listProducts,
+    getProduct,
+    updateProduct,
+    activateProduct,
+    deactivateProduct,
 } from "./domain";
 
 import type {
@@ -12,36 +13,39 @@ import type {
     UpdateProductDTO,
 } from "@/types/product";
 
-import { toProductUpdateChanges } from "./mappers";
-
-export async function listProductsForPlatform(
+export async function listPlatformProducts(
     limit?: number
 ): Promise<Product[]> {
-    return listDomainProducts(limit);
+    return listProducts(limit);
 }
 
 export async function createPlatformProduct(
     dto: CreateProductDTO
 ): Promise<Product> {
-    return createDomainProduct(dto);
+    return createProduct(dto);
 }
 
 export async function getPlatformProduct(
     productId: string
 ): Promise<Product> {
-    return getDomainProduct(productId);
+    return getProduct(productId);
 }
 
 export async function updatePlatformProduct(
     productId: string,
     dto: UpdateProductDTO
 ): Promise<Product> {
-    const changes = toProductUpdateChanges(dto);
-    return updateDomainProduct(productId, changes);
+    return updateProduct(productId, dto);
 }
 
-export async function deletePlatformProduct(
+export async function activatePlatformProduct(
     productId: string
-): Promise<void> {
-    return softDeleteDomainProduct(productId);
+): Promise<Product> {
+    return activateProduct(productId);
+}
+
+export async function deactivatePlatformProduct(
+    productId: string
+): Promise<Product> {
+    return deactivateProduct(productId);
 }

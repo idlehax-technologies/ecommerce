@@ -2,7 +2,6 @@ import type {
   Product,
   CreateProductDTO,
   UpdateProductDTO,
-  ProductChanges,
 } from "@/types/product";
 
 import { randomUUID } from "crypto";
@@ -11,45 +10,83 @@ function now(): string {
   return new Date().toISOString();
 }
 
-export function toNewProduct(input: CreateProductDTO): Product {
+export function toNewProduct(
+  dto: CreateProductDTO,
+  sku: string
+): Product {
   const timestamp = now();
 
   return {
     productId: randomUUID(),
+    sku,
 
-    title: input.title,
-    description: input.description,
+    title: dto.title.trim(),
+    description: dto.description.trim(),
 
-    price: input.price,
+    price: dto.price,
     currency: "INR",
 
-    sku: input.sku,
-    images: input.images,
-    category: input.category,
-    tags: input.tags,
+    gstRate: dto.gstRate,
+    hsnCode: dto.hsnCode.trim(),
 
-    isActive: true,
+    images: dto.images
+      .map((image) => image.trim())
+      .filter(Boolean),
+    category: dto.category,
+    tags: dto.tags
+      .map((tag) => tag.trim())
+      .filter(Boolean),
+
+    status: "INACTIVE",
 
     createdAt: timestamp,
     updatedAt: timestamp,
   };
 }
 
-export function toProductUpdateChanges(
-  patch: UpdateProductDTO
-): ProductChanges {
-  const safe: Omit<ProductChanges, "updatedAt"> = {};
-
-  if (patch.title !== undefined) safe.title = patch.title;
-  if (patch.description !== undefined) safe.description = patch.description;
-  if (patch.price !== undefined) safe.price = patch.price;
-  if (patch.sku !== undefined) safe.sku = patch.sku;
-  if (patch.images !== undefined) safe.images = patch.images;
-  if (patch.category !== undefined) safe.category = patch.category;
-  if (patch.tags !== undefined) safe.tags = patch.tags;
-
+export function toUpdatedProduct(
+  existing: Product,
+  dto: UpdateProductDTO
+): Product {
   return {
-    ...safe,
+    ...existing,
+
+    ...(dto.title !== undefined && {
+      title: dto.title.trim(),
+    }),
+
+    ...(dto.description !== undefined && {
+      description: dto.description.trim(),
+    }),
+
+    ...(dto.price !== undefined && {
+      price: dto.price,
+    }),
+
+    ...(dto.gstRate !== undefined && {
+      gstRate: dto.gstRate,
+    }),
+
+    ...(dto.hsnCode !== undefined && {
+      hsnCode: dto.hsnCode.trim(),
+    }),
+
+    ...(dto.images !== undefined && {
+      images: dto.images
+        .map((image) => image.trim())
+        .filter(Boolean),
+    }),
+
+    ...(dto.category !== undefined && {
+      category: dto.category,
+    }),
+
+    ...(dto.tags !== undefined && {
+      tags: dto.tags
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+    }),
+
     updatedAt: now(),
   };
 }

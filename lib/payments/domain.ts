@@ -6,7 +6,8 @@ import type { DomainEvent } from "@/types/domainEvent";
 import {
     savePayment,
     getPaymentByOrder,
-    updatePayment
+    updatePayment,
+    listPaymentsByTenant,
 } from "./storage";
 
 import {
@@ -20,6 +21,12 @@ import {
 } from "@/lib/orders/errors";
 
 import * as ordersDomain from "@/lib/orders/domain";
+
+export function listTenantPayments(
+    tenantId: string
+): Payment[] {
+    return listPaymentsByTenant(tenantId);
+}
 
 /**
  * RECORD PAYMENT (PENDING)
@@ -90,14 +97,14 @@ export function recordPayment(
  * - always return event (no undefined)
  * - never emit OrderPaid manually
  */
-export function confirmPayment(
+export async function confirmPayment(
     tenantId: string,
     orderId: string
-): {
+): Promise<{
     payment: Payment;
     order: Order;
     events: DomainEvent[];
-} {
+}> {
 
     const payment =
         getPaymentByOrder(orderId);
@@ -139,7 +146,7 @@ export function confirmPayment(
     updatePayment(payment);
 
     const orderResult =
-        ordersDomain.markOrderPaid(
+        await ordersDomain.markOrderPaid(
             tenantId,
             orderId,
             payment.method

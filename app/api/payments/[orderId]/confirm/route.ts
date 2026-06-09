@@ -37,7 +37,7 @@ export async function POST(
 
         assertOrderVisible(actor, targetOrder);
 
-        const result = paymentsDomain.confirmPayment(
+        const result = await paymentsDomain.confirmPayment(
             actor.tenantId,
             orderId
         );

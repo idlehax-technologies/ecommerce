@@ -5,12 +5,12 @@ import {
     activateTenant,
     suspendTenant,
     archiveTenant,
+    updateTenant,
 } from "./domain";
 
-import { assertCreateTenantDTO } from "./validators";
 import { getUserFromRequest } from "@/lib/auth";
 import { requireSuperadmin } from "@/lib/auth/guards";
-import { CreateTenantDTO, PublicTenant } from "@/types/tenant";
+import { CreateTenantDTO, Tenant, UpdateTenantDTO } from "@/types/tenant";
 
 import { cookies } from "next/headers";
 import { signToken } from "@/lib/jwt";
@@ -22,13 +22,13 @@ const SEVEN_DAYS = 60 * 60 * 24 * 7;
 /* READ                                                                        */
 /* -------------------------------------------------------------------------- */
 
-export async function listAllTenants(): Promise<PublicTenant[]> {
+export async function listAllTenants(): Promise<Tenant[]> {
     return listTenants();
 }
 
 export async function getTenantById(
     tenantId: string
-): Promise<PublicTenant> {
+): Promise<Tenant> {
     return getTenant(tenantId);
 }
 
@@ -37,21 +37,33 @@ export async function getTenantById(
 /* -------------------------------------------------------------------------- */
 
 export async function createTenantUseCase(
-    body: unknown
-): Promise<PublicTenant> {
-    assertCreateTenantDTO(body);
-    return createTenant(body);
+    dto: CreateTenantDTO
+): Promise<Tenant> {
+    return createTenant(dto);
 }
 
-export async function activateTenantUseCase(tenantId: string) {
+export async function updateTenantUseCase(
+    tenantId: string,
+    dto: UpdateTenantDTO
+): Promise<Tenant> {
+    return updateTenant(tenantId, dto);
+}
+
+export async function activateTenantUseCase(
+    tenantId: string
+): Promise<Tenant> {
     return activateTenant(tenantId);
 }
 
-export async function suspendTenantUseCase(tenantId: string) {
+export async function suspendTenantUseCase(
+    tenantId: string
+): Promise<Tenant> {
     return suspendTenant(tenantId);
 }
 
-export async function archiveTenantUseCase(tenantId: string) {
+export async function archiveTenantUseCase(
+    tenantId: string
+): Promise<Tenant> {
     return archiveTenant(tenantId);
 }
 
@@ -59,7 +71,9 @@ export async function archiveTenantUseCase(tenantId: string) {
 /* IMPERSONATION                                                               */
 /* -------------------------------------------------------------------------- */
 
-export async function assumeTenantAdminUseCase(tenantId: string) {
+export async function assumeTenantAdminUseCase(
+    tenantId: string
+): Promise<void> {
     const user = requireSuperadmin(await getUserFromRequest());
 
     const adminMembership = getAdminMembershipForTenant(tenantId);
@@ -81,6 +95,4 @@ export async function assumeTenantAdminUseCase(tenantId: string) {
         path: "/",
         maxAge: SEVEN_DAYS,
     });
-
-    return { success: true };
 }

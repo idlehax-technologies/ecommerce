@@ -33,7 +33,7 @@ export function savePayment(payment: Payment): void {
     paymentsByOrder.set(snapshot.orderId, snapshot);
 }
 
-export function updatePayment(payment: Payment) {
+export function updatePayment(payment: Payment): void {
     const snapshot = { ...payment };
 
     paymentsById.set(snapshot.paymentId, snapshot);

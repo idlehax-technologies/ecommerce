@@ -13,7 +13,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const { productId } = await params;
 
   const actor = requireTenant(await getUserFromRequest());
-  const { rows } = await getTenantProvisioningView(actor.tenantId);
+  const rows = await getTenantProvisioningView(actor.tenantId);
 
   const row = rows.find(r => r.product.productId === productId);
 

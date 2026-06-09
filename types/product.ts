@@ -1,44 +1,45 @@
+import { GstRate } from "@/lib/products/gst";
+import type { ProductCategory } from "@/lib/products/categories";
+
+export type ProductStatus =
+  | "ACTIVE"
+  | "INACTIVE";
+
 export type Product = {
   productId: string;
 
   title: string;
-  description?: string;
+  description: string;
 
   price: number;
   currency: "INR";
 
-  isActive: boolean;
+  gstRate: GstRate;
+  hsnCode: string;
 
-  sku?: string;
-  images?: string[];
-  category?: string;
-  tags?: string[];
+  status: ProductStatus;
+
+  sku: string;
+  images: string[];
+  category: ProductCategory;
+  tags: string[];
 
   createdAt: string;
   updatedAt: string;
-  deletedAt?: string; // single source of deletion truth
 };
 
 export type CreateProductDTO = {
   title: string;
-  description?: string;
+  description: string;
+
   price: number;
-  sku?: string;
-  images?: string[];
-  category?: string;
-  tags?: string[];
+
+  gstRate: GstRate;
+  hsnCode: string;
+
+  images: string[];
+  category: ProductCategory;
+  tags: string[];
 };
 
 export type UpdateProductDTO = Partial<CreateProductDTO>;
-
-export type ProductChanges = {
-  title?: string;
-  description?: string;
-  price?: number;
-  sku?: string;
-  images?: string[];
-  category?: string;
-  tags?: string[];
-
-  updatedAt: string;
-};

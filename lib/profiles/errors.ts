@@ -7,6 +7,12 @@ export abstract class ProfileDomainError extends Error {
     }
 }
 
+export class ProfileNotFoundError extends ProfileDomainError {
+    constructor(message = "Profile not found") {
+        super(message, 404);
+    }
+}
+
 export class ProfileInvalidInputError extends ProfileDomainError {
     constructor(message = "Invalid request body") {
         super(message, 400);

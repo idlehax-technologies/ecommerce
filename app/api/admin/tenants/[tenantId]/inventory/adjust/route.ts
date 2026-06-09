@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { requireSuperadmin } from "@/lib/auth/guards";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
-import { adjustStock } from "@/lib/tenantInventory/adjustment";
+import { adjustStockBy } from "@/lib/tenantInventory/adjustment";
 
 import { dispatchEvent } from "@/lib/events/dispatcher";
 import { guardRequest } from "@/lib/security/requestGuard";
@@ -31,7 +31,7 @@ export async function POST(
 
         validateStockAdjustmentInput(body);
 
-        const result = await adjustStock({
+        const result = await adjustStockBy({
             tenantId,
             actorId: user.userId,
             request: body,

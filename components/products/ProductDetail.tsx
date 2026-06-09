@@ -60,7 +60,7 @@ export default function ProductDetail({ row }: Props) {
                     </Typography>
 
                     <Typography variant="h5" fontWeight={600}>
-                        ₹ {price}
+                        ₹ {price} (incl. GST)
                     </Typography>
 
                     <Chip

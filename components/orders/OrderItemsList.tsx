@@ -1,11 +1,11 @@
 import { Stack } from "@mui/material";
-import type { OrderItem } from "@/types/order";
+import type { ItemSnapshot } from "@/types/order";
 import OrderItemRow from "./OrderItemRow";
 
 export default function OrderItemsList({
     items,
 }: {
-    items: OrderItem[];
+    items: ItemSnapshot[];
 }) {
     return (
         <Stack spacing={2}>

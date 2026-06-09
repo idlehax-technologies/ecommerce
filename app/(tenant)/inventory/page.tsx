@@ -1,22 +1,16 @@
 import { notFound } from "next/navigation";
 import { Box, Typography, Paper, Divider } from "@mui/material";
 
-import TenantInventoryTable from "@/components/tenant-provisioning/TenantInventoryTable";
+import TenantInventoryDashboard from "@/components/tenantInventory/TenantInventoryDashboard";
 
 import { getUserFromRequest } from "@/lib/auth";
 import { requireTenant } from "@/lib/auth/guards";
 
 import { getTenantProvisioningView } from "@/lib/tenantInventory/service";
 
-/**
- * TENANT RUNTIME VIEW
- *
- * Tenant is derived from authenticated session.
- * No tenantId routing needed.
- */
-
 export default async function TenantInventoryPage() {
     const rawUser = await getUserFromRequest();
+
     const actor = requireTenant(rawUser);
 
     const view = await getTenantProvisioningView(actor.tenantId);
@@ -38,10 +32,9 @@ export default async function TenantInventoryPage() {
             <Divider />
 
             <Paper elevation={2}>
-                <TenantInventoryTable
+                <TenantInventoryDashboard
                     tenantId={actor.tenantId}
                     rows={view}
-                    canEdit={false}
                 />
             </Paper>
         </Box>

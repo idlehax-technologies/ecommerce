@@ -9,12 +9,15 @@ import {
     Chip,
     Divider,
     Button,
+    Box,
 } from "@mui/material";
 
 import type {
     OrderStatus,
     OrderListItem,
 } from "@/types/order";
+
+import { getInvoiceUrl } from "@/lib/api/orders";
 
 function getStatusColor(
     status: OrderStatus
@@ -64,8 +67,8 @@ export default function OrderRow({
                 alignItems="center"
             >
 
-                <Typography fontWeight={600}>
-                    Order {order.orderId}
+                <Typography>
+                    Order: {order.orderNumber}
                 </Typography>
 
                 <Divider
@@ -77,12 +80,14 @@ export default function OrderRow({
                     variant="body2"
                     color="text.secondary"
                 >
-                    {new Date(order.createdAt)
+                    Placed: {new Date(order.createdAt)
                         .toLocaleString()}
                 </Typography>
 
+                <Box sx={{ flexGrow: 1 }} />
+
                 <Typography fontWeight={500}>
-                    ₹ {(order.total / 100).toFixed(2)}
+                    ₹{(order.total / 100).toFixed(2)}
                 </Typography>
 
                 <Chip
@@ -93,14 +98,6 @@ export default function OrderRow({
                         width: "fit-content",
                     }}
                 />
-
-                <Button
-                    href={`/orders/${order.orderId}/receipt`}
-                    size="small"
-                >
-                    Receipt
-                </Button>
-
             </Stack>
 
         </Paper>

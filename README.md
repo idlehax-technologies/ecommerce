@@ -246,21 +246,52 @@ Products answer:
 
 ---
 
-## TenantInventory (Entitlement Layer)
+## TenantInventory (Entitlement + Inventory Layer)
 
 TenantInventory answers:
-> What products can this tenant sell and how much?
+
+> What products can this tenant sell?
+> How much inventory does the tenant currently own?
+> How much inventory is reserved by active orders?
 
 Each record contains:
 
 - tenantId
 - productId
-- enabled (boolean)
-- stock (number)
+- enabled
+- stock
 - reserved
 - timestamps
 
-This layer replaces the old multi-vendor model entirely.
+TenantInventory owns:
+
+- tenant product entitlement
+- inventory allocation
+- reservation accounting
+- inventory adjustment
+- inventory reconciliation correction
+
+Core invariant:
+
+available = stock - reserved
+
+Provisioning responsibility:
+
+- enable product
+- disable product
+
+Inventory responsibility:
+
+- stock ownership
+- reservation lifecycle
+- stock adjustment
+- inventory correction
+
+Provisioning and inventory management are intentionally separated concerns.
+
+Provisioning controls sellability.
+
+Inventory controls quantities.
 
 ## Reservation Accounting
 
@@ -902,21 +933,43 @@ inventory management under strict domain invariants.
 
 ---
 
-### 12A — Low-Stock Detection Service
+### 12A — Inventory Monitoring Model
 
-A deterministic, read-only monitoring layer derived from TenantInventory.
+Inventory monitoring is implemented as a derived classification model built directly on TenantInventory.
 
-Capabilities introduced:
+Inventory status categories:
 
-- Tenant-scoped low-stock detection using consistent inventory snapshots
-- Derived invariant: available = stock − reserved
-- Threshold-based detection: available ≤ LOW_STOCK_THRESHOLD
-- No mutation or side-effects (pure read model)
-- Fully deterministic output
+- LOW STOCK
+- ADEQUATE STOCK
+- DISABLED
+- NOT PROVISIONED
 
-This follows the same principle as reconciliation:
+Classification rules:
 
-detect → do not mutate
+NOT PROVISIONED
+
+!isProvisioned
+
+DISABLED
+
+isProvisioned
+&& !enabled
+
+LOW STOCK
+
+isProvisioned
+&& enabled
+&& available <= LOW_STOCK_THRESHOLD
+
+ADEQUATE STOCK
+
+isProvisioned
+&& enabled
+&& available > LOW_STOCK_THRESHOLD
+
+This model is read-only and deterministic.
+
+Inventory monitoring is now integrated directly into the inventory management surface rather than existing as a separate operational page.
 
 ---
 
@@ -932,8 +985,20 @@ Capabilities introduced:
 - Strict domain enforcement:
 - stock ≥ 0
 - stock ≥ reserved
-- Explicit input requirement (no implicit increments)
+- Delta-based inventory adjustment
+- Positive adjustments increase inventory
+- Negative adjustments decrease inventory
+- No direct stock replacement workflow
 - Full audit logging of all adjustments
+
+Inventory adjustments are modeled as inventory movement.
+
+Examples:
+
++10 → inventory received
+-2 → inventory damaged, lost, or removed
+
+This avoids stale-stock replacement problems and more accurately reflects real-world inventory operations.
 
 ---
 
@@ -1665,9 +1730,11 @@ Domain Events
 ↓  
 Reconciliation System (detect + resolve inconsistencies across aggregates)  
 ↓  
-Inventory Monitoring (low-stock detection)  
+Inventory Monitoring
+(LOW STOCK / ADEQUATE STOCK / DISABLED / NOT PROVISIONED)
 ↓  
-Controlled Inventory Adjustment (platform-driven, invariant-safe corrections)  
+Inventory Adjustment
+(delta-based, invariant-safe inventory mutations)
 ↓  
 Analytics Layer (snapshot-based read model)  
 ↓  
@@ -1906,9 +1973,9 @@ Capabilities include:
 
 - product catalog management
 - tenant lifecycle management
-- tenant inventory provisioning
-- low-stock monitoring
-- stock adjustment
+- tenant inventory management
+- inventory monitoring
+- inventory adjustment
 - cross-tenant administration
 
 Routes:
@@ -2040,21 +2107,23 @@ This preserves:
 
 Handles:
 
-- stock
+- tenant product entitlement
+- stock ownership
 - reserved quantities
 - reservation lifecycle
-- low-stock detection (read model)
-- stock adjustment (controlled mutation)
+- inventory adjustment
+- inventory reconciliation correction
 
 Submodules:
 
 - domain (core invariants)
 - reservations (lifecycle mutations)
-- adjustment (admin mutation flow)
-- lowStock (read-only detection)
+- adjustment (inventory mutation flow)
 - idempotency (execution safety)
 - guards / validators / mappers
 - storage
+
+Inventory monitoring is now represented as a derived inventory classification model rather than a dedicated low-stock subsystem.
 
 ---
 
@@ -2149,6 +2218,25 @@ Execution surfaces (e.g. `home`) compose runtime experiences.
 
 Domain-oriented component groups (e.g. `products`) contain reusable business-domain UI primitives consumed by those surfaces.
 
+Inventory UI ownership follows execution-plane boundaries.
+
+Platform inventory management components belong under:
+
+components/admin/tenantInventory
+
+These components include:
+
+- TenantInventoryDashboard
+- TenantInventorySection
+- TenantInventoryTable
+- EnableToggle
+- AdjustmentInput
+- ProvisionStatusIndicator
+
+Tenant inventory visibility is intentionally treated as a separate execution-plane concern and may evolve independently.
+
+Shared appearance alone is not sufficient justification for shared component ownership.
+
 Examples:
 
 - admin
@@ -2161,7 +2249,6 @@ Examples:
 - guards
 - home
 - layout
-- lowStock
 - memberships
 - orders
 - pos
@@ -2169,7 +2256,7 @@ Examples:
 - profile
 - reconciliation
 - session
-- tenant-provisioning
+- tenantInventory
 
 Layout-oriented persistent UI surfaces (e.g. Navbar, CartWidget) belong under:
 
@@ -2194,7 +2281,7 @@ Includes:
 - domain entities (order, payment, tenantInventory)
 - event types (orderEvent)
 - reconciliation models
-- stock adjustment + low-stock types
+- inventory adjustment and inventory-monitoring types
 - auth/session types
 
 ---
@@ -2374,25 +2461,29 @@ Future (Step 21):
 
 .
 ├── app
-│   ├── (tenant)                     # Tenant capability runtime (member-scoped)
+│   ├── (tenant)                     # Tenant capability runtime (active membership required)
 │   │   ├── analytics/
 │   │   ├── audit/
 │   │   ├── cart/
 │   │   ├── checkout/
-│   │   ├── home/                    # Commerce discovery surface
+│   │   ├── home/                    # Commerce discovery and storefront runtime
 │   │   │   ├── [productId]/
 │   │   │   ├── layout.tsx           # Home capability boundary
 │   │   │   └── page.tsx
-│   │   ├── inventory/
-│   │   ├── memberships/             # Staff membership management runtime
+│   │   ├── inventory/               # Tenant inventory visibility runtime
+│   │   ├── memberships/             # Tenant membership management runtime
 │   │   │   ├── [membershipId]/
-│   │   │   └── layout.tsx
+│   │   │   ├── layout.tsx
+│   │   │   └── page.tsx
 │   │   ├── orders/
-│   │   │   └── [orderId]/receipt/
+│   │   │   ├── [orderId]/
+│   │   │   └── page.tsx
 │   │   ├── pos/
-│   │   │   └── layout.tsx           # Staff-only POS capability boundary
+│   │   │   ├── layout.tsx           # Staff POS capability boundary
+│   │   │   └── page.tsx
 │   │   ├── reconciliation/
-│   │   │   └── layout.tsx           # Staff reconciliation capability boundary
+│   │   │   ├── layout.tsx           # Staff reconciliation capability boundary
+│   │   │   └── page.tsx
 │   │   └── layout.tsx               # Shared tenant runtime shell
 │   │
 │   ├── api                          # Transport-only route layer
@@ -2404,6 +2495,7 @@ Future (Step 21):
 │   │   │   └── tenants/
 │   │   │       └── [tenantId]/
 │   │   │           └── inventory/
+│   │   │               └── adjust/
 │   │   │
 │   │   ├── analytics/
 │   │   ├── audit/
@@ -2419,6 +2511,7 @@ Future (Step 21):
 │   │   └── tenants/
 │   │
 │   ├── login/                       # Public authentication entrypoint
+│   │
 │   ├── platform                     # Superadmin execution runtime
 │   │   ├── jobs/
 │   │   ├── memberships/
@@ -2427,23 +2520,28 @@ Future (Step 21):
 │   │   │   └── new/
 │   │   ├── tenants/
 │   │   │   ├── [tenantId]/
-│   │   │   │   └── inventory/
-│   │   │   │       └── low-stock/
-│   │   │   └── new/
-│   │   └── layout.tsx               # Platform authority boundary
+│   │   │   │   ├── inventory/       # Platform inventory management surface
+│   │   │   │   └── page.tsx
+│   │   │   ├── new/
+│   │   │   └── page.tsx
+│   │   ├── layout.tsx               # Platform authority boundary
+│   │   └── error.tsx
 │   │
 │   ├── profile/                     # Authenticated onboarding runtime
-│   │   └── layout.tsx               # Auth-only onboarding boundary
+│   │   ├── layout.tsx               # Auth-only onboarding boundary
+│   │   └── page.tsx
 │   │
 │   ├── layout.tsx                   # Global application shell
 │   ├── page.tsx                     # Public landing surface
 │   └── ThemeRegistry.tsx
 │
 ├── components                       # Pure UI layer (no business logic)
-│   ├── admin/
+│   ├── admin                        # Platform authority UI
 │   │   ├── jobs/
 │   │   ├── memberships/
-│   │   └── products/
+│   │   ├── products/
+│   │   ├── tenantInventory/         # Platform inventory management UI
+│   │   └── tenants/
 │   │
 │   ├── analytics/
 │   ├── audit/
@@ -2453,16 +2551,15 @@ Future (Step 21):
 │   ├── export/
 │   ├── guards/                      # Execution-plane authorization guards
 │   ├── layout/                      # Shared layout/runtime UI surfaces
-│   ├── lowStock/
 │   ├── memberships/
 │   ├── orders/
 │   ├── pos/
 │   ├── products/                    # Reusable product-domain UI primitives
 │   ├── profile/
 │   ├── reconciliation/
-│   └── tenant-provisioning/
+│   └── tenantInventory/             # Tenant inventory visibility UI
 │
-├── contexts                         # Client-side UI/application state
+├── contexts                         # Client-side application state
 │   ├── AuthContext.tsx
 │   ├── CartContext.tsx
 │   └── SnackbarContext.tsx
@@ -2470,7 +2567,7 @@ Future (Step 21):
 ├── hooks
 │   └── useActiveMembership.ts
 │
-├── lib                              # Core system / domain layer
+├── lib                              # Core system and domain layer
 │   ├── analytics/
 │   ├── api/                         # Typed client API wrappers
 │   ├── audit/
@@ -2478,10 +2575,10 @@ Future (Step 21):
 │   ├── cart/
 │   ├── checkout/
 │   ├── config/
-│   ├── events/                      # Domain event dispatching
+│   ├── events/                      # Typed domain event dispatching
 │   ├── export/
 │   ├── http/
-│   ├── jobs/                        # Background execution runtime
+│   ├── jobs/                        # Persistence-backed async execution runtime
 │   ├── mappers/
 │   ├── memberships/
 │   ├── notifications/
@@ -2492,7 +2589,7 @@ Future (Step 21):
 │   ├── profiles/
 │   ├── reconciliation/
 │   ├── security/
-│   ├── tenantInventory/
+│   ├── tenantInventory/             # Entitlement + inventory aggregate
 │   └── tenants/
 │
 ├── tests                            # Isolation and correctness verification
@@ -2504,11 +2601,9 @@ Future (Step 21):
 │   ├── audit.ts
 │   ├── auth.ts
 │   ├── cart.ts
-│   ├── checkout.ts
 │   ├── domainEvent.ts
 │   ├── export.ts
 │   ├── job.ts
-│   ├── lowStock.ts
 │   ├── membership.ts
 │   ├── metrics.ts
 │   ├── notification.ts
@@ -2527,8 +2622,8 @@ Future (Step 21):
 │
 ├── docs/
 ├── public/
-├── scripts/                         # Operational/load-testing scripts
-├── proxy.ts                         # Next.js middleware replacement
+├── scripts/                         # Operational and load-testing scripts
+├── proxy.ts                         # Request admission and runtime routing
 ├── README.md
 ├── package.json
 ├── tsconfig.json
@@ -2541,7 +2636,7 @@ The domain modules represent the core business capabilities:
 - Memberships (tenant participation, access, roles, and lifecycle)
 - Profiles (user onboarding, profile data, and completeness)
 - Products (platform-owned catalog and canonical product data)
-- TenantInventory (tenant entitlement, allocation, reservation, and stock management)
+- TenantInventory (tenant entitlement, inventory ownership, reservation accounting, inventory adjustment, and stock management)
 - Cart (server-authoritative pre-order aggregation and validation)
 - Checkout (application-service orchestration boundary)
 - Orders (transactional state machine and lifecycle management)
@@ -2583,6 +2678,11 @@ Seed data loads automatically.
 - Compile-time transport integrity over implicit runtime assumptions
 - Structural transparency over hidden wrapper behavior
 - Explicit contracts over inferred payloads
+- Provisioning and inventory management are separate concerns
+- Share components only when they represent the same use-case
+- Execution-plane ownership takes precedence over visual similarity
+- Prefer inventory movement semantics over stock replacement semantics
+- Single source of truth for UI state ownership
 
 The system is designed around correctness, execution isolation, and long-term scalability rather than short-term feature velocity.
 

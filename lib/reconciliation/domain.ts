@@ -1,5 +1,5 @@
 import { listTenantOrders } from "@/lib/orders/domain";
-import { listPaymentsByTenant } from "@/lib/payments/storage";
+import { listTenantPayments } from "@/lib/payments/domain";
 import { listTenantInventory } from "@/lib/tenantInventory/domain";
 
 import type { ReconciliationMismatch, ReconciliationReport } from "@/types/reconciliation";
@@ -11,7 +11,7 @@ export async function runTenantReconciliation(
     const scannedAt = new Date().toISOString();
 
     const orders = await listTenantOrders(tenantId);
-    const payments = listPaymentsByTenant(tenantId);
+    const payments = listTenantPayments(tenantId);
     const inventory = await listTenantInventory(tenantId);
 
     const mismatches: ReconciliationMismatch[] = [];

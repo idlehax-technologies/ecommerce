@@ -17,7 +17,7 @@ import type { OrderListItem } from "@/types/order";
 
 import { toOrderListItem } from "@/lib/mappers/orderView";
 
-export default function FulfillmentPage() {
+export default function OrdersPage() {
 
     const [orders, setOrders] = useState<OrderListItem[]>([]);
 

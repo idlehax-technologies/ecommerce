@@ -56,14 +56,14 @@ export const tenantInventoryStore = {
         tenantId: string,
         productId: string,
         mutator: (record: TenantInventory) => TenantInventory
-    ): TenantInventory {
+    ): TenantInventory | undefined {
 
         const key = keyOf(tenantId, productId);
 
         const record = store.get(key);
 
         if (!record) {
-            throw new Error("Provision not found");
+            return undefined;
         }
 
         const updated = mutator({ ...record });

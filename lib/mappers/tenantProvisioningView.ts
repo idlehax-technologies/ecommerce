@@ -11,6 +11,7 @@ export type TenantProvisioningRow = {
     enabled: boolean;
     stock: number;
     reserved: number;
+    available: number;
     isProvisioned: boolean;
 };
 
@@ -18,12 +19,14 @@ export function toTenantProvisioningRow(
     product: Product,
     provision?: TenantInventory
 ): TenantProvisioningRow {
+
     if (!provision) {
         return {
             product,
             enabled: false,
             stock: 0,
             reserved: 0,
+            available: 0,
             isProvisioned: false,
         };
     }
@@ -33,6 +36,7 @@ export function toTenantProvisioningRow(
         enabled: provision.enabled,
         stock: provision.stock,
         reserved: provision.reserved,
+        available: provision.stock - provision.reserved,
         isProvisioned: true,
     };
 }

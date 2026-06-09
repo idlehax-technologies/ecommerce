@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter }
-    from "next/navigation";
+import Link from "next/link";
 
 import {
     Table,
@@ -12,11 +11,9 @@ import {
     Button,
 } from "@mui/material";
 
-import type { MembershipView }
-    from "@/types/membership";
+import type { MembershipView } from "@/types/membership";
 
-import MembershipStatusBadge
-    from "./MembershipStatusBadge";
+import MembershipStatusBadge from "./MembershipStatusBadge";
 
 type Props = {
     data: MembershipView[];
@@ -25,8 +22,6 @@ type Props = {
 export default function MembershipTable({
     data,
 }: Props) {
-
-    const router = useRouter();
 
     return (
         <Table>
@@ -51,23 +46,21 @@ export default function MembershipTable({
                     <TableRow key={m.membershipId}>
 
                         <TableCell>
-                            {m.user.fullName || "-"}
+                            {m.user.fullName || "—"}
                         </TableCell>
 
                         <TableCell>
-                            {m.user.phone || "-"}
+                            {m.user.phone || "—"}
                         </TableCell>
 
                         <TableCell>
-                            {m.user.email || "-"}
+                            {m.user.email || "—"}
                         </TableCell>
 
                         <TableCell>
-
                             <MembershipStatusBadge
                                 status={m.status}
                             />
-
                         </TableCell>
 
                         <TableCell>
@@ -76,11 +69,8 @@ export default function MembershipTable({
 
                         <TableCell align="right">
                             <Button
-                                onClick={() =>
-                                    router.push(
-                                        `/memberships/${m.membershipId}`
-                                    )
-                                }
+                                component={Link}
+                                href={`/memberships/${m.membershipId}`}
                             >
                                 View Details
                             </Button>

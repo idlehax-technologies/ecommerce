@@ -1,7 +1,13 @@
 import { Box, Typography, Chip, Stack } from "@mui/material";
 import type { Order } from "@/types/order";
 
-export default function OrderSummary({ order }: { order: Order }) {
+export default function OrderSummary({
+    order,
+    hasGst,
+}: {
+    order: Order;
+    hasGst: boolean;
+}) {
     return (
         <Stack spacing={1}>
             <Box display="flex" justifyContent="space-between">
@@ -10,7 +16,8 @@ export default function OrderSummary({ order }: { order: Order }) {
                 </Typography>
 
                 <Typography fontWeight={600}>
-                    ₹ {(order.total / 100).toFixed(2)}
+                    ₹{(order.total / 100).toFixed(2)}
+                    {hasGst && " (incl. GST)"}
                 </Typography>
             </Box>
 
