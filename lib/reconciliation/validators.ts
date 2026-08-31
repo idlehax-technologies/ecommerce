@@ -6,6 +6,7 @@ import type {
 import type {
     ReconciliationMismatchType,
 } from "@/types/reconciliation";
+
 import { ReconciliationInvalidInputError } from "./errors";
 
 function isNonEmptyString(
@@ -21,7 +22,7 @@ const ACTIONS: ResolutionActionType[] = [
     "CONFIRM_PAYMENT",
     "CREATE_PAYMENT",
     "CANCEL_ORDER",
-    "ADJUST_INVENTORY",
+    "RECONCILE_RESERVED",
 ];
 
 const MISMATCH_TYPES: ReconciliationMismatchType[] = [
@@ -47,14 +48,6 @@ export function assertResolutionRequest(
     if (!isNonEmptyString(obj.idempotencyKey)) {
         throw new ReconciliationInvalidInputError(
             "idempotencyKey must be a non-empty string"
-        );
-    }
-
-    if (
-        !isNonEmptyString(obj.reason)
-    ) {
-        throw new ReconciliationInvalidInputError(
-            "reason must be a non-empty string"
         );
     }
 

@@ -1,66 +1,66 @@
-import { Tenant } from "@/types/tenant";
-
-type GlobalTenantStore = {
-    __tenantStore?: Map<string, Tenant>;
-};
-
-const globalForTenants = globalThis as unknown as GlobalTenantStore;
-
-const store: Map<string, Tenant> =
-    globalForTenants.__tenantStore ?? new Map();
-
-globalForTenants.__tenantStore = store;
-
-
-function seedTenants() {
-    if (store.size > 0) return;
-
-    const seed: Tenant[] = [
-        {
-            tenantId: "tenant_alpha",
-            name: "Alpha School",
-            address: "Newtown, AA-IIB",
-            state: "West Bengal",
-            gstin: undefined,
-            status: "ACTIVE",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        },
-        {
-            tenantId: "tenant_mnsnhs",
-            name: "Michaelnagar Shikshaniketan",
-            address: "Michaelnagar, Airport",
-            state: "West Bengal",
-            gstin: "GST987654321",
-            status: "ACTIVE",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        },
-    ];
-
-    for (const t of seed) {
-        store.set(t.tenantId, t);
-    }
-}
-
-seedTenants();
+import type { Tenant } from "@/types/tenant";
+import { prisma } from "@/lib/db/prisma";
 
 export const tenantStore = {
-    get(id: string): Tenant | null {
-        const tenant = store.get(id);
+    async get(tenantId: string): Promise<Tenant | null> {
+        const tenant = await prisma.tenant.findUnique({
+            where: { tenantId },
+        });
 
-        return tenant
-            ? { ...tenant }
-            : null;
+        if (!tenant) {
+            return null;
+        }
+
+        return {
+            tenantId: tenant.tenantId,
+            name: tenant.name,
+            address: tenant.address,
+            state: tenant.state as Tenant["state"],
+            gstin: tenant.gstin ?? undefined,
+            status: tenant.status,
+            createdAt: tenant.createdAt.toISOString(),
+            updatedAt: tenant.updatedAt.toISOString(),
+        };
     },
 
-    getAll(): Tenant[] {
-        return Array
-            .from(store.values())
-            .map((t) => ({ ...t }));
+    async getAll(): Promise<Tenant[]> {
+        const tenants = await prisma.tenant.findMany();
+
+        return tenants.map((tenant) => ({
+            tenantId: tenant.tenantId,
+            name: tenant.name,
+            address: tenant.address,
+            state: tenant.state as Tenant["state"],
+            gstin: tenant.gstin ?? undefined,
+            status: tenant.status,
+            createdAt: tenant.createdAt.toISOString(),
+            updatedAt: tenant.updatedAt.toISOString(),
+        }));
     },
 
-    save(t: Tenant): void {
-        store.set(t.tenantId, { ...t });
+    async save(tenant: Tenant): Promise<void> {
+        await prisma.tenant.upsert({
+            where: {
+                tenantId: tenant.tenantId,
+            },
+            create: {
+                tenantId: tenant.tenantId,
+                name: tenant.name,
+                address: tenant.address,
+                state: tenant.state,
+                gstin: tenant.gstin ?? null,
+                status: tenant.status,
+                createdAt: new Date(tenant.createdAt),
+                updatedAt: new Date(tenant.updatedAt),
+            },
+            update: {
+                name: tenant.name,
+                address: tenant.address,
+                state: tenant.state,
+                gstin: tenant.gstin ?? null,
+                status: tenant.status,
+                updatedAt: new Date(tenant.updatedAt),
+            },
+        });
     },
 };

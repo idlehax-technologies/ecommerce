@@ -9,6 +9,7 @@ import {
     TableBody,
     TableRow,
     TableCell,
+    TableContainer,
 } from "@mui/material";
 
 import type { MembershipView }
@@ -31,69 +32,80 @@ export default function MembershipTable({
     const router = useRouter();
 
     return (
-        <Table>
-
-            <TableHead>
-                <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Phone</TableCell>
-                    <TableCell>Email</TableCell>
-                    <TableCell>Tenant</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Role</TableCell>
-                    <TableCell align="right">
-                        Actions
-                    </TableCell>
-                </TableRow>
-            </TableHead>
-
-            <TableBody>
-
-                {data.map((m) => (
-
-                    <TableRow key={m.membershipId}>
-
-                        <TableCell>
-                            {m.user.fullName}
+        <TableContainer>
+            <Table
+                sx={{
+                    tableLayout: "fixed",
+                    width: "100%",
+                }}
+            >
+                <TableHead>
+                    <TableRow>
+                        <TableCell sx={{ width: "14%" }}>
+                            Name
                         </TableCell>
-
-                        <TableCell>
-                            {m.user.phone}
+                        <TableCell sx={{ width: "10%" }}>
+                            Phone
                         </TableCell>
-
-                        <TableCell>
-                            {m.user.email}
+                        <TableCell sx={{ width: "20%" }}>
+                            Email
                         </TableCell>
-
-                        <TableCell>
-                            {m.tenant.name}
+                        <TableCell sx={{ width: "24%" }}>
+                            Tenant
                         </TableCell>
-
-                        <TableCell>
-                            <MembershipStatusBadge
-                                status={m.status}
-                            />
+                        <TableCell sx={{ width: "10%" }}>
+                            Status
                         </TableCell>
-
-                        <TableCell>
-                            {m.role}
+                        <TableCell sx={{ width: "8%" }}>
+                            Role
                         </TableCell>
-
-                        <TableCell align="right">
-                            <MembershipRoleActions
-                                membership={m}
-                                reload={() => {
-                                    router.refresh();
-                                }}
-                            />
+                        <TableCell sx={{ width: "14%" }}>
+                            Update Role
                         </TableCell>
-
                     </TableRow>
+                </TableHead>
 
-                ))}
+                <TableBody>
+                    {data.map((m) => (
+                        <TableRow key={m.membershipId}>
+                            <TableCell>
+                                {m.user.fullName}
+                            </TableCell>
 
-            </TableBody>
+                            <TableCell>
+                                {m.user.phone}
+                            </TableCell>
 
-        </Table>
+                            <TableCell>
+                                {m.user.email}
+                            </TableCell>
+
+                            <TableCell>
+                                {m.tenant.name}
+                            </TableCell>
+
+                            <TableCell>
+                                <MembershipStatusBadge
+                                    status={m.status}
+                                />
+                            </TableCell>
+
+                            <TableCell>
+                                {m.role}
+                            </TableCell>
+
+                            <TableCell>
+                                <MembershipRoleActions
+                                    membership={m}
+                                    reload={() => {
+                                        router.refresh();
+                                    }}
+                                />
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </TableContainer>
     );
 }

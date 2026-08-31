@@ -1,20 +1,19 @@
 "use client";
 
-import {
-    Container,
-    Typography,
-    Stack,
-    CircularProgress,
-} from "@mui/material";
-
-import MembershipDashboard
-    from "@/components/memberships/MembershipDashboard";
-
 import { useEffect, useState }
     from "react";
 
-import { useActiveMembership }
-    from "@/hooks/useActiveMembership";
+import {
+    Box,
+    Stack,
+    Typography,
+    CircularProgress,
+    Divider,
+    Paper,
+} from "@mui/material";
+
+import MembershipsDashboard
+    from "@/components/memberships/MembershipsDashboard";
 
 import { fetchMemberships }
     from "@/lib/api/memberships";
@@ -22,12 +21,9 @@ import { fetchMemberships }
 import type { MembershipView }
     from "@/types/membership";
 
-export default function Page() {
-
-    const { membership } = useActiveMembership();
+export default function MembershipsPage() {
 
     const [memberships, setMemberships] = useState<MembershipView[]>([]);
-
     const [loading, setLoading] = useState(true);
 
     async function load() {
@@ -49,29 +45,24 @@ export default function Page() {
     }
 
     return (
-        <Container sx={{ py: 4 }}>
-
-            <Stack mb={3} spacing={0.5}>
-
-                <Typography variant="h5">
-                    Membership Operations
+        <Stack spacing={3} sx={{ p: 4 }}>
+            <Box>
+                <Typography variant="h5" fontWeight={600}>
+                    Memberships
                 </Typography>
 
-                {membership && (
-                    <Typography
-                        variant="body2"
-                        color="text.secondary"
-                    >
-                        Tenant: {membership.tenantId}
-                    </Typography>
-                )}
+                <Typography variant="body2" color="text.secondary">
+                    View and manage memberships within your tenant
+                </Typography>
+            </Box>
 
-            </Stack>
+            <Divider />
 
-            <MembershipDashboard
-                memberships={memberships}
-            />
-
-        </Container>
+            <Paper elevation={2} sx={{ p: 2 }}>
+                <MembershipsDashboard
+                    memberships={memberships}
+                />
+            </Paper>
+        </Stack>
     );
 }

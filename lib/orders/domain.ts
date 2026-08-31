@@ -8,11 +8,7 @@ import type {
     CustomerSnapshot,
 } from "@/types/order";
 
-import {
-    saveOrder,
-    getOrder,
-    listOrdersByTenant
-} from "./storage";
+import { orderStore } from "./storage";
 
 import {
     OrderNotFoundError,
@@ -22,8 +18,18 @@ import {
     InvalidOrderTransitionError,
 } from "./errors";
 
+import {
+    assertInvoiceState,
+    assertUniqueInvoiceNumber,
+    assertUniqueOrderNumber,
+} from "./guards";
+
+import { getOrderTotals }
+    from "@/lib/calculations/pricing";
+
 import { PaymentMethod } from "@/types/payment";
-import { assertInvoiceState, assertUniqueInvoiceNumber, assertUniqueOrderNumber } from "./guards";
+
+export const ORDER_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 function now(): string {
     return new Date().toISOString();
@@ -39,13 +45,6 @@ function validateOrderItems(items: ItemSnapshot[]): void {
             throw new InvalidOrderItemQuantityError();
         }
     }
-}
-
-function computeTotal(items: ItemSnapshot[]): number {
-    return items.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0
-    );
 }
 
 function generateOrderNumber(): string {
@@ -114,15 +113,15 @@ const ALLOWED_TRANSITIONS: Record<
     REFUNDED: [],
 };
 
-function transition(
+async function transition(
     order: Order,
     expected: Order["status"],
     to: Order["status"],
     mutate?: () => void
-): {
+): Promise<{
     from: Order["status"];
     to: Order["status"];
-} {
+}> {
     if (order.status !== expected) {
         throw new InvalidOrderTransitionError(
             order.status,
@@ -148,7 +147,7 @@ function transition(
 
     order.updatedAt = now();
 
-    saveOrder(order);
+    await orderStore.save(order);
 
     return { from, to };
 }
@@ -168,12 +167,13 @@ export async function createOrder(
 }> {
     validateOrderItems(items);
 
-    const total = computeTotal(items);
-    if (total <= 0) {
+    const { payableTotal } = getOrderTotals(items);
+
+    if (payableTotal <= 0) {
         throw new OrderTotalMismatchError();
     }
 
-    const orders = await listTenantOrders(tenantId);
+    const orders = await listOrders();
     const orderNumber = generateOrderNumber();
     assertUniqueOrderNumber(orders, orderNumber);
 
@@ -193,7 +193,7 @@ export async function createOrder(
 
         items: [...items],
 
-        total,
+        total: payableTotal,
         currency: "INR",
 
         status: "RESERVED",
@@ -202,7 +202,7 @@ export async function createOrder(
         updatedAt: timestamp,
     };
 
-    saveOrder(order);
+    await orderStore.save(order);
 
     return {
         order,
@@ -213,14 +213,13 @@ export async function createOrder(
     };
 }
 
-/* ---------------- READ (Tenant Scoped) ---------------- */
+/* ---------------- READ ---------------- */
 
-export function getTenantOrder(
+export async function getTenantOrder(
     tenantId: string,
     orderId: string
-): Order {
-
-    const order = getOrder(orderId);
+): Promise<Order> {
+    const order = await orderStore.get(orderId);
 
     if (!order || order.tenantId !== tenantId) {
         throw new OrderNotFoundError();
@@ -229,11 +228,19 @@ export function getTenantOrder(
     return order;
 }
 
+export async function listOrders(
+    limit?: number
+): Promise<Order[]> {
+    const all = await orderStore.listAll();
+
+    return limit ? all.slice(0, limit) : all;
+}
+
 export async function listTenantOrders(
     tenantId: string,
     limit?: number
 ): Promise<Order[]> {
-    const all = listOrdersByTenant(tenantId);
+    const all = await orderStore.listByTenant(tenantId);
 
     return limit ? all.slice(0, limit) : all;
 }
@@ -248,7 +255,7 @@ export async function markOrderPaid(
     order: Order;
     event: DomainEvent;
 }> {
-    const order = getTenantOrder(tenantId, orderId);
+    const order = await getTenantOrder(tenantId, orderId);
     const orders = await listTenantOrders(tenantId);
 
     assertInvoiceState(order);
@@ -278,7 +285,7 @@ export async function markOrderPaid(
     }
 
     const { from, to } =
-        transition(
+        await transition(
             order,
             "RESERVED",
             "PAID",
@@ -303,14 +310,14 @@ export async function markOrderPaid(
     };
 }
 
-export function cancelOrder(
+export async function cancelOrder(
     tenantId: string,
     orderId: string
-): { order: Order; event: DomainEvent } {
+): Promise<{ order: Order; event: DomainEvent }> {
 
-    const order = getTenantOrder(tenantId, orderId);
+    const order = await getTenantOrder(tenantId, orderId);
 
-    const { from, to } = transition(order, "RESERVED", "CANCELLED");
+    const { from, to } = await transition(order, "RESERVED", "CANCELLED");
 
     return {
         order,
@@ -323,14 +330,28 @@ export function cancelOrder(
     };
 }
 
-export function expireOrder(
+export async function expireOrder(
     tenantId: string,
     orderId: string
-): { order: Order; event: DomainEvent } {
+): Promise<{
+    order: Order;
+    event: DomainEvent;
+} | null> {
 
-    const order = getTenantOrder(tenantId, orderId);
+    const order = await getTenantOrder(tenantId, orderId);
 
-    const { from, to } = transition(order, "RESERVED", "EXPIRED");
+    if (order.status !== "RESERVED") {
+        return null;
+    }
+
+    const now = Date.now();
+    const created = new Date(order.createdAt).getTime();
+
+    if (now - created < ORDER_EXPIRY_MS) {
+        return null;
+    }
+
+    const { from, to } = await transition(order, "RESERVED", "EXPIRED");
 
     return {
         order,
@@ -338,19 +359,19 @@ export function expireOrder(
             type: "OrderExpired",
             order,
             from,
-            to
-        }
+            to,
+        },
     };
 }
 
-export function markOrderPickedUp(
+export async function markOrderPickedUp(
     tenantId: string,
     orderId: string
-): { order: Order; event: DomainEvent } {
+): Promise<{ order: Order; event: DomainEvent }> {
 
-    const order = getTenantOrder(tenantId, orderId);
+    const order = await getTenantOrder(tenantId, orderId);
 
-    const { from, to } = transition(order, "PAID", "PICKED_UP");
+    const { from, to } = await transition(order, "PAID", "PICKED_UP");
 
     return {
         order,
@@ -363,14 +384,14 @@ export function markOrderPickedUp(
     };
 }
 
-export function refundOrder(
+export async function refundOrder(
     tenantId: string,
     orderId: string
-): { order: Order; event: DomainEvent } {
+): Promise<{ order: Order; event: DomainEvent }> {
 
-    const order = getTenantOrder(tenantId, orderId);
+    const order = await getTenantOrder(tenantId, orderId);
 
-    const { from, to } = transition(order, "PAID", "REFUNDED");
+    const { from, to } = await transition(order, "PAID", "REFUNDED");
 
     return {
         order,

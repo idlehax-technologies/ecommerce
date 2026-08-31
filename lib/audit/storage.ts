@@ -1,33 +1,75 @@
 import type { AuditLog } from "@/types/audit";
+import { prisma } from "@/lib/db/prisma";
+import { Prisma } from "../generated/prisma/client";
 
-type GlobalAudit = typeof globalThis & {
-    __auditLogs?: AuditLog[];
+export const auditStore = {
+    async append(
+        log: AuditLog
+    ): Promise<void> {
+
+        await prisma.auditLog.create({
+            data: {
+                auditId: log.auditId,
+                tenantId: log.tenantId,
+                actorId: log.actorId,
+                eventType: log.eventType,
+                entityType: log.entityType,
+                entityId: log.entityId,
+
+                ...(log.from !== undefined
+                    ? {
+                        from: log.from as Prisma.InputJsonValue,
+                    }
+                    : {}),
+
+                to: log.to as Prisma.InputJsonValue,
+
+                metadata: log.metadata as Prisma.InputJsonValue,
+
+                createdAt: new Date(log.createdAt),
+            },
+        });
+    },
+
+    async listByTenant(
+        tenantId: string,
+        limit?: number
+    ): Promise<AuditLog[]> {
+
+        const logs =
+            await prisma.auditLog.findMany({
+                where: {
+                    tenantId,
+                },
+                orderBy: {
+                    createdAt: "desc",
+                },
+                ...(limit !== undefined
+                    ? {
+                        take: limit,
+                    }
+                    : {}),
+            });
+
+        return logs.map((log) => ({
+            auditId: log.auditId,
+            tenantId: log.tenantId,
+            actorId: log.actorId,
+            eventType: log.eventType,
+            entityType: log.entityType,
+            entityId: log.entityId,
+
+            ...(log.from !== null
+                ? {
+                    from: log.from as Record<string, unknown>,
+                }
+                : {}),
+
+            to: log.to as Record<string, unknown>,
+
+            metadata: log.metadata as Record<string, unknown>,
+
+            createdAt: log.createdAt.toISOString(),
+        }));
+    },
 };
-
-const globalForAudit = globalThis as GlobalAudit;
-
-const store: AuditLog[] =
-    globalForAudit.__auditLogs ?? [];
-
-globalForAudit.__auditLogs = store;
-
-export function appendAudit(log: AuditLog): void {
-    store.push(log);
-}
-
-// 🔴 READ ONLY API
-export function listAuditByTenant(
-    tenantId: string,
-    limit?: number
-): AuditLog[] {
-
-    const all = store
-        .filter((l) => l.tenantId === tenantId)
-        .slice()
-        .reverse()
-        .map((l) => ({ ...l }));
-
-    return limit
-        ? all.slice(0, limit)
-        : all;
-}

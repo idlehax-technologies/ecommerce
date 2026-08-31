@@ -1,11 +1,11 @@
+export type MembershipRole = "customer" | "staff" | "admin";
+
 export type MembershipStatus =
     | "PENDING"
     | "APPROVED"
     | "REJECTED"
     | "REVOKED"
-    | "EXPIRED"; // ✅ NEW
-
-export type MembershipRole = "customer" | "staff" | "admin";
+    | "EXPIRED";
 
 export type Membership = {
     membershipId: string;

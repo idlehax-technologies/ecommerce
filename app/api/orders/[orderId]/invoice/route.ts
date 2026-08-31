@@ -1,15 +1,24 @@
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireTenant } from "@/lib/auth/guards";
+import {
+    requireMembershipRole,
+    requireMembership,
+} from "@/lib/auth/guards";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import { getTenantOrder } from "@/lib/orders/domain";
 import { assertOrderVisible } from "@/lib/orders/guards";
-
 import { getStateCode } from "@/lib/tenants/states";
 
-function formatMoney(paise: number): string {
-    return (paise / 100).toFixed(2);
-}
+import {
+    getGstInvoiceLine,
+    getGstInvoiceTotals,
+} from "@/lib/calculations/invoice";
+import {
+    getDiscountAmount,
+    getDiscountedPrice,
+} from "@/lib/calculations/pricing";
+import { formatINR } from "@/lib/format/currency";
+import { formatDateTime } from "@/lib/format/datetime";
 
 export async function GET(
     req: Request,
@@ -19,10 +28,11 @@ export async function GET(
         const { orderId } = await params;
 
         const user = await guardRequest(req, { requireAuth: true });
-        const actor = requireTenant(user);
 
-        const order = getTenantOrder(actor.tenantId, orderId);
+        await requireMembershipRole(user, ["customer", "staff"]);
+        const actor = await requireMembership(user);
 
+        const order = await getTenantOrder(actor.tenantId, orderId);
         assertOrderVisible(actor, order);
 
         if (!order.invoiceNumber || !order.invoiceIssuedAt) {
@@ -33,71 +43,93 @@ export async function GET(
 
         const isGstTenant = !!order.seller.gstin;
 
-        let subtotal = 0;
-        let totalCgst = 0;
-        let totalSgst = 0;
+        const gstInvoiceTotals = getGstInvoiceTotals(order.items);
+
+        const roundingAdjustment =
+            order.total - gstInvoiceTotals.total;
+
+        const roundedOffDisplay =
+            roundingAdjustment >= 0
+                ? `+${formatINR(roundingAdjustment)}`
+                : `-${formatINR(Math.abs(roundingAdjustment))}`;
 
         const rows = order.items
-            .map((item, index) => {
-                const amount = item.price * item.quantity;
+            .map((item) => {
+                const gstInvoiceLine = getGstInvoiceLine(item);
+
+                const gstDiscountDisplay =
+                    `${formatINR(
+                        gstInvoiceLine.discountValue
+                    )} (${item.discountPercent}%)`;
+
+                const grossValue =
+                    item.price * item.quantity;
+
+                const discountValue =
+                    getDiscountAmount(
+                        item.price,
+                        item.discountPercent
+                    ) * item.quantity;
+
+                const discountedAmount =
+                    getDiscountedPrice(
+                        item.price,
+                        item.discountPercent
+                    ) * item.quantity;
+
+                const discountDisplay =
+                    `${formatINR(discountValue)} (${item.discountPercent}%)`;
 
                 if (!isGstTenant) {
                     return `
 <tr>
-    <td>${index + 1}</td>
     <td>${item.description}</td>
     <td>${item.hsnCode}</td>
     <td>${item.quantity}</td>
-    <td>₹${formatMoney(item.price)}</td>
-    <td>₹${formatMoney(amount)}</td>
+
+    <td>${formatINR(item.price)}</td>
+    <td>${formatINR(grossValue)}</td>
+
+    <td>${discountDisplay}</td>
+
+    <td>${formatINR(discountedAmount)}</td>
 </tr>
 `;
                 }
 
-                const unitPrice =
-                    Math.round(
-                        item.price * 100 /
-                        (100 + item.gstRate)
-                    );
-
-                const taxableValue = unitPrice * item.quantity;
-
-                const tax = amount - taxableValue;
-
-                const cgst = Math.ceil(tax / 2);
-
-                const sgst = tax - cgst;
-
-                subtotal += taxableValue;
-                totalCgst += cgst;
-                totalSgst += sgst;
-
                 return `
 <tr>
-    <td>${index + 1}</td>
     <td>${item.description}</td>
     <td>${item.hsnCode}</td>
     <td>${item.quantity}</td>
-    <td>₹${formatMoney(unitPrice)}</td>
-    <td>₹${formatMoney(taxableValue)}</td>
-    <td>₹${formatMoney(cgst)}</td>
-    <td>₹${formatMoney(sgst)}</td>
-    <td>₹${formatMoney(amount)}</td>
+
+    <td>${formatINR(gstInvoiceLine.unitPriceExGst)}</td>
+    <td>${formatINR(gstInvoiceLine.grossValue)}</td>
+
+    <td>${gstDiscountDisplay}</td>
+
+    <td>${formatINR(gstInvoiceLine.taxableValue)}</td>
+
+    <td>${formatINR(gstInvoiceLine.cgst)} (${item.gstRate / 2}%)</td>
+    <td>${formatINR(gstInvoiceLine.sgst)} (${item.gstRate / 2}%)</td>
+
+    <td>${formatINR(gstInvoiceLine.amount)}</td>
 </tr>
 `;
-            })
-            .join("");
+            }).join("");
 
-        const table = isGstTenant
-            ? `
+        const table =
+            isGstTenant
+                ? `
 <table>
     <thead>
         <tr>
-            <th>Sl. No.</th>
             <th>Description</th>
             <th>HSN</th>
             <th>Qty</th>
             <th>Unit Price</th>
+            <th>Gross Value</th>
+            <th>Discount</th>
             <th>Taxable Value</th>
             <th>CGST</th>
             <th>SGST</th>
@@ -105,133 +137,172 @@ export async function GET(
         </tr>
     </thead>
 
-<tbody>
-    ${rows}
-</tbody>
+    <tbody>
+        ${rows}
+    </tbody>
 </table>
 
 <div class="summary">
     <div class="row">
-        <strong>Subtotal</strong>
-        <strong>₹${formatMoney(subtotal)}</strong>
+        <span>Subtotal</span>
+        <strong>${formatINR(gstInvoiceTotals.subtotal)}</strong>
     </div>
 
-<div class="row">
-    <strong>CGST</strong>
-    <strong>₹${formatMoney(totalCgst)}</strong>
-</div>
+    <div class="row">
+        <span>CGST</span>
+        <strong>${formatINR(gstInvoiceTotals.cgst)}</strong>
+    </div>
 
-<div class="row">
-    <strong>SGST</strong>
-    <strong>₹${formatMoney(totalSgst)}</strong>
-</div>
+    <div class="row">
+        <span>SGST</span>
+        <strong>${formatINR(gstInvoiceTotals.sgst)}</strong>
+    </div>
 
-<div class="row total">
-    <strong>Total</strong>
-    <strong>₹${formatMoney(order.total)}</strong>
-</div>
+    <div class="row">
+        <span>Total</span>
+        <strong>${formatINR(gstInvoiceTotals.total)}</strong>
+    </div>
+
+    <div class="row">
+        <span>Rounded Off</span>
+        <strong>${roundedOffDisplay}</strong>
+    </div>
+
+    <div class="row total">
+        <span>Final Amount</span>
+        <strong>${formatINR(order.total)}</strong>
+    </div>
 </div>
 `
-            : `
+                : `
 <table>
     <thead>
         <tr>
-            <th>Sl. No.</th>
             <th>Description</th>
             <th>HSN</th>
             <th>Qty</th>
             <th>Unit Price</th>
+            <th>Gross Value</th>
+            <th>Discount</th>
             <th>Amount</th>
         </tr>
     </thead>
 
-<tbody>
-    ${rows}
-</tbody>
+    <tbody>
+        ${rows}
+    </tbody>
 </table>
 
 <div class="summary">
     <div class="row total">
-        <strong>Total</strong>
-        <strong>₹${formatMoney(order.total)}</strong>
+        <span>Final Amount</span>
+        <strong>${formatINR(order.total)}</strong>
     </div>
 </div>
 `;
 
         const html = `
 <html>
+
 <head>
+
 <title>${order.invoiceNumber}</title>
 
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        padding: 24px;
-        color: #111;
-    }
 
-    h1 {
-        text-align: center;
-        margin: 0 0 24px;
-    }
+body {
+    font-family: Arial, sans-serif;
+    padding: 24px;
+    color: #111;
+}
 
-    h3 {
-        margin: 24px 0 8px;
-    }
+h1 {
+    text-align: center;
+    margin: 0 0 24px;
+}
 
-    .section {
-        margin-bottom: 24px;
-    }
+h3 {
+    margin: 24px 0 8px;
+}
 
-    .row {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 8px;
-    }
+.section {
+    margin-bottom: 24px;
+}
 
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 24px;
-    }
+.row {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 8px;
+}
 
-    th,
-    td {
-        border: 1px solid #ccc;
-        padding: 8px;
-        text-align: left;
-    }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 24px;
+}
 
-    th {
-        background: #f5f5f5;
-    }
+th,
+td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+    vertical-align: top;
+}
 
-    .summary {
-        margin-top: 24px;
-    }
+th {
+    background: #f5f5f5;
+}
 
-    .total {
-        font-size: 18px;
-    }
+.summary {
+    margin-top: 24px;
+    margin-left: auto;
+    width: 420px;
+}
+
+.total {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
+}
+
+.invoice-type {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+@media print {
 
     .actions {
-        display: flex;
-        justify-content: center;
+        display: none;
     }
 
-    @media print {
-        .actions {
-            display: none;
-        }
+    body {
+        padding: 0;
     }
+}
 </style>
+
 </head>
 
 <body>
+
 <h1>
     ${isGstTenant
                 ? "TAX INVOICE"
-                : "INVOICE"}
+                : "INVOICE"
+            }
 </h1>
 
 <div class="section">
@@ -243,7 +314,7 @@ export async function GET(
     <div class="row">
         <span>Invoice Issued</span>
         <strong>
-            ${new Date(order.invoiceIssuedAt).toLocaleString()}
+            ${formatDateTime(order.invoiceIssuedAt)}
         </strong>
     </div>
 
@@ -255,16 +326,14 @@ export async function GET(
     <div class="row">
         <span>Order Placed</span>
         <strong>
-            ${new Date(order.createdAt).toLocaleString()}
+            ${formatDateTime(order.createdAt)}
         </strong>
     </div>
 </div>
 
 <div class="section">
     <h3>Sold By</h3>
-
     <div>${order.seller.name}</div>
-
     <div>${order.seller.address}</div>
 
     <div>
@@ -274,24 +343,33 @@ export async function GET(
 
     ${isGstTenant
                 ? `
-<div>
-    GSTIN: ${order.seller.gstin}
-</div>
-`
-                : ""}
+    <div>
+        GSTIN:
+        ${order.seller.gstin}
+    </div>
+    `
+                : ""
+            }
 </div>
 
 <div class="section">
     <h3>Sold To</h3>
-
     <div>${order.customer.fullName}</div>
 
-    <div>${order.customer.addressText}</div>
+    ${order.customer.phone.trim()
+                ? `
+    <div>
+        Phone:
+        ${order.customer.phone}
+    </div>
+    `
+                : ""
+            }
 </div>
 
 ${table}
 
-<div class="section">
+<div class="summary">
     <div class="row">
         <span>Payment Method</span>
         <strong>
@@ -310,7 +388,9 @@ ${table}
         Print Invoice
     </button>
 </div>
+
 </body>
+
 </html>
 `;
 

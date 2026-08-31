@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 import { guardRequest } from "@/lib/security/requestGuard";
+import { AUTH_COOKIE, AUTH_COOKIE_CLEAR_OPTIONS } from "@/lib/auth/cookies";
 
 export async function POST(req: Request) {
     try {
@@ -12,11 +13,7 @@ export async function POST(req: Request) {
 
         const res = NextResponse.json({ success: true });
 
-        res.cookies.set("auth", "", {
-            httpOnly: true,
-            path: "/",
-            maxAge: 0,
-        });
+        res.cookies.set(AUTH_COOKIE, "", AUTH_COOKIE_CLEAR_OPTIONS);
 
         return res;
     } catch (err: unknown) {

@@ -1,37 +1,44 @@
-import { Container, Typography } from "@mui/material";
+import { Box, Stack, Typography, Paper, Divider } from "@mui/material";
 
-import { getUserFromRequest } from "@/lib/auth";
+import { getUserFromRequest } from "@/lib/session/session";
 import { requireSuperadmin } from "@/lib/auth/guards";
 
 import { listAllMembershipsEnriched } from "@/lib/memberships/domain";
 
 import { QUERY_LIMITS } from "@/lib/config/queryLimits";
 
-import MembershipDashboard
-    from "@/components/admin/memberships/MembershipDashboard";
+import MembershipsDashboard
+    from "@/components/admin/memberships/MembershipsDashboard";
 
 export default async function PlatformMembershipsPage() {
 
     const rawUser = await getUserFromRequest();
-
     requireSuperadmin(rawUser);
 
     const memberships =
-        listAllMembershipsEnriched(
+        await listAllMembershipsEnriched(
             QUERY_LIMITS.MEMBERSHIPS
         );
 
     return (
-        <Container sx={{ py: 4 }}>
+        <Stack spacing={3} sx={{ p: 4 }}>
+            <Box>
+                <Typography variant="h5" fontWeight={600}>
+                    Membership Governance
+                </Typography>
 
-            <Typography variant="h5" mb={3}>
-                Membership Governance
-            </Typography>
+                <Typography variant="body2" color="text.secondary">
+                    Manage tenant membership lifecycle and roles
+                </Typography>
+            </Box>
 
-            <MembershipDashboard
-                memberships={memberships}
-            />
+            <Divider />
 
-        </Container>
+            <Paper elevation={2} sx={{ p: 2 }}>
+                <MembershipsDashboard
+                    memberships={memberships}
+                />
+            </Paper>
+        </Stack>
     );
 }

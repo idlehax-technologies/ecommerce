@@ -1,5 +1,7 @@
+import { Box } from "@mui/material";
 import Navbar from "@/components/layout/Navbar";
 import CartWidget from "@/components/layout/CartWidget";
+import Sidebar from "@/components/layout/Sidebar";
 import { CartProvider } from "@/contexts/CartContext";
 
 export default function TenantLayout({
@@ -10,7 +12,14 @@ export default function TenantLayout({
     return (
         <CartProvider>
             <Navbar rightSlot={<CartWidget />} />
-            {children}
+
+            <Box sx={{ display: "flex", flex: 1 }}>
+                <Sidebar />
+
+                <Box sx={{ flex: 1 }}>
+                    {children}
+                </Box>
+            </Box>
         </CartProvider>
     );
 }

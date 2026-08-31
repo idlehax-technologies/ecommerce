@@ -1,8 +1,6 @@
-import type { ExportRequest } from "@/types/export";
+import { ExportInvalidInputError } from "./errors";
 
-import {
-    ExportInvalidInputError,
-} from "./errors";
+import type { ExportRequest } from "@/types/export";
 
 function isNonEmptyString(
     value: unknown
@@ -10,6 +8,16 @@ function isNonEmptyString(
     return (
         typeof value === "string" &&
         value.trim().length > 0
+    );
+}
+
+function isPositiveInteger(
+    value: unknown
+): value is number {
+    return (
+        typeof value === "number" &&
+        Number.isInteger(value) &&
+        value > 0
     );
 }
 
@@ -50,10 +58,10 @@ export function validateExportRequest(
     if (
         "limit" in obj &&
         obj.limit !== undefined &&
-        typeof obj.limit !== "number"
+        !isPositiveInteger(obj.limit)
     ) {
         throw new ExportInvalidInputError(
-            "Limit must be a number"
+            "Limit must be a positive integer"
         );
     }
 }

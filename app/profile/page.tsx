@@ -1,7 +1,5 @@
-"use client";
-
 import ProfilePageContent from "@/components/profile/ProfilePageContent";
 
-export default function Page() {
+export default function ProfilePage() {
     return <ProfilePageContent />;
 }

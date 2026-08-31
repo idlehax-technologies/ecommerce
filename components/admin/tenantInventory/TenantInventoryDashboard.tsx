@@ -17,7 +17,9 @@ import type {
 import TenantInventorySection
     from "./TenantInventorySection";
 
-const LOW_STOCK_THRESHOLD = 5;
+import {
+    LOW_STOCK_THRESHOLD
+} from "@/lib/tenantInventory/constants";
 
 const SECTIONS = [
     "ALL",
@@ -131,7 +133,7 @@ export default function TenantInventoryDashboard({
             };
 
     return (
-        <Stack spacing={3}>
+        <Stack spacing={2}>
 
             <TextField
                 label="Search inventory"

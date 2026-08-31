@@ -1,5 +1,3 @@
-"use client";
-
 import AuthGuard from "@/components/guards/AuthGuard";
 import Navbar from "@/components/layout/Navbar";
 

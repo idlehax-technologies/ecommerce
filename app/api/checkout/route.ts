@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireTenant } from "@/lib/auth/guards";
+import { requireMembershipRole, requireMembership } from "@/lib/auth/guards";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 import { executeCheckout } from "@/lib/checkout/service";
 
@@ -17,13 +17,23 @@ export async function POST(req: Request) {
             csrf: true,
         });
 
-        const actor = requireTenant(user);
+        await requireMembershipRole(user, ["customer"]);
+
+        const actor = await requireMembership(user);
         recordUser(actor.userId);
 
         const result = await executeCheckout(
             actor.tenantId,
             actor.userId
         );
+
+        if (!result.success) {
+            recordLatency(Date.now() - start);
+
+            return NextResponse.json({
+                removedItems: result.removedItems,
+            });
+        }
 
         await dispatchEvent(result.event, { actorId: actor.userId });
 

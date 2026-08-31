@@ -1,106 +1,92 @@
 import type { Membership } from "@/types/membership";
-
-const globalStore = globalThis as any;
-
-const store: Map<string, Membership> =
-    globalStore.__membershipStore ?? new Map();
-
-globalStore.__membershipStore = store;
-
-function seedMemberships() {
-    if (store.size > 0) return;
-
-    const now = new Date().toISOString();
-
-    const seed: Membership[] = [
-        // tenant_alpha
-        {
-            membershipId: "m_u_customer_alpha",
-            userId: "u_customer",
-            tenantId: "tenant_alpha",
-            role: "customer",
-            status: "APPROVED",
-            createdAt: now,
-            updatedAt: now,
-        },
-        {
-            membershipId: "m_u_staff_alpha",
-            userId: "u_staff",
-            tenantId: "tenant_alpha",
-            role: "staff",
-            status: "APPROVED",
-            createdAt: now,
-            updatedAt: now,
-        },
-        {
-            membershipId: "m_u_admin_alpha",
-            userId: "u_admin",
-            tenantId: "tenant_alpha",
-            role: "admin",
-            status: "APPROVED",
-            createdAt: now,
-            updatedAt: now,
-        },
-
-        // tenant_mnsnhs
-        {
-            membershipId: "m_mnsnhs_customer",
-            userId: "mnsnhs_customer",
-            tenantId: "tenant_mnsnhs",
-            role: "customer",
-            status: "APPROVED",
-            createdAt: now,
-            updatedAt: now,
-        },
-        {
-            membershipId: "m_mnsnhs_staff",
-            userId: "mnsnhs_staff",
-            tenantId: "tenant_mnsnhs",
-            role: "staff",
-            status: "APPROVED",
-            createdAt: now,
-            updatedAt: now,
-        },
-        {
-            membershipId: "m_mnsnhs_admin",
-            userId: "mnsnhs_admin",
-            tenantId: "tenant_mnsnhs",
-            role: "admin",
-            status: "APPROVED",
-            createdAt: now,
-            updatedAt: now,
-        },
-    ];
-
-    for (const m of seed) {
-        store.set(m.membershipId, m);
-    }
-}
-
-seedMemberships();
+import { prisma } from "@/lib/db/prisma";
 
 export const membershipStore = {
-    get(id: string): Membership | null {
-        return store.get(id) ?? null;
+    async get(membershipId: string): Promise<Membership | null> {
+        const membership = await prisma.membership.findUnique({
+            where: { membershipId },
+        });
+
+        if (!membership) {
+            return null;
+        }
+
+        return {
+            membershipId: membership.membershipId,
+            userId: membership.userId,
+            tenantId: membership.tenantId,
+            role: membership.role,
+            status: membership.status,
+            createdAt: membership.createdAt.toISOString(),
+            updatedAt: membership.updatedAt.toISOString(),
+        };
     },
 
-    getAll(): Membership[] {
-        return Array.from(store.values());
+    async getAll(): Promise<Membership[]> {
+        const memberships = await prisma.membership.findMany();
+
+        return memberships.map((membership) => ({
+            membershipId: membership.membershipId,
+            userId: membership.userId,
+            tenantId: membership.tenantId,
+            role: membership.role,
+            status: membership.status,
+            createdAt: membership.createdAt.toISOString(),
+            updatedAt: membership.updatedAt.toISOString(),
+        }));
     },
 
-    listByUser(userId: string): Membership[] {
-        return Array.from(store.values()).filter(
-            (m) => m.userId === userId
-        );
+    async listByUser(userId: string): Promise<Membership[]> {
+        const memberships = await prisma.membership.findMany({
+            where: { userId },
+        });
+
+        return memberships.map((membership) => ({
+            membershipId: membership.membershipId,
+            userId: membership.userId,
+            tenantId: membership.tenantId,
+            role: membership.role,
+            status: membership.status,
+            createdAt: membership.createdAt.toISOString(),
+            updatedAt: membership.updatedAt.toISOString(),
+        }));
     },
 
-    listByTenant(tenantId: string): Membership[] {
-        return Array.from(store.values()).filter(
-            (m) => m.tenantId === tenantId
-        );
+    async listByTenant(tenantId: string): Promise<Membership[]> {
+        const memberships = await prisma.membership.findMany({
+            where: { tenantId },
+        });
+
+        return memberships.map((membership) => ({
+            membershipId: membership.membershipId,
+            userId: membership.userId,
+            tenantId: membership.tenantId,
+            role: membership.role,
+            status: membership.status,
+            createdAt: membership.createdAt.toISOString(),
+            updatedAt: membership.updatedAt.toISOString(),
+        }));
     },
 
-    save(m: Membership): void {
-        store.set(m.membershipId, m);
+    async save(membership: Membership): Promise<void> {
+        await prisma.membership.upsert({
+            where: {
+                membershipId: membership.membershipId,
+            },
+            create: {
+                membershipId: membership.membershipId,
+                userId: membership.userId,
+                tenantId: membership.tenantId,
+                role: membership.role,
+                status: membership.status,
+                createdAt: new Date(membership.createdAt),
+                updatedAt: new Date(membership.updatedAt),
+            },
+            update: {
+                role: membership.role,
+                status: membership.status,
+                updatedAt: new Date(membership.updatedAt),
+            },
+        });
     },
 };

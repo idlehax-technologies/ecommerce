@@ -19,19 +19,12 @@ import TenantInventoryTable
 
 type Props = {
     title: string;
-    tenantId: string;
     rows: TenantProvisioningRow[];
-    onRowChange(
-        productId: string,
-        patch: Partial<TenantProvisioningRow>
-    ): void;
 };
 
 export default function TenantInventorySection({
     title,
-    tenantId,
     rows,
-    onRowChange,
 }: Props) {
 
     return (
@@ -47,9 +40,7 @@ export default function TenantInventorySection({
 
             <AccordionDetails>
                 <TenantInventoryTable
-                    tenantId={tenantId}
                     rows={rows}
-                    onRowChange={onRowChange}
                 />
             </AccordionDetails>
 

@@ -4,23 +4,22 @@ import { useEffect, useState } from "react";
 
 import {
     Container,
-    Typography,
     Box,
+    Stack,
+    Typography,
+    Divider,
+    Paper,
     CircularProgress,
 } from "@mui/material";
 
-import { getOrders } from "@/lib/api/orders";
-
-import OrdersList from "@/components/orders/OrdersList";
-
-import type { OrderListItem } from "@/types/order";
-
+import OrdersDashboard from "@/components/orders/OrdersDashboard";
 import { toOrderListItem } from "@/lib/mappers/orderView";
+import { getOrders } from "@/lib/api/orders";
+import type { OrderListItem } from "@/types/order";
 
 export default function OrdersPage() {
 
     const [orders, setOrders] = useState<OrderListItem[]>([]);
-
     const [loading, setLoading] = useState(true);
 
     async function load() {
@@ -42,16 +41,29 @@ export default function OrdersPage() {
     }
 
     return (
-        <Container sx={{ mt: 6 }}>
-            <Typography
-                variant="h4"
-                gutterBottom
+        <Container maxWidth="md">
+            <Stack
+                spacing={2}
+                sx={{ p: { xs: 0, sm: 6 } }}
             >
-                Orders
-            </Typography>
-            <Box mt={3}>
-                <OrdersList orders={orders} />
-            </Box>
+                <Box>
+                    <Typography variant="h5" fontWeight={600}>
+                        Orders
+                    </Typography>
+
+                    <Typography variant="body2" color="text.secondary">
+                        View and track orders
+                    </Typography>
+                </Box>
+
+                <Divider />
+
+                <Paper elevation={2} sx={{ p: 2 }}>
+                    <OrdersDashboard
+                        orders={orders}
+                    />
+                </Paper>
+            </Stack>
         </Container>
     );
 }

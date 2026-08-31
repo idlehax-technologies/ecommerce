@@ -84,7 +84,7 @@ export default function ProductDetail({ row }: Props) {
 
                     <Divider />
 
-                    <QuantityControl productId={product.productId} stock={stock} />
+                    {/* <QuantityControl productId={product.productId} stock={stock} /> */}
 
                 </Stack>
             </Grid>

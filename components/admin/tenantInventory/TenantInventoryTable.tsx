@@ -1,14 +1,21 @@
 "use client";
 
 import {
-    Table, TableHead, TableRow, TableCell, TableBody,
-    Typography, Box
+    Table,
+    TableHead,
+    TableRow,
+    TableCell,
+    TableBody,
+    TableContainer,
+    Typography,
+    Box,
 } from "@mui/material";
 
 import type { TenantProvisioningRow } from "@/lib/mappers/tenantProvisioningView";
 import EnableToggle from "./EnableToggle";
-import ProvisionStatusIndicator from "./ProvisionStatusIndicator";
 import AdjustmentInput from "./AdjustmentInput";
+import TenantInventoryStatusBadge from "@/components/tenantInventory/TenantInventoryStatusBadge";
+import { formatINR } from "@/lib/format/currency";
 
 type Props = {
     tenantId: string;
@@ -26,89 +33,115 @@ export default function TenantInventoryTable({
 }: Props) {
 
     return (
-        <Table>
-            <TableHead>
-                <TableRow>
-                    <TableCell>Product</TableCell>
-                    <TableCell>SKU</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Enabled</TableCell>
-                    <TableCell>Stock</TableCell>
-                    <TableCell>Reserved</TableCell>
-                    <TableCell>Available</TableCell>
-                    <TableCell>Stock Adjustment</TableCell>
-                </TableRow>
-            </TableHead>
-
-            <TableBody>
-                {rows.map(row => (
-                    <TableRow key={row.product.productId}>
-                        <TableCell>
-                            <Box>
-                                <Typography fontWeight={500}>
-                                    {row.product.title}
-                                </Typography>
-
-                                <Typography
-                                    variant="body2"
-                                    color="text.secondary"
-                                >
-                                    ₹{row.product.price / 100}
-                                </Typography>
-                            </Box>
+        <TableContainer>
+            <Table
+                sx={{
+                    tableLayout: "fixed",
+                    width: "100%",
+                }}
+            >
+                <TableHead>
+                    <TableRow>
+                        <TableCell sx={{ width: "25%" }}>
+                            Product
                         </TableCell>
-
-                        <TableCell>
-                            {row.product.sku}
+                        <TableCell sx={{ width: "12%" }}>
+                            SKU
                         </TableCell>
-
-                        <TableCell>
-                            <ProvisionStatusIndicator row={row} />
+                        <TableCell sx={{ width: "12%" }}>
+                            Status
                         </TableCell>
-
-                        <TableCell>
-                            <EnableToggle
-                                tenantId={tenantId}
-                                row={row}
-                                onChange={(enabled) =>
-                                    onRowChange(
-                                        row.product.productId,
-                                        {
-                                            enabled,
-                                            isProvisioned: true,
-                                        }
-                                    )
-                                }
-                            />
+                        <TableCell align="center" sx={{ width: "8%" }}>
+                            Enabled
                         </TableCell>
-
-                        <TableCell>
-                            {row.stock}
+                        <TableCell align="center" sx={{ width: "6%" }}>
+                            Stock
                         </TableCell>
-
-                        <TableCell>
-                            {row.reserved}
+                        <TableCell align="center" sx={{ width: "6%" }}>
+                            Reserved
                         </TableCell>
-
-                        <TableCell>
-                            {row.stock - row.reserved}
+                        <TableCell align="center" sx={{ width: "6%" }}>
+                            Available
                         </TableCell>
-
-                        <TableCell>
-                            <AdjustmentInput
-                                tenantId={tenantId}
-                                row={row}
-                                onChange={(stock) =>
-                                    onRowChange(
-                                        row.product.productId,
-                                        { stock }
-                                    )
-                                }
-                            />
+                        <TableCell sx={{ width: "25%" }}>
+                            Stock Adjustment
                         </TableCell>
                     </TableRow>
-                ))}
-            </TableBody>
-        </Table>
+                </TableHead>
+
+                <TableBody>
+                    {rows.map(row => (
+                        <TableRow key={row.product.productId}>
+                            <TableCell>
+                                <Box>
+                                    <Typography fontWeight={600}>
+                                        {row.product.title}
+                                    </Typography>
+
+                                    <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                    >
+                                        {formatINR(row.product.price)}
+                                    </Typography>
+                                </Box>
+                            </TableCell>
+
+                            <TableCell>
+                                {row.product.sku}
+                            </TableCell>
+
+                            <TableCell>
+                                <TenantInventoryStatusBadge row={row} />
+                            </TableCell>
+
+                            <TableCell align="center">
+                                <EnableToggle
+                                    tenantId={tenantId}
+                                    row={row}
+                                    onChange={(enabled) =>
+                                        onRowChange(
+                                            row.product.productId,
+                                            {
+                                                enabled,
+                                                isProvisioned: true,
+                                            }
+                                        )
+                                    }
+                                />
+                            </TableCell>
+
+                            <TableCell align="center">
+                                {row.stock}
+                            </TableCell>
+
+                            <TableCell align="center">
+                                {row.reserved}
+                            </TableCell>
+
+                            <TableCell align="center">
+                                {row.available}
+                            </TableCell>
+
+                            <TableCell>
+                                <AdjustmentInput
+                                    tenantId={tenantId}
+                                    row={row}
+                                    onChange={(stock, available) =>
+                                        onRowChange(
+                                            row.product.productId,
+                                            {
+                                                stock,
+                                                available,
+                                            }
+                                        )
+                                    }
+                                />
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </TableContainer>
     );
 }

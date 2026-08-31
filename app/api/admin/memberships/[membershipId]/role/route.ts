@@ -22,7 +22,7 @@ export async function PATCH(
         const body: unknown = await req.json();
         assertUpdateMembershipRole(body);
 
-        const result = updateMembershipRole(
+        const result = await updateMembershipRole(
             user.userId,
             membershipId,
             body.role

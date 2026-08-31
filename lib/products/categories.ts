@@ -1,19 +1,47 @@
 export const PRODUCT_CATEGORIES = [
     {
-        code: "STA",
-        name: "Stationery",
+        code: "BOOK",
+        name: "Books & Learning Resources",
     },
     {
-        code: "AUD",
-        name: "Audio",
+        code: "OFFI",
+        name: "Stationery & Office Supplies",
     },
     {
-        code: "STO",
-        name: "Storage",
+        code: "LABS",
+        name: "Lab Equipment & Supplies",
     },
     {
-        code: "WRK",
-        name: "Workspace",
+        code: "ELEC",
+        name: "Electronics & Smart Tech",
+    },
+    {
+        code: "DIGI",
+        name: "Digital Products & Services",
+    },
+    {
+        code: "WEAR",
+        name: "Apparel & Uniforms",
+    },
+    {
+        code: "SPRT",
+        name: "Sports, Fitness & Outdoor",
+    },
+    {
+        code: "HLTH",
+        name: "Health, Safety & Hygiene",
+    },
+    {
+        code: "FURN",
+        name: "Furniture & Fixtures",
+    },
+    {
+        code: "HARD",
+        name: "Industrial, Tools & Hardware",
+    },
+    {
+        code: "OTHR",
+        name: "Other / General Store",
     },
 ] as const;
 

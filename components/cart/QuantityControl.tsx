@@ -1,15 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
+
 import {
     Box,
+    Typography,
     Button,
     IconButton,
-    Typography,
-    CircularProgress,
     Snackbar,
     Alert,
+    CircularProgress,
 } from "@mui/material";
+
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 
@@ -17,114 +19,151 @@ import { useCart } from "@/contexts/CartContext";
 
 type Props = {
     productId: string;
-    stock: number;
+    available: number;
 };
 
-export default function QuantityControl({ productId, stock }: Props) {
+export default function QuantityControl({
+    productId,
+    available,
+}: Props) {
+
     const { cart, add, update } = useCart();
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const quantity = useMemo(() => {
-        const item = cart?.items.find((i) => i.productId === productId);
-        return item?.quantity ?? 0;
-    }, [cart, productId]);
+        const item = cart?.items.find(
+            (item) => item.productId === productId
+        );
 
-    async function handleAdd() {
-        if (stock <= 0) return;
+        return item?.quantity ?? 0;
+    }, [
+        cart,
+        productId,
+    ]);
+
+    const remaining = available - quantity;
+
+    async function execute(
+        action: () => Promise<void>
+    ) {
+        if (loading) {
+            return;
+        }
 
         try {
             setLoading(true);
-            await add(productId);
-        } catch (err: unknown) {
+            await action();
 
+        } catch (err: unknown) {
             if (err instanceof Error) {
                 setError(err.message);
             } else {
-                setError("Failed to add item");
+                setError("Failed to update cart");
             }
+
         } finally {
             setLoading(false);
         }
+    }
+
+    async function handleAdd() {
+        if (remaining <= 0) {
+            return;
+        }
+
+        await execute(() =>
+            add(productId)
+        );
     }
 
     async function handleIncrease() {
-        if (quantity >= stock) return;
-
-        try {
-            setLoading(true);
-            await update(productId, quantity + 1);
-        } catch (err: unknown) {
-
-            if (err instanceof Error) {
-                setError(err.message);
-            } else {
-                setError("Failed to update quantity");
-            }
-        } finally {
-            setLoading(false);
+        if (remaining <= 0) {
+            return;
         }
+
+        await execute(() =>
+            update(productId, quantity + 1)
+        );
     }
 
     async function handleDecrease() {
-        if (quantity === 0) return;
-
-        try {
-            setLoading(true);
-
-            if (quantity === 1) {
-                await update(productId, 0); // removal
-            } else {
-                await update(productId, quantity - 1);
-            }
-        } catch (err: unknown) {
-
-            if (err instanceof Error) {
-                setError(err.message);
-            } else {
-                setError("Failed to update quantity");
-            }
-        } finally {
-            setLoading(false);
+        if (quantity <= 0) {
+            return;
         }
+
+        await execute(() =>
+            update(productId, quantity - 1)
+        );
     }
 
     return (
         <>
-            {loading ? (
-                <Box display="flex" justifyContent="center" alignItems="center" minHeight={40}>
-                    <CircularProgress size={20} />
-                </Box>
-            ) : quantity === 0 ? (
+            {quantity === 0 ? (
                 <Button
-                    variant="contained"
-                    size="large"
-                    disabled={stock <= 0}
+                    fullWidth
+                    size="small"
+                    variant="outlined"
+                    disabled={loading || remaining <= 0}
                     onClick={handleAdd}
+                    sx={{
+                        minHeight: 34,
+                        fontWeight: 600,
+                    }}
                 >
-                    Add to Cart
+                    {loading
+                        ? (
+                            <CircularProgress
+                                size={18}
+                                color="inherit"
+                            />
+                        )
+                        : "ADD"}
                 </Button>
             ) : (
-                <Box display="flex" alignItems="center" gap={2}>
+                <Box
+                    sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        border: 1,
+                        borderColor: "primary.main",
+                        borderRadius: 1,
+                        px: 0.5,
+                        py: 0.25,
+                        minHeight: 34,
+                    }}
+                >
                     <IconButton
-                        color="primary"
-                        disabled={loading || quantity === 0}
+                        size="small"
+                        disabled={loading}
                         onClick={handleDecrease}
                     >
-                        <RemoveIcon />
+                        <RemoveIcon
+                            fontSize="small"
+                        />
                     </IconButton>
 
-                    <Typography fontWeight={600}>
-                        {quantity}
-                    </Typography>
+                    {loading ? (
+                        <CircularProgress
+                            size={16}
+                            color="inherit"
+                        />
+                    ) : (
+                        <Typography fontWeight={600}>
+                            {quantity}
+                        </Typography>
+                    )}
 
                     <IconButton
-                        color="primary"
-                        disabled={loading || quantity >= stock}
+                        size="small"
+                        disabled={loading || remaining <= 0}
                         onClick={handleIncrease}
                     >
-                        <AddIcon />
+                        <AddIcon
+                            fontSize="small"
+                        />
                     </IconButton>
                 </Box>
             )}
@@ -134,7 +173,10 @@ export default function QuantityControl({ productId, stock }: Props) {
                 autoHideDuration={3000}
                 onClose={() => setError(null)}
             >
-                <Alert severity="error" onClose={() => setError(null)}>
+                <Alert
+                    severity="error"
+                    onClose={() => setError(null)}
+                >
                     {error}
                 </Alert>
             </Snackbar>

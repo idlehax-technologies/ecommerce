@@ -30,18 +30,29 @@ export default function PlatformErrorPage({
                     <Typography variant="h5">
                         Platform Error
                     </Typography>
-                    <Typography
-                        color="text.secondary"
-                    >
-                        {error.message ||
-                            "Something went wrong."}
+
+                    <Typography color="text.secondary">
+                        {error.message || "Something went wrong"}
                     </Typography>
-                    <Button
-                        variant="contained"
-                        onClick={reset}
+
+                    <Stack
+                        direction="row"
+                        spacing={2}
                     >
-                        Retry
-                    </Button>
+                        <Button
+                            variant="contained"
+                            onClick={reset}
+                        >
+                            Try Again
+                        </Button>
+
+                        <Button
+                            variant="outlined"
+                            href="/platform/tenants"
+                        >
+                            Return to Dashboard
+                        </Button>
+                    </Stack>
                 </Stack>
             </Paper>
         </Container>

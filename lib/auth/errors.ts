@@ -36,3 +36,15 @@ export class NotInAssumedSessionError extends AuthDomainError {
         super(message, 400);
     }
 }
+
+export class AuthUserNotFoundError extends AuthDomainError {
+    constructor(message = "Auth user not found") {
+        super(message, 404);
+    }
+}
+
+export class OtpDeliveryFailedError extends AuthDomainError {
+    constructor(message = "Failed to deliver OTP") {
+        super(message, 503);
+    }
+}

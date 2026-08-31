@@ -1,9 +1,12 @@
 import type { Order } from "@/types/order";
-
 import type { MembershipActor } from "@/types/auth";
 
 import { ForbiddenError } from "../auth/errors";
-import { InvalidOrderInvoiceStateError, InvoiceNumberAlreadyExistsError, OrderNumberAlreadyExistsError } from "./errors";
+import {
+    InvalidOrderInvoiceStateError,
+    InvoiceNumberAlreadyExistsError,
+    OrderNumberAlreadyExistsError,
+} from "./errors";
 
 function canViewOrder(
     actor: MembershipActor,

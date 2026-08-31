@@ -28,8 +28,25 @@ function isNonEmptyString(
   );
 }
 
-function isPositiveMoney(v: unknown): v is number {
-  return typeof v === "number" && Number.isFinite(v) && v > 0;
+function isPositiveMoney(
+  value: unknown
+): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value > 0
+  );
+}
+
+function isDiscountPercent(
+  value: unknown
+): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= 0 &&
+    value <= 100
+  );
 }
 
 function isGstRate(
@@ -82,6 +99,12 @@ export function validateCreateProduct(
   if (!isPositiveMoney(body.price)) {
     throw new ProductInvalidInputError(
       "Price must be a positive number"
+    );
+  }
+
+  if (!isDiscountPercent(body.discountPercent)) {
+    throw new ProductInvalidInputError(
+      "Discount percent must be between 0 and 100"
     );
   }
 
@@ -172,6 +195,16 @@ export function validateUpdateProduct(
   ) {
     throw new ProductInvalidInputError(
       "Price must be a positive number"
+    );
+  }
+
+  if (
+    "discountPercent" in body &&
+    body.discountPercent !== undefined &&
+    !isDiscountPercent(body.discountPercent)
+  ) {
+    throw new ProductInvalidInputError(
+      "Discount percent must be between 0 and 100"
     );
   }
 

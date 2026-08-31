@@ -1,5 +1,3 @@
-"use client";
-
 import TenantGuard from "@/components/guards/TenantGuard";
 
 export default function HomeLayout({
@@ -8,7 +6,7 @@ export default function HomeLayout({
     children: React.ReactNode;
 }) {
     return (
-        <TenantGuard allowRoles={["customer", "staff", "admin"]}>
+        <TenantGuard allowRoles={["customer"]}>
             {children}
         </TenantGuard>
     );

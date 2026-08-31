@@ -11,15 +11,17 @@ import {
 } from "@mui/material";
 
 import { requestMembership } from "@/lib/api/memberships";
-
 import { fetchActiveTenants } from "@/lib/api/tenants";
 
 import { useSnackbar } from "@/contexts/SnackbarContext";
 
 import type { PublicTenant } from "@/types/tenant";
 
-export default function MembershipRequestForm() {
-
+export default function MembershipRequestForm({
+    onRequested,
+}: {
+    onRequested: () => Promise<void>;
+}) {
     const [tenantId, setTenantId] = useState("");
     const [loading, setLoading] = useState(false);
     const [tenants, setTenants] = useState<PublicTenant[]>([]);
@@ -44,6 +46,8 @@ export default function MembershipRequestForm() {
         try {
             setLoading(true);
             await requestMembership(tenantId);
+            await onRequested();
+            setTenantId("");
             show("Request submitted");
 
         } catch (err: unknown) {
@@ -64,16 +68,14 @@ export default function MembershipRequestForm() {
 
     return (
         <Stack spacing={2}>
-            <Typography variant="h6">
+            <Typography variant="h6" fontWeight={600}>
                 Request Access
             </Typography>
 
             <Select
                 value={tenantId}
                 onChange={(e) =>
-                    setTenantId(
-                        e.target.value
-                    )
+                    setTenantId(e.target.value)
                 }
                 displayEmpty
             >
@@ -92,10 +94,7 @@ export default function MembershipRequestForm() {
 
             <Button
                 variant="contained"
-                disabled={
-                    !tenantId ||
-                    loading
-                }
+                disabled={!tenantId || loading}
                 onClick={submit}
             >
                 {loading

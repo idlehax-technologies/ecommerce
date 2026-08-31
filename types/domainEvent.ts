@@ -17,12 +17,25 @@ export type DomainEvent =
     | { type: "MembershipExpired"; membership: Membership; from: Membership["status"]; to: Membership["status"] }
     | { type: "MembershipRoleUpdated"; membership: Membership; from: Membership["role"]; to: Membership["role"] }
 
-    | { type: "PaymentConfirmed"; order: Order; payment: Payment }
+    | {
+        type: "PaymentConfirmed";
+        payment: Payment;
+        from: Payment["status"];
+        to: Payment["status"];
+    }
 
     | {
         type: "InventoryAdjusted";
         tenantId: string;
         productId: string;
-        from: { stock: number; reserved: number };
-        to: { stock: number; reserved: number };
-    };
+        from: number;
+        to: number;
+    }
+
+    | {
+        type: "InventoryReconciled";
+        tenantId: string;
+        productId: string;
+        from: number;
+        to: number;
+    }

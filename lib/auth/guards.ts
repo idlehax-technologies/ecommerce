@@ -1,21 +1,23 @@
-import type { AccessActor, AuthUser, MembershipActor } from "@/types/auth";
+import type { AuthUser, MembershipActor } from "@/types/auth";
+import type { MembershipRole } from "@/types/membership";
 import { UnauthorizedError, ForbiddenError, NotInAssumedSessionError } from "./errors";
 import { getMembership } from "@/lib/memberships/domain";
-import { MembershipRole } from "@/types/membership";
 
 export function requireAuth(user: AuthUser | null): AuthUser {
     if (!user) throw new UnauthorizedError();
     return user;
 }
 
-export function requireMembership(user: AuthUser | null): MembershipActor {
+export async function requireMembership(
+    user: AuthUser | null
+): Promise<MembershipActor> {
     const u = requireAuth(user);
 
     if (!u.activeMembershipId) {
         throw new ForbiddenError("No active membership");
     }
 
-    const membership = getMembership(u.activeMembershipId);
+    const membership = await getMembership(u.activeMembershipId);
 
     if (membership.status !== "APPROVED") {
         throw new ForbiddenError("Membership not approved");
@@ -28,21 +30,17 @@ export function requireMembership(user: AuthUser | null): MembershipActor {
     };
 }
 
-export function requireMembershipRole(
+export async function requireMembershipRole(
     user: AuthUser | null,
     roles: MembershipRole[]
-): MembershipActor {
-    const actor = requireMembership(user);
+): Promise<MembershipActor> {
+    const actor = await requireMembership(user);
 
     if (!roles.includes(actor.role)) {
         throw new ForbiddenError();
     }
 
     return actor;
-}
-
-export function requireTenant(user: AuthUser | null): MembershipActor {
-    return requireMembership(user);
 }
 
 export function requireSuperadmin(user: AuthUser | null): AuthUser {
@@ -53,28 +51,6 @@ export function requireSuperadmin(user: AuthUser | null): AuthUser {
     }
 
     return u;
-}
-
-export function requireAccess(
-    user: AuthUser | null,
-    roles: MembershipRole[]
-): AccessActor {
-    const u = requireAuth(user);
-
-    if (u.isSuperadmin) {
-        return { type: "superadmin", userId: u.userId };
-    }
-
-    const membership = requireMembership(u);
-
-    if (!roles.includes(membership.role)) {
-        throw new ForbiddenError("Insufficient role");
-    }
-
-    return {
-        type: "tenant",
-        membership,
-    };
 }
 
 export function requireAssumedSession(

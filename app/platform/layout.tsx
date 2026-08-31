@@ -1,7 +1,7 @@
-"use client";
-
-import PlatformGuard from "@/components/guards/PlatformGuard";
+import { Box } from "@mui/material";
 import Navbar from "@/components/layout/Navbar";
+import Sidebar from "@/components/layout/Sidebar";
+import PlatformGuard from "@/components/guards/PlatformGuard";
 
 export default function PlatformLayout({
     children,
@@ -11,7 +11,14 @@ export default function PlatformLayout({
     return (
         <PlatformGuard>
             <Navbar />
-            {children}
+
+            <Box sx={{ display: "flex", flex: 1 }}>
+                <Sidebar />
+
+                <Box sx={{ flex: 1 }}>
+                    {children}
+                </Box>
+            </Box>
         </PlatformGuard>
     );
 }

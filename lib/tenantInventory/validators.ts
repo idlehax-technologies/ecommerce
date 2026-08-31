@@ -2,13 +2,13 @@ import type {
     ProvisionProductDTO,
 } from "@/types/tenantInventory";
 
+import type {
+    StockAdjustmentRequest,
+} from "@/types/stockAdjustment";
+
 import {
     InvalidInventoryInputError,
 } from "./errors";
-
-import {
-    StockAdjustmentRequest,
-} from "@/types/stockAdjustment";
 
 function isNonEmptyString(
     value: unknown

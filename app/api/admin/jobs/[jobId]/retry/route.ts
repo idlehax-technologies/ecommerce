@@ -20,7 +20,7 @@ export async function POST(
 
         requireSuperadmin(user);
 
-        retryJob(jobId);
+        await retryJob(jobId);
 
         return NextResponse.json({ success: true });
 

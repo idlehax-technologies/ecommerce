@@ -1,4 +1,5 @@
-import { getCsrfToken } from "@/contexts/AuthContext";
+import { CSRF_HEADER } from "../auth/cookies";
+import { getCsrfToken } from "../security/csrfClient";
 
 function isErrorResponse(
     data: unknown
@@ -19,7 +20,7 @@ export async function apiFetch<T>(
         credentials: "include",
         headers: {
             "Content-Type": "application/json",
-            "x-csrf-token": getCsrfToken() ?? "",
+            [CSRF_HEADER]: getCsrfToken() ?? "",
             ...(options.headers || {}),
         },
         ...options,

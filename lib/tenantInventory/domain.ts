@@ -14,6 +14,7 @@ import {
     releaseReservation
 } from "./reservations";
 
+import { getTenant } from "../tenants/domain";
 import { getActiveProduct } from "@/lib/products/domain";
 
 import type {
@@ -21,7 +22,7 @@ import type {
     ProvisionProductDTO,
 } from "@/types/tenantInventory";
 
-export function assertValidQuantity(
+function assertValidQuantity(
     quantity: unknown
 ): asserts quantity is number {
 
@@ -46,13 +47,15 @@ export async function provisionProduct(
     dto: ProvisionProductDTO
 ): Promise<TenantInventory> {
 
+    await getTenant(tenantId);
+
     await getActiveProduct(dto.productId);
 
-    const existing = tenantInventoryStore.get(tenantId, dto.productId);
+    const existing = await tenantInventoryStore.get(tenantId, dto.productId);
 
     if (!existing) {
         const created = toNewProvision(tenantId, dto);
-        tenantInventoryStore.save(created);
+        await tenantInventoryStore.save(created);
         return created;
     }
 
@@ -63,7 +66,7 @@ export async function provisionProduct(
         throw new CannotDisableWithActiveReservationsError(dto.productId);
     }
 
-    tenantInventoryStore.save(updated);
+    await tenantInventoryStore.save(updated);
     return updated;
 }
 
@@ -72,7 +75,9 @@ export async function listTenantInventory(
     limit?: number
 ): Promise<TenantInventory[]> {
 
-    const all = tenantInventoryStore.listByTenant(tenantId);
+    await getTenant(tenantId);
+
+    const all = await tenantInventoryStore.listByTenant(tenantId);
 
     return limit ? all.slice(0, limit) : all;
 }
@@ -82,7 +87,11 @@ export async function findTenantProvision(
     productId: string
 ): Promise<TenantInventory | null> {
 
-    return tenantInventoryStore.get(tenantId, productId) ?? null;
+    await getTenant(tenantId);
+
+    const inventory = await tenantInventoryStore.get(tenantId, productId);
+
+    return inventory ?? null;
 }
 
 /**
@@ -94,13 +103,14 @@ export async function reserveStock(
     quantity: number
 ): Promise<TenantInventory> {
 
+    await getTenant(tenantId);
+
     assertValidQuantity(quantity);
 
-    const updated = tenantInventoryStore.update(
+    const updated = await tenantInventoryStore.update(
         tenantId,
         productId,
         (record) => {
-
             if (!record.enabled) {
                 throw new ProvisionNotFoundError(productId);
             }
@@ -123,15 +133,17 @@ export async function commitStock(
     quantity: number
 ): Promise<TenantInventory> {
 
+    await getTenant(tenantId);
+
     assertValidQuantity(quantity);
 
-    const record = tenantInventoryStore.get(tenantId, productId);
+    const updated = await tenantInventoryStore.update(
+        tenantId,
+        productId,
+        (record) => commitReservation(record, quantity)
+    );
 
-    requireProvision(record, productId);
-
-    const updated = commitReservation(record, quantity);
-
-    tenantInventoryStore.save(updated);
+    requireProvision(updated, productId);
 
     return updated;
 }
@@ -145,15 +157,17 @@ export async function releaseStock(
     quantity: number
 ): Promise<TenantInventory> {
 
+    await getTenant(tenantId);
+
     assertValidQuantity(quantity);
 
-    const record = tenantInventoryStore.get(tenantId, productId);
+    const updated = await tenantInventoryStore.update(
+        tenantId,
+        productId,
+        (record) => releaseReservation(record, quantity)
+    );
 
-    requireProvision(record, productId);
-
-    const updated = releaseReservation(record, quantity);
-
-    tenantInventoryStore.save(updated);
+    requireProvision(updated, productId);
 
     return updated;
 }
@@ -175,7 +189,7 @@ export async function reconcileReservedQuantity(
         updatedAt: new Date().toISOString(),
     };
 
-    tenantInventoryStore.save(corrected);
+    await tenantInventoryStore.save(corrected);
 
     return corrected;
 }

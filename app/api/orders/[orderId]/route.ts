@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { guardRequest } from "@/lib/security/requestGuard";
 
-import { requireTenant } from "@/lib/auth/guards";
+import { requireMembershipRole, requireMembership } from "@/lib/auth/guards";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
@@ -19,9 +19,10 @@ export async function GET(
 
         const user = await guardRequest(req, { requireAuth: true });
 
-        const actor = requireTenant(user);
+        await requireMembershipRole(user, ["customer", "staff"]);
+        const actor = await requireMembership(user);
 
-        const order = ordersDomain.getTenantOrder(
+        const order = await ordersDomain.getTenantOrder(
             actor.tenantId,
             orderId
         );

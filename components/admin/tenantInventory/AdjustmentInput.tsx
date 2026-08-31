@@ -17,10 +17,13 @@ import type { TenantProvisioningRow } from "@/lib/mappers/tenantProvisioningView
 type Props = {
     tenantId: string;
     row: TenantProvisioningRow;
-    onChange(stock: number): void;
+    onChange(
+        stock: number,
+        available: number
+    ): void;
 };
 
-function generateKey() {
+function generateIdempotencyKey() {
     return crypto.randomUUID();
 }
 
@@ -34,7 +37,7 @@ export default function AdjustmentInput({
 
     const [error, setError] = useState<string | null>(null);
 
-    async function apply() {
+    async function adjustStock() {
 
         if (
             delta === undefined ||
@@ -49,13 +52,16 @@ export default function AdjustmentInput({
                 await adjustStockBy(
                     tenantId,
                     {
-                        idempotencyKey: generateKey(),
+                        idempotencyKey: generateIdempotencyKey(),
                         productId: row.product.productId,
                         delta,
                     }
                 );
 
-            onChange(result.updated.stock);
+            onChange(
+                result.updated.stock,
+                result.updated.stock - row.reserved
+            );
 
             setDelta(undefined);
 
@@ -96,9 +102,9 @@ export default function AdjustmentInput({
                         delta === undefined ||
                         delta === 0
                     }
-                    onClick={apply}
+                    onClick={adjustStock}
                 >
-                    Apply
+                    Adjust
                 </Button>
             </Stack>
 

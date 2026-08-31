@@ -1,5 +1,3 @@
-// lib/tenantInventory/guards.ts
-
 import type { TenantInventory } from "@/types/tenantInventory";
 import { ProvisionNotFoundError } from "./errors";
 

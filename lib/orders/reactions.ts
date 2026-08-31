@@ -12,7 +12,7 @@ export async function handleOrderEvent(
 
         case "OrderPaid":
             for (const item of event.order.items) {
-                tenantInventoryDomain.commitStock(
+                await tenantInventoryDomain.commitStock(
                     event.order.tenantId,
                     item.productId,
                     item.quantity
@@ -23,7 +23,7 @@ export async function handleOrderEvent(
         case "OrderCancelled":
         case "OrderExpired":
             for (const item of event.order.items) {
-                tenantInventoryDomain.releaseStock(
+                await tenantInventoryDomain.releaseStock(
                     event.order.tenantId,
                     item.productId,
                     item.quantity
@@ -36,7 +36,7 @@ export async function handleOrderEvent(
 
         case "OrderRefunded":
             for (const item of event.order.items) {
-                tenantInventoryDomain.releaseStock(
+                await tenantInventoryDomain.releaseStock(
                     event.order.tenantId,
                     item.productId,
                     item.quantity

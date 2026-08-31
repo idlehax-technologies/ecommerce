@@ -1,25 +1,48 @@
-import { Container, Typography } from "@mui/material";
+import {
+    Container,
+    Box,
+    Stack,
+    Typography,
+    Divider,
+    Paper,
+} from "@mui/material";
 
-import { getUserFromRequest } from "@/lib/auth";
+import { getUserFromRequest } from "@/lib/session/session";
 import { requireSuperadmin } from "@/lib/auth/guards";
 
 import { listJobs } from "@/lib/jobs/service";
 
-import JobsTable from "@/components/admin/jobs/JobsTable";
+import JobsDashboard
+    from "@/components/admin/jobs/JobsDashboard";
 
 export default async function JobsPage() {
+
     const rawUser = await getUserFromRequest();
     requireSuperadmin(rawUser);
 
-    const jobs = listJobs();
+    const jobs = await listJobs();
 
     return (
-        <Container sx={{ py: 4 }}>
-            <Typography variant="h5" mb={3}>
-                Jobs
-            </Typography>
+        <Container maxWidth="md">
+            <Stack spacing={3} sx={{ p: 6 }}>
+                <Box>
+                    <Typography variant="h5" fontWeight={600}>
+                        Jobs
+                    </Typography>
 
-            <JobsTable jobs={jobs} />
+                    <Typography variant="body2" color="text.secondary">
+                        View background job execution history
+                    </Typography>
+                </Box>
+
+                <Divider />
+
+                <Paper elevation={2} sx={{ p: 2 }}>
+                    <JobsDashboard
+                        jobs={jobs}
+                    />
+                </Paper>
+            </Stack>
         </Container>
     );
 }

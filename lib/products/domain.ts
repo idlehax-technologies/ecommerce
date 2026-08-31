@@ -13,6 +13,7 @@ import {
   assertProductExists,
   assertUniqueSku,
 } from "./guards";
+
 import { getCategoryCode, ProductCategory } from "./categories";
 
 function now(): string {
@@ -45,20 +46,27 @@ function generateSku(
 ): string {
   const categoryCode = getCategoryCode(category);
 
-  return `${categoryCode}-${hsnCode.trim()}-${String(sequence).padStart(5, "0")}`;
+  return `${categoryCode}-${hsnCode.trim()}-${String(sequence).padStart(6, "0")}`;
 }
 
 export async function createProduct(
   dto: CreateProductDTO
 ): Promise<Product> {
   const products = await listProducts();
+
   const sequence = getNextSkuSequence(products);
 
-  const sku = generateSku(dto.category, dto.hsnCode, sequence);
+  const sku = generateSku(
+    dto.category,
+    dto.hsnCode,
+    sequence
+  );
+
   assertUniqueSku(products, sku);
 
   const product = toNewProduct(dto, sku);
-  productStore.save(product);
+
+  await productStore.save(product);
 
   return product;
 }
@@ -66,19 +74,21 @@ export async function createProduct(
 export async function listProducts(
   limit?: number
 ): Promise<Product[]> {
-  const all = productStore.getAll();
+  const products = await productStore.getAll();
 
   return limit
-    ? all.slice(0, limit)
-    : all;
+    ? products.slice(0, limit)
+    : products;
 }
 
 export async function listActiveProducts(
   limit?: number
 ): Promise<Product[]> {
-  const active = productStore
-    .getAll()
-    .filter((p) => p.status === "ACTIVE");
+  const products = await productStore.getAll();
+
+  const active = products.filter(
+    (p) => p.status === "ACTIVE"
+  );
 
   return limit
     ? active.slice(0, limit)
@@ -88,21 +98,21 @@ export async function listActiveProducts(
 export async function getProduct(
   productId: string
 ): Promise<Product> {
-  const p = productStore.get(productId);
+  const product = await productStore.get(productId);
 
-  assertProductExists(p);
+  assertProductExists(product);
 
-  return p;
+  return product;
 }
 
 export async function getActiveProduct(
   productId: string
 ): Promise<Product> {
-  const p = await getProduct(productId);
+  const product = await getProduct(productId);
 
-  assertActive(p);
+  assertActive(product);
 
-  return p;
+  return product;
 }
 
 export async function updateProduct(
@@ -113,7 +123,7 @@ export async function updateProduct(
 
   const updated = toUpdatedProduct(existing, dto);
 
-  productStore.save(updated);
+  await productStore.save(updated);
 
   return updated;
 }
@@ -129,7 +139,7 @@ export async function activateProduct(
     updatedAt: now(),
   };
 
-  productStore.save(updated);
+  await productStore.save(updated);
 
   return updated;
 }
@@ -145,7 +155,7 @@ export async function deactivateProduct(
     updatedAt: now(),
   };
 
-  productStore.save(updated);
+  await productStore.save(updated);
 
   return updated;
 }

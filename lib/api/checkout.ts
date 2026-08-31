@@ -1,14 +1,13 @@
-import type { Order } from "@/types/order";
-
 import { apiFetch } from "./fetch";
 
-export async function checkout(): Promise<{
-    order: Order;
-}> {
+import type { CheckoutResponse } from "@/types/checkout";
 
-    return apiFetch<{
-        order: Order;
-    }>("/api/checkout", {
-        method: "POST",
-    });
+export async function checkout(): Promise<CheckoutResponse> {
+
+    return apiFetch<CheckoutResponse>(
+        "/api/checkout",
+        {
+            method: "POST",
+        }
+    );
 }

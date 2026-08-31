@@ -1,19 +1,42 @@
 export type AnalyticsSummary = {
     totalOrders: number;
-    totalRevenue: number;
+
+    reservedOrders: number;
+    paidOrders: number;
+    pickedUpOrders: number;
+    cancelledOrders: number;
+    expiredOrders: number;
+    refundedOrders: number;
+
     totalUnitsSold: number;
+
+    grossRevenue: number;
+    discountGiven: number;
+    netRevenue: number;
 };
 
-export type RevenuePoint = {
+export type DailyAnalytics = {
     date: string;
-    revenue: number;
+
+    orders: number;
+    unitsSold: number;
+
+    grossRevenue: number;
+    discountGiven: number;
+    netRevenue: number;
 };
 
 export type ProductSales = {
     productId: string;
-    name: string;
+
+    title: string;
+    sku: string;
+
     unitsSold: number;
-    revenue: number;
+
+    grossRevenue: number;
+    discountGiven: number;
+    netRevenue: number;
 };
 
 export type TenantAnalytics = {
@@ -22,7 +45,7 @@ export type TenantAnalytics = {
 
     summary: AnalyticsSummary;
 
-    revenueTimeline: RevenuePoint[];
+    dailyAnalytics: DailyAnalytics[];
 
     topProducts: ProductSales[];
 };

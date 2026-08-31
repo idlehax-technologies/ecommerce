@@ -1,4 +1,5 @@
 import { apiFetch } from "./fetch";
+
 import type { AuthUser } from "@/types/auth";
 
 export async function requestOtp(

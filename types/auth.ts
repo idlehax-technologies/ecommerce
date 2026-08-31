@@ -1,12 +1,17 @@
 import { MembershipRole } from "./membership";
 
-export type AuthUser = {
+export type UserIdentity = {
   userId: string;
   phone: string;
+  isSuperadmin: boolean;
+};
+
+export type SessionPayload = {
   activeMembershipId?: string;
-  isSuperadmin?: boolean;
   impersonatedBy?: string;
 };
+
+export type AuthUser = UserIdentity & SessionPayload;
 
 export type AuthState = {
   user: AuthUser | null;
@@ -18,19 +23,3 @@ export type MembershipActor = {
   tenantId: string;
   role: MembershipRole;
 };
-
-export type TenantActor = {
-  type: "tenant";
-  membership: {
-    userId: string;
-    tenantId: string;
-    role: MembershipRole;
-  };
-};
-
-export type SuperadminActor = {
-  type: "superadmin";
-  userId: string;
-};
-
-export type AccessActor = TenantActor | SuperadminActor;

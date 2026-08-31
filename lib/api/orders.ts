@@ -36,30 +36,6 @@ export async function payOrder(
     );
 }
 
-export async function createPOSOrder(payload: {
-    items: {
-        productId: string;
-        quantity: number;
-    }[];
-    paymentMethod?: PaymentMethod;
-}): Promise<{
-    order: Order & {
-        placedByStaffId: string;
-    };
-}> {
-    return apiFetch<{
-        order: Order & {
-            placedByStaffId: string;
-        };
-    }>(
-        "/api/orders/pos",
-        {
-            method: "POST",
-            body: JSON.stringify(payload),
-        }
-    );
-}
-
 export async function cancelOrder(
     orderId: string
 ): Promise<{ success: true }> {

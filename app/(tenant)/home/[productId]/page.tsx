@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { Container } from "@mui/material";
-import { getUserFromRequest } from "@/lib/auth";
-import { requireTenant } from "@/lib/auth/guards";
-import { getTenantProvisioningView } from "@/lib/tenantInventory/service";
+import { getUserFromRequest } from "@/lib/session/session";
+import { requireMembership } from "@/lib/auth/guards";
+import { getTenantInventoryView } from "@/lib/tenantInventory/service";
 import ProductDetail from "@/components/products/ProductDetail";
 
 type PageProps = {
@@ -12,8 +12,8 @@ type PageProps = {
 export default async function ProductDetailPage({ params }: PageProps) {
   const { productId } = await params;
 
-  const actor = requireTenant(await getUserFromRequest());
-  const rows = await getTenantProvisioningView(actor.tenantId);
+  const actor = await requireMembership(await getUserFromRequest());
+  const rows = await getTenantInventoryView(actor.tenantId);
 
   const row = rows.find(r => r.product.productId === productId);
 

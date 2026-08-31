@@ -3,14 +3,6 @@ export const INDIAN_STATES = [
         code: "19",
         name: "West Bengal",
     },
-    {
-        code: "27",
-        name: "Maharashtra",
-    },
-    {
-        code: "29",
-        name: "Karnataka",
-    },
 ] as const;
 
 export type IndianState =

@@ -2,7 +2,18 @@ import { listTenantOrders } from "@/lib/orders/domain";
 import { listTenantPayments } from "@/lib/payments/domain";
 import { listTenantInventory } from "@/lib/tenantInventory/domain";
 
-import type { ReconciliationMismatch, ReconciliationReport } from "@/types/reconciliation";
+import type { Order } from "@/types/order";
+import type {
+    ReconciliationMismatch,
+    ReconciliationReport,
+} from "@/types/reconciliation";
+
+function requiresPayment(order: Order): boolean {
+    return (
+        order.status === "PAID" ||
+        order.status === "PICKED_UP"
+    );
+}
 
 export async function runTenantReconciliation(
     tenantId: string
@@ -11,7 +22,7 @@ export async function runTenantReconciliation(
     const scannedAt = new Date().toISOString();
 
     const orders = await listTenantOrders(tenantId);
-    const payments = listTenantPayments(tenantId);
+    const payments = await listTenantPayments(tenantId);
     const inventory = await listTenantInventory(tenantId);
 
     const mismatches: ReconciliationMismatch[] = [];
@@ -27,8 +38,8 @@ export async function runTenantReconciliation(
 
         const payment = paymentByOrder.get(order.orderId);
 
-        // 1. Paid order must have payment
-        if (order.status === "PAID" && !payment) {
+        // 1. Revenue order must have payment
+        if (requiresPayment(order) && !payment) {
             mismatches.push({
                 type: "ORDER_PAYMENT_MISSING",
                 tenantId,
@@ -54,8 +65,11 @@ export async function runTenantReconciliation(
                 });
             }
 
-            // 3. Paid order must have confirmed payment
-            if (order.status === "PAID" && payment.status !== "CONFIRMED") {
+            // 3. Revenue order must have confirmed payment
+            if (
+                requiresPayment(order) &&
+                payment.status !== "CONFIRMED"
+            ) {
                 mismatches.push({
                     type: "ORDER_PAID_BUT_PAYMENT_NOT_CONFIRMED",
                     tenantId,
@@ -130,7 +144,8 @@ export async function runTenantReconciliation(
         }
 
         // 6. Reservation mismatch vs orders
-        const expected = expectedReserved.get(record.productId) ?? 0;
+        const expected =
+            expectedReserved.get(record.productId) ?? 0;
 
         if (record.reserved !== expected) {
             mismatches.push({

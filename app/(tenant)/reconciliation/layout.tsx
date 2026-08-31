@@ -1,5 +1,3 @@
-"use client";
-
 import TenantGuard from "@/components/guards/TenantGuard";
 
 export default function ReconciliationLayout({
@@ -8,7 +6,7 @@ export default function ReconciliationLayout({
     children: React.ReactNode;
 }) {
     return (
-        <TenantGuard allowRoles={["staff"]}>
+        <TenantGuard allowRoles={["admin"]}>
             {children}
         </TenantGuard>
     );

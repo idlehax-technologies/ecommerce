@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 
-import { requireTenant } from "@/lib/auth/guards";
+import { requireMembershipRole, requireMembership } from "@/lib/auth/guards";
 import { guardRequest } from "@/lib/security/requestGuard";
 
 import * as cartDomain from "@/lib/cart/domain";
+import { getCartView } from "@/lib/cart/service";
+import { assertUpdateCartItemDTO } from "@/lib/cart/guards";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
-
-import { assertUpdateCartItemDTO } from "@/lib/cart/guards";
 
 import {
     recordLatency,
@@ -33,7 +33,9 @@ export async function PATCH(
             csrf: true,
         });
 
-        const actor = requireTenant(user);
+        await requireMembershipRole(user, ["customer"]);
+
+        const actor = await requireMembership(user);
 
         recordUser(actor.userId);
 
@@ -48,9 +50,13 @@ export async function PATCH(
             body
         );
 
+        const view = await getCartView(cart);
+
         recordLatency(Date.now() - start);
 
-        return NextResponse.json({ cart });
+        return NextResponse.json({
+            cart: view,
+        });
 
     } catch (err: unknown) {
 
@@ -78,19 +84,25 @@ export async function DELETE(
             csrf: true,
         });
 
-        const actor = requireTenant(user);
+        await requireMembershipRole(user, ["customer"]);
+
+        const actor = await requireMembership(user);
 
         recordUser(actor.userId);
 
-        const cart = cartDomain.removeItem(
+        const cart = await cartDomain.removeItem(
             actor.tenantId,
             actor.userId,
             productId
         );
 
+        const view = await getCartView(cart);
+
         recordLatency(Date.now() - start);
 
-        return NextResponse.json({ cart });
+        return NextResponse.json({
+            cart: view,
+        });
 
     } catch (err: unknown) {
 

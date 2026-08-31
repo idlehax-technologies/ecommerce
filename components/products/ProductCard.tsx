@@ -35,7 +35,7 @@ export default function ProductCard({ row }: Props) {
       )}
 
       <CardContent sx={{ flexGrow: 1 }}>
-        <Stack spacing={1}>
+        <Stack spacing={0.25}>
           <Typography variant="h6">
             {product.title}
           </Typography>

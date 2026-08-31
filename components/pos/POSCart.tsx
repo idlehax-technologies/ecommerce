@@ -1,22 +1,34 @@
 "use client";
 
-import { useState } from "react";
 import {
+    Box,
+    Divider,
+    IconButton,
     Stack,
     Typography,
-    Button,
-    Divider,
-    ToggleButtonGroup,
-    ToggleButton,
-    IconButton,
-    Box,
 } from "@mui/material";
 
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { PaymentMethod } from "@/types/payment";
-import { TenantProvisioningRow } from "@/lib/mappers/tenantProvisioningView";
+
+import type {
+    TenantProductRow,
+} from "@/lib/mappers/tenantProductView";
+
+import POSSummary from "./POSSummary";
+import POSCheckoutAction from "./POSCheckoutAction";
+
+type Props = {
+    cart: Record<string, number>;
+    rows: TenantProductRow[];
+    hasGst: boolean;
+    onUpdate: (
+        productId: string,
+        quantity: number
+    ) => void;
+    onSubmit: () => Promise<void>;
+};
 
 export default function POSCart({
     cart,
@@ -24,102 +36,107 @@ export default function POSCart({
     hasGst,
     onUpdate,
     onSubmit,
-}: {
-    cart: Record<string, number>;
-    rows: TenantProvisioningRow[];
-    hasGst: boolean;
-    onUpdate: (productId: string, qty: number) => void;
-    onSubmit: (method?: PaymentMethod) => void;
-}) {
-    const [method, setMethod] = useState<PaymentMethod | null>(null);
+}: Props) {
 
-    const items = Object.entries(cart) as [string, number][];
-
-    const total = items.reduce((sum, [id, qty]) => {
-        const row = rows.find((r) => r.product.productId === id);
-        if (!row) return sum;
-        return sum + row.product.price * qty;
-    }, 0);
+    const items =
+        Object.entries(cart) as [string, number][];
 
     return (
         <Stack spacing={2}>
-            <Typography variant="h6">POS Cart</Typography>
+            <Typography variant="h6" fontWeight={600}>
+                POS Cart
+            </Typography>
 
-            {items.map(([id, qty]) => {
-                const row = rows.find((r) => r.product.productId === id);
+            {items.length === 0 && (
+                <Typography color="text.secondary">
+                    No products added.
+                </Typography>
+            )}
 
-                if (!row) return null;
+            {items.map(([productId, quantity]) => {
 
-                const remaining = row.stock - row.reserved - qty;
+                const row =
+                    rows.find((row) =>
+                        row.product.productId === productId
+                    );
+
+                if (!row) {
+                    return null;
+                }
+
+                const remaining = row.available - quantity;
 
                 return (
                     <Box
-                        key={id}
+                        key={productId}
                         display="flex"
                         justifyContent="space-between"
                         alignItems="center"
                     >
-                        <Typography>
-                            {row.product.title}
-                        </Typography>
+                        <Stack spacing={0.25}>
+                            <Typography fontWeight={600}>
+                                {row.product.title}
+                            </Typography>
 
-                        <Box display="flex" alignItems="center" gap={1}>
+                            <Typography
+                                variant="body2"
+                                color="text.secondary"
+                            >
+                                {quantity}
+                                {" in cart • "}
+                                {remaining}
+                                {" left"}
+                            </Typography>
+                        </Stack>
+
+                        <Stack
+                            direction="row"
+                            alignItems="center"
+                        >
                             <IconButton
-                                onClick={() => onUpdate(id, qty - 1)}
+                                onClick={() =>
+                                    onUpdate(productId, quantity - 1)
+                                }
                             >
                                 <RemoveIcon />
                             </IconButton>
 
-                            <Typography>
-                                {qty} in cart • {remaining} left
-                            </Typography>
-
                             <IconButton
                                 disabled={remaining <= 0}
-                                onClick={() => onUpdate(id, qty + 1)}
+                                onClick={() =>
+                                    onUpdate(productId, quantity + 1)
+                                }
                             >
                                 <AddIcon />
                             </IconButton>
 
                             <IconButton
                                 color="error"
-                                onClick={() => onUpdate(id, 0)}
+                                onClick={() =>
+                                    onUpdate(productId, 0)
+                                }
                             >
                                 <DeleteIcon />
                             </IconButton>
-                        </Box>
+                        </Stack>
                     </Box>
                 );
             })}
 
             <Divider />
 
-            <Typography fontWeight={600}>
-                Total: ₹{(total / 100).toFixed(2)}
-                {hasGst && " (incl. GST)"}
-            </Typography>
+            <POSSummary
+                cart={cart}
+                rows={rows}
+                hasGst={hasGst}
+            />
 
-            <ToggleButtonGroup
-                exclusive
-                value={method}
-                onChange={(_, v: PaymentMethod | null) =>
-                    setMethod(v)
-                }
-                size="small"
-            >
-                <ToggleButton value="CASH">Cash</ToggleButton>
-                <ToggleButton value="UPI">UPI</ToggleButton>
-                <ToggleButton value="CARD">Card</ToggleButton>
-                <ToggleButton value="NET_BANKING">Net</ToggleButton>
-            </ToggleButtonGroup>
+            <Divider />
 
-            <Button
-                variant="contained"
+            <POSCheckoutAction
                 disabled={items.length === 0}
-                onClick={() => onSubmit(method ?? undefined)}
-            >
-                Create Order
-            </Button>
+                onSubmit={onSubmit}
+            />
         </Stack>
     );
 }

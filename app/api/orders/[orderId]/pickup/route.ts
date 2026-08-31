@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireTenant, requireMembershipRole } from "@/lib/auth/guards";
+import { requireMembership, requireMembershipRole } from "@/lib/auth/guards";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
@@ -24,11 +24,11 @@ export async function POST(
             csrf: true,
         });
 
-        requireMembershipRole(user, ["staff"]);
-        const actor = requireTenant(user);
+        await requireMembershipRole(user, ["staff"]);
+        const actor = await requireMembership(user);
         recordUser(actor.userId);
 
-        const result = ordersDomain.markOrderPickedUp(
+        const result = await ordersDomain.markOrderPickedUp(
             actor.tenantId,
             orderId
         );

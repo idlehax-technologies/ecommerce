@@ -1,20 +1,17 @@
-// lib/cart/domain.ts
-
 import type {
     Cart,
     AddToCartDTO,
     UpdateCartItemDTO,
+    CartItem,
 } from "@/types/cart";
 
-import {
-    getCart,
-    saveCart,
-    clearCart as clearStorage,
-} from "./storage";
+import { RemovedCartItem } from "@/types/checkout";
+
+import { cartStore } from "./storage";
 
 import { requireItem } from "./guards";
 
-import { getProductForCart } from "@/lib/products/domain";
+import { getActiveProduct, getProductForCart } from "@/lib/products/domain";
 
 import { findTenantProvision }
     from "../tenantInventory/domain";
@@ -32,12 +29,12 @@ import {
    Get cart
    ========================================================= */
 
-export function getUserCart(
+export async function getUserCart(
     tenantId: string,
     userId: string
-): Cart {
+): Promise<Cart> {
 
-    return getCart(
+    return cartStore.get(
         tenantId,
         userId
     );
@@ -53,7 +50,7 @@ export async function addItem(
     dto: AddToCartDTO
 ): Promise<Cart> {
 
-    const cart = getCart(
+    const cart = await cartStore.get(
         tenantId,
         userId
     );
@@ -113,13 +110,11 @@ export async function addItem(
 
         cart.items.push({
             productId: product.productId,
-            title: product.title,
-            price: product.price,
             quantity: newQuantity,
         });
     }
 
-    saveCart(cart);
+    await cartStore.save(cart);
 
     return cart;
 }
@@ -135,7 +130,7 @@ export async function updateItem(
     dto: UpdateCartItemDTO
 ): Promise<Cart> {
 
-    const cart = getCart(
+    const cart = await cartStore.get(
         tenantId,
         userId
     );
@@ -153,7 +148,7 @@ export async function updateItem(
                 productId
         );
 
-        saveCart(cart);
+        await cartStore.save(cart);
 
         return cart;
     }
@@ -182,7 +177,7 @@ export async function updateItem(
 
     item.quantity = dto.quantity;
 
-    saveCart(cart);
+    await cartStore.save(cart);
 
     return cart;
 }
@@ -191,13 +186,13 @@ export async function updateItem(
    Remove item
    ========================================================= */
 
-export function removeItem(
+export async function removeItem(
     tenantId: string,
     userId: string,
     productId: string
-): Cart {
+): Promise<Cart> {
 
-    const cart = getCart(
+    const cart = await cartStore.get(
         tenantId,
         userId
     );
@@ -208,7 +203,7 @@ export function removeItem(
             productId
     );
 
-    saveCart(cart);
+    await cartStore.save(cart);
 
     return cart;
 }
@@ -217,13 +212,78 @@ export function removeItem(
    Clear cart
    ========================================================= */
 
-export function clearCart(
+export async function clearCart(
     tenantId: string,
     userId: string
-): void {
+): Promise<void> {
 
-    clearStorage(
+    await cartStore.clear(
         tenantId,
         userId
     );
+}
+
+/* =========================================================
+   Remove unavailable items
+   ========================================================= */
+
+export async function removeUnavailableItems(
+    tenantId: string,
+    userId: string
+): Promise<RemovedCartItem[]> {
+
+    const cart = await cartStore.get(
+        tenantId,
+        userId
+    );
+
+    const removed: RemovedCartItem[] = [];
+
+    const remaining: CartItem[] = [];
+
+    for (const item of cart.items) {
+
+        const provision =
+            await findTenantProvision(
+                tenantId,
+                item.productId
+            );
+
+        if (
+            !provision ||
+            !provision.enabled
+        ) {
+            removed.push({
+                productId: item.productId,
+                reason: "NOT_PROVISIONED",
+            });
+
+            continue;
+        }
+
+        try {
+
+            await getActiveProduct(
+                item.productId
+            );
+
+            remaining.push(item);
+
+        } catch {
+
+            removed.push({
+                productId: item.productId,
+                reason: "INACTIVE",
+            });
+        }
+    }
+
+    if (removed.length > 0) {
+
+        cart.items = remaining;
+
+        await cartStore.save(cart);
+    }
+
+    return removed;
 }

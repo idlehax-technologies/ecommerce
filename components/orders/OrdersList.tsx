@@ -1,6 +1,6 @@
 "use client";
 
-import { Stack, Typography } from "@mui/material";
+import { Stack } from "@mui/material";
 
 import type { OrderListItem } from "@/types/order";
 
@@ -11,15 +11,6 @@ export default function OrdersList({
 }: {
     orders: OrderListItem[];
 }) {
-
-    if (orders.length === 0) {
-        return (
-            <Typography color="text.secondary">
-                No orders yet.
-            </Typography>
-        );
-    }
-
     return (
         <Stack spacing={2}>
             {orders.map((order) => (

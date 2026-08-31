@@ -24,6 +24,7 @@ export function toNewProduct(
     description: dto.description.trim(),
 
     price: dto.price,
+    discountPercent: dto.discountPercent,
     currency: "INR",
 
     gstRate: dto.gstRate,
@@ -61,6 +62,10 @@ export function toUpdatedProduct(
 
     ...(dto.price !== undefined && {
       price: dto.price,
+    }),
+
+    ...(dto.discountPercent !== undefined && {
+      discountPercent: dto.discountPercent,
     }),
 
     ...(dto.gstRate !== undefined && {

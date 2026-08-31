@@ -1,59 +1,57 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import {
-    Grid,
-    Stack,
     Alert,
     CircularProgress,
 } from "@mui/material";
 
-import POSProductGrid from "./POSProductGrid";
-import POSCart from "./POSCart";
+import POSDashboard from "./POSDashboard";
 
-import { getTenantInventoryView } from "@/lib/api/tenantInventory";
-import { createPOSOrder } from "@/lib/api/orders";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 
-import { mapToPOSRows } from "@/lib/mappers/posView";
+import { createPOSOrder } from "@/lib/api/pos";
+import { getTenant } from "@/lib/api/tenants";
+import { getTenantProductView } from "@/lib/api/tenantInventory";
 
-import type { POSRow } from "@/lib/mappers/posView";
-import type { TenantProvisioningRow } from "@/lib/mappers/tenantProvisioningView";
-import type { PaymentMethod } from "@/types/payment";
 import type { Tenant } from "@/types/tenant";
-
-import { useActiveMembership } from "@/hooks/useActiveMembership";
-import { fetchTenant } from "@/lib/api/tenants";
-
-type POSRowWithAction = POSRow & {
-    onSelect: () => void;
-};
+import type { TenantProductRow } from "@/lib/mappers/tenantProductView";
 
 export default function POSClient() {
-    const { membership, loading: mLoading } = useActiveMembership();
 
-    const [rows, setRows] = useState<TenantProvisioningRow[]>([]);
+    const router = useRouter();
+    const { show } = useSnackbar();
+
+    const [rows, setRows] = useState<TenantProductRow[]>([]);
     const [tenant, setTenant] = useState<Tenant | null>(null);
     const [cart, setCart] = useState<Record<string, number>>({});
 
-    const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     async function load() {
-        if (!membership) {
-            setLoading(false);
-            return;
-        }
-
         try {
             setLoading(true);
-            const res = await getTenantInventoryView(membership.tenantId);
-            setRows(res.rows);
+            setError(null);
 
-            const tenantRes = await fetchTenant(membership.tenantId);
+            const [productRes, tenantRes] = await Promise.all([
+                getTenantProductView(),
+                getTenant(),
+            ]);
+
+            setRows(productRes.rows);
             setTenant(tenantRes.tenant);
-        } catch {
-            setError("Failed to load POS data");
+
+        } catch (err: unknown) {
+
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError("Failed to load POS");
+            }
+
         } finally {
             setLoading(false);
         }
@@ -61,112 +59,139 @@ export default function POSClient() {
 
     useEffect(() => {
         load();
-    }, [membership]);
-
-    const posRows: POSRow[] = mapToPOSRows(rows, cart);
-
-    const rowsWithActions:
-        POSRowWithAction[] =
-        posRows.map((r) => ({
-            ...r,
-            onSelect: () =>
-                add(r.product.productId),
-        }));
+    }, []);
 
     function add(productId: string) {
-        const row = posRows.find((r) => r.product.productId === productId);
+        const row = rows.find(
+            (row) => row.product.productId === productId
+        );
 
         if (!row) {
             return;
         }
 
-        if (row.available <= 0) {
+        const quantity = cart[productId] ?? 0;
+
+        if (quantity >= row.available) {
             return;
         }
 
-        setCart((c) => ({
-            ...c,
-            [productId]:
-                (c[productId] || 0) + 1,
+        setCart((current) => ({
+            ...current,
+            [productId]: quantity + 1,
         }));
     }
 
-    function update(productId: string, nextQty: number) {
-        const row = rows.find((r) => r.product.productId === productId);
-
-        if (!row) {
-            return;
-        }
-
-        const currentlyAvailable = row.stock - row.reserved;
-
-        if (nextQty <= 0) {
-            const { [productId]: _, ...rest } = cart;
-            setCart(rest);
-            return;
-        }
-
-        if (nextQty > currentlyAvailable) {
-            return;
-        }
-
-        setCart((c) => ({
-            ...c,
-            [productId]: nextQty,
-        }));
-    }
-
-    async function submit(paymentMethod?: PaymentMethod) {
-        try {
-            await createPOSOrder({
-                items: Object.entries(cart)
-                    .map(([productId, quantity]) => ({ productId, quantity })),
-                paymentMethod,
-            });
-            await load();
-            setCart({});
-        } catch (err: unknown) {
-            setError(
-                err instanceof Error
-                    ? err.message
-                    : "Failed to create POS order"
-            );
-        }
-    }
-
-    if (
-        loading ||
-        mLoading
+    function update(
+        productId: string,
+        quantity: number
     ) {
+        const row = rows.find(
+            (row) => row.product.productId === productId
+        );
+
+        if (!row) {
+            return;
+        }
+
+        if (quantity <= 0) {
+            setCart((current) => {
+                const { [productId]: _, ...rest } = current;
+                return rest;
+            });
+
+            return;
+        }
+
+        if (quantity > row.available) {
+            return;
+        }
+
+        setCart((current) => ({
+            ...current,
+            [productId]: quantity,
+        }));
+    }
+
+    function removeUnavailableProducts(
+        productIds: string[]
+    ) {
+        setCart((current) => {
+            const next = { ...current };
+
+            for (const productId of productIds) {
+                delete next[productId];
+            }
+
+            return next;
+        });
+    }
+
+    async function submit() {
+        try {
+            const result = await createPOSOrder({
+                items: Object.entries(cart)
+                    .map(([productId, quantity]) => ({
+                        productId,
+                        quantity,
+                    })),
+            });
+
+            if ("removedItems" in result) {
+                removeUnavailableProducts(
+                    result.removedItems.map(
+                        (item) => item.productId
+                    )
+                );
+
+                show(
+                    "Unavailable products were removed from the order",
+                    "warning"
+                );
+
+                return;
+            }
+
+            setCart({});
+
+            router.push(
+                `/orders/${result.order.orderId}`
+            );
+
+        } catch (err: unknown) {
+
+            if (err instanceof Error) {
+                show(err.message, "error");
+            } else {
+                show("Failed to create POS order", "error");
+            }
+        }
+    }
+
+    if (loading) {
         return <CircularProgress />;
     }
 
-    if (
-        !membership ||
-        !tenant
-    ) {
+    if (error) {
+        return (
+            <Alert severity="error">
+                {error}
+            </Alert>
+        );
+    }
+
+    if (!tenant) {
         return null;
     }
 
     return (
-        <Grid container spacing={4}>
-            <Grid size={{ xs: 12, md: 8 }}>
-                <POSProductGrid rows={rowsWithActions} />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 4 }}>
-                <Stack spacing={2}>
-                    {error && (<Alert severity="error">{error}</Alert>)}
-
-                    <POSCart
-                        cart={cart}
-                        rows={rows}
-                        hasGst={!!tenant.gstin}
-                        onUpdate={update}
-                        onSubmit={submit}
-                    />
-                </Stack>
-            </Grid>
-        </Grid>
+        <POSDashboard
+            rows={rows}
+            cart={cart}
+            hasGst={!!tenant.gstin}
+            onAdd={add}
+            onUpdate={update}
+            onSubmit={submit}
+        />
     );
 }

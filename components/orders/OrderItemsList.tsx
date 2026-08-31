@@ -1,6 +1,8 @@
+"use client";
+
 import { Stack } from "@mui/material";
-import type { ItemSnapshot } from "@/types/order";
 import OrderItemRow from "./OrderItemRow";
+import type { ItemSnapshot } from "@/types/order";
 
 export default function OrderItemsList({
     items,

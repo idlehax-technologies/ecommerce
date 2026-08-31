@@ -1,17 +1,24 @@
 "use client";
 
-import { Container, Typography, Box, CircularProgress } from "@mui/material";
-
-import { getAuditLogs } from "@/lib/api/audit";
-
-import AuditTimeline from "@/components/audit/AuditTimeline";
 import { useEffect, useState } from "react";
-import { AuditLog } from "@/types/audit";
+
+import {
+    Container,
+    Box,
+    Stack,
+    Typography,
+    Divider,
+    Paper,
+    CircularProgress,
+} from "@mui/material";
+
+import AuditDashboard from "@/components/audit/AuditDashboard";
+import { getAuditLogs } from "@/lib/api/audit";
+import type { AuditLog } from "@/types/audit";
 
 export default function AuditPage() {
 
     const [logs, setLogs] = useState<AuditLog[]>([]);
-
     const [loading, setLoading] = useState(true);
 
     async function load() {
@@ -33,16 +40,26 @@ export default function AuditPage() {
     }
 
     return (
-        <Container sx={{ mt: 6 }}>
+        <Container maxWidth="md">
+            <Stack spacing={3} sx={{ p: 6 }}>
+                <Box>
+                    <Typography variant="h5" fontWeight={600}>
+                        Audit Logs
+                    </Typography>
 
-            <Typography variant="h4">
-                Audit Logs
-            </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        Browse system activity and event history
+                    </Typography>
+                </Box>
 
-            <Box mt={3}>
-                <AuditTimeline logs={logs} />
-            </Box>
+                <Divider />
 
+                <Paper elevation={2} sx={{ p: 2 }}>
+                    <AuditDashboard
+                        logs={logs}
+                    />
+                </Paper>
+            </Stack>
         </Container>
     );
 }

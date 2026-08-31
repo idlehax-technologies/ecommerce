@@ -1,29 +1,34 @@
+import { revalidatePath } from "next/cache";
+
 import {
   Container,
-  Typography,
-  Paper,
+  Box,
   Stack,
-  Button,
+  Typography,
+  Divider,
+  Paper,
 } from "@mui/material";
 
-import { getUserFromRequest } from "@/lib/auth";
+import { getUserFromRequest } from "@/lib/session/session";
 import { requireSuperadmin } from "@/lib/auth/guards";
+import { formatDateTime } from "@/lib/format/datetime";
 
 import {
   activatePlatformProduct,
   deactivatePlatformProduct,
-  getPlatformProduct
+  getPlatformProduct,
 } from "@/lib/products/service";
 
-import ProductForm from "@/components/admin/products/ProductForm";
-import ProductStatusBadge from "@/components/admin/products/ProductStatusBadge";
-import ProductImageCarousel from "@/components/admin/products/ProductImageCarousel";
+import ProductDetail
+  from "@/components/admin/products/ProductDetail";
 
 type PageProps = {
   params: Promise<{ productId: string }>;
 };
 
-export default async function EditProductPage({ params }: PageProps) {
+export default async function ProductDetailPage({
+  params,
+}: PageProps) {
 
   const rawUser = await getUserFromRequest();
   requireSuperadmin(rawUser);
@@ -37,88 +42,63 @@ export default async function EditProductPage({ params }: PageProps) {
 
     if (product.status === "ACTIVE") {
       await deactivatePlatformProduct(product.productId);
+
     } else {
       await activatePlatformProduct(product.productId);
     }
+
+    revalidatePath(`/platform/products/${productId}`);
   }
 
   return (
-    <Container
-      maxWidth="md"
-      sx={{ py: 4 }}
-    >
+    <Container maxWidth="md">
+
       <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={3}
+        spacing={3}
+        sx={{ p: 6 }}
       >
-        <Typography variant="h5">
-          Edit Product
-        </Typography>
 
-        <Stack
-          direction="row"
-          spacing={1}
-          alignItems="center"
+        <Box>
+
+          <Typography
+            variant="h5"
+            fontWeight={600}
+          >
+            Product Details
+          </Typography>
+
+          <Typography
+            variant="body2"
+            color="text.secondary"
+          >
+            Created:{" "}
+            {formatDateTime(product.createdAt)}
+          </Typography>
+
+          <Typography
+            variant="body2"
+            color="text.secondary"
+          >
+            Updated:{" "}
+            {formatDateTime(product.updatedAt)}
+          </Typography>
+
+        </Box>
+
+        <Divider />
+
+        <Paper
+          elevation={2}
+          sx={{ p: 2 }}
         >
-          <ProductStatusBadge
-            status={product.status}
+          <ProductDetail
+            product={product}
+            toggleStatus={toggleStatus}
           />
+        </Paper>
 
-          <form action={toggleStatus}>
-            <Button
-              type="submit"
-              variant="outlined"
-            >
-              {product.status === "ACTIVE"
-                ? "Deactivate"
-                : "Activate"}
-            </Button>
-          </form>
-        </Stack>
       </Stack>
 
-      <Typography
-        variant="body2"
-        color="text.secondary"
-      >
-        SKU: {product.sku}
-      </Typography>
-
-      <Typography
-        variant="body2"
-        color="text.secondary"
-      >
-        Created:{" "}
-        {new Date(
-          product.createdAt
-        ).toLocaleString()}
-      </Typography>
-
-      <Typography
-        variant="body2"
-        color="text.secondary"
-      >
-        Updated:{" "}
-        {new Date(
-          product.updatedAt
-        ).toLocaleString()}
-      </Typography>
-
-      {product.images &&
-        product.images.length > 0 && (
-          <ProductImageCarousel
-            images={product.images}
-          />
-        )}
-
-      <Paper sx={{ p: 3 }}>
-        <ProductForm
-          mode="edit"
-          product={product}
-        />
-      </Paper>
     </Container>
   );
 }

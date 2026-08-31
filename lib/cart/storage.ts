@@ -1,104 +1,106 @@
 import type { Cart } from "@/types/cart";
+import { prisma } from "@/lib/db/prisma";
 
-/**
- * We anchor the cart map on globalThis so that:
- * - Next.js hot reload does NOT recreate the store
- * - The in-memory cart behaves like a stable process store
- * - We still keep carts ephemeral (no persistence beyond runtime)
- */
+export const cartStore = {
+    async get(
+        tenantId: string,
+        userId: string
+    ): Promise<Cart> {
+        const cart = await prisma.cart.findUnique({
+            where: {
+                tenantId_userId: {
+                    tenantId,
+                    userId,
+                },
+            },
+            include: {
+                items: true,
+            },
+        });
 
-type GlobalWithCartStore = typeof globalThis & {
-    __cartStore?: Map<string, Cart>;
-};
+        if (!cart) {
+            const created = await prisma.cart.create({
+                data: {
+                    tenantId,
+                    userId,
+                    updatedAt: new Date(),
+                },
+            });
 
-const globalForCart = globalThis as GlobalWithCartStore;
+            return {
+                tenantId: created.tenantId,
+                userId: created.userId,
+                items: [],
+                updatedAt: created.updatedAt.toISOString(),
+            };
+        }
 
-/**
- * Reuse existing store if it exists, otherwise create it.
- */
-const cartStore: Map<string, Cart> =
-    globalForCart.__cartStore ?? new Map<string, Cart>();
-
-globalForCart.__cartStore = cartStore;
-
-function keyOf(
-    tenantId: string,
-    userId: string
-): string {
-    return `${tenantId}:${userId}`;
-}
-
-function cloneCart(cart: Cart): Cart {
-    return {
-        ...cart,
-        items: cart.items.map((item) => ({ ...item })),
-    };
-}
-
-/**
- * Cart access is always:
- * - tenant-scoped
- * - user-scoped
- */
-
-export function getCart(
-    tenantId: string,
-    userId: string
-): Cart {
-
-    const key = keyOf(
-        tenantId,
-        userId
-    );
-
-    let cart = cartStore.get(key);
-
-    if (!cart) {
-
-        cart = {
-            tenantId,
-            userId,
-            items: [],
-            updatedAt: new Date().toISOString(),
+        return {
+            tenantId: cart.tenantId,
+            userId: cart.userId,
+            items: cart.items.map((item) => ({
+                productId: item.productId,
+                quantity: item.quantity,
+            })),
+            updatedAt: cart.updatedAt.toISOString(),
         };
+    },
 
-        cartStore.set(
-            key,
-            cloneCart(cart)
-        );
-    }
+    async save(
+        cart: Cart
+    ): Promise<void> {
+        const updatedAt = new Date();
 
-    return cloneCart(cart);
-}
+        await prisma.$transaction(
+            async (tx) => {
+                await tx.cart.upsert({
+                    where: {
+                        tenantId_userId: {
+                            tenantId: cart.tenantId,
+                            userId: cart.userId,
+                        },
+                    },
+                    create: {
+                        tenantId: cart.tenantId,
+                        userId: cart.userId,
+                        updatedAt,
+                    },
+                    update: {
+                        updatedAt,
+                    },
+                });
 
-export function saveCart(
-    cart: Cart
-): void {
+                await tx.cartItem.deleteMany({
+                    where: {
+                        tenantId: cart.tenantId,
+                        userId: cart.userId,
+                    },
+                });
 
-    const updated: Cart = {
-        ...cart,
-        updatedAt: new Date().toISOString(),
-        items: cart.items.map((item) => ({ ...item })),
-    };
+                if (cart.items.length > 0) {
+                    await tx.cartItem.createMany({
+                        data: cart.items.map((item) => ({
+                            tenantId: cart.tenantId,
+                            userId: cart.userId,
+                            productId: item.productId,
+                            quantity: item.quantity,
+                        })),
+                    });
+                }
+            });
+    },
 
-    cartStore.set(
-        keyOf(
-            updated.tenantId,
-            updated.userId
-        ),
-        updated
-    );
-}
-
-export function clearCart(
-    tenantId: string,
-    userId: string
-): void {
-
-    cartStore.delete(
-        keyOf(
-            tenantId,
-            userId
-        )
-    );
-}
+    async clear(
+        tenantId: string,
+        userId: string
+    ): Promise<void> {
+        await prisma.cart.delete({
+            where: {
+                tenantId_userId: {
+                    tenantId,
+                    userId,
+                },
+            },
+        });
+    },
+};

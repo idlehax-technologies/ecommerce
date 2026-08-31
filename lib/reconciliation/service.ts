@@ -6,5 +6,5 @@ export async function getReconciliationReport(
 ): Promise<ReconciliationReport> {
 
     // idempotent: pure function, no side effects
-    return await runTenantReconciliation(tenantId);
+    return runTenantReconciliation(tenantId);
 }

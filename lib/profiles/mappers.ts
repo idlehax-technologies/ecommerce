@@ -6,14 +6,12 @@ function now(): string {
 
 export function toNewProfile(
     userId: string,
-    phone: string,
     dto: ProfileDTO
 ): UserProfile {
     const timestamp = now();
 
     return {
         userId,
-        phone,
         fullName: dto.fullName.trim(),
         email: dto.email.trim(),
         addressText: dto.addressText.trim(),

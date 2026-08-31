@@ -1,18 +1,19 @@
-import * as paymentsDomain from "@/lib/payments/domain";
 import * as ordersDomain from "@/lib/orders/domain";
+import * as paymentsDomain from "@/lib/payments/domain";
 import * as tenantInventoryDomain from "@/lib/tenantInventory/domain";
 
 import type { ResolutionRequest } from "@/types/reconciliationResolution";
 import type { DomainEvent } from "@/types/domainEvent";
 
 import { getResolutionPolicy } from "./policy";
-import { isAlreadyProcessed, markProcessed } from "./idempotency";
 import {
     ReconciliationActionNotAllowedError,
     ReconciliationInvalidInputError,
     ReconciliationInventoryNotFoundError,
     ReconciliationUnsupportedActionError
 } from "./errors";
+
+import { claimReconciliationIdempotency } from "../redis/idempotency";
 
 /**
  * Controlled reconciliation entrypoint
@@ -34,10 +35,6 @@ export async function resolveMismatch(input: {
         throw new ReconciliationInvalidInputError("idempotencyKey required");
     }
 
-    if (isAlreadyProcessed(request.idempotencyKey)) {
-        return { events: [] }; // idempotent no-op
-    }
-
     const policy = getResolutionPolicy(request.mismatchType);
 
     if (!policy.allowedActions.includes(request.action)) {
@@ -56,14 +53,20 @@ export async function resolveMismatch(input: {
                 throw new ReconciliationInvalidInputError("orderId required");
             }
 
+            const claimed = await claimReconciliationIdempotency(
+                request.idempotencyKey
+            );
+
+            if (!claimed) {
+                return { events: [] };
+            }
+
             const result = await paymentsDomain.confirmPayment(
                 tenantId,
                 request.orderId
             );
 
             events.push(...result.events);
-
-            markProcessed(request.idempotencyKey);
 
             return { events };
         }
@@ -76,13 +79,19 @@ export async function resolveMismatch(input: {
                 throw new ReconciliationInvalidInputError("orderId required");
             }
 
-            paymentsDomain.recordPayment(
+            const claimed = await claimReconciliationIdempotency(
+                request.idempotencyKey
+            );
+
+            if (!claimed) {
+                return { events: [] };
+            }
+
+            await paymentsDomain.recordPayment(
                 tenantId,
                 request.orderId,
                 "CASH"
             );
-
-            markProcessed(request.idempotencyKey);
 
             return { events: [] };
         }
@@ -95,14 +104,20 @@ export async function resolveMismatch(input: {
                 throw new ReconciliationInvalidInputError("orderId required");
             }
 
-            const result = ordersDomain.cancelOrder(
+            const claimed = await claimReconciliationIdempotency(
+                request.idempotencyKey
+            );
+
+            if (!claimed) {
+                return { events: [] };
+            }
+
+            const result = await ordersDomain.cancelOrder(
                 tenantId,
                 request.orderId
             );
 
             events.push(result.event);
-
-            markProcessed(request.idempotencyKey);
 
             return { events };
         }
@@ -111,10 +126,10 @@ export async function resolveMismatch(input: {
          * ADJUST INVENTORY
          *
          * NOTE:
-         * This is a controlled override — not going through adjustStock
+         * This is a controlled override — not going through adjustStockBy
          * So we MUST emit DomainEvent manually
          */
-        case "ADJUST_INVENTORY": {
+        case "RECONCILE_RESERVED": {
             if (!request.productId) {
                 throw new ReconciliationInvalidInputError("productId required");
             }
@@ -142,10 +157,15 @@ export async function resolveMismatch(input: {
                 }
             }
 
-            const before = {
-                stock: record.stock,
-                reserved: record.reserved
-            };
+            const before = record.reserved;
+
+            const claimed = await claimReconciliationIdempotency(
+                request.idempotencyKey
+            );
+
+            if (!claimed) {
+                return { events: [] };
+            }
 
             const corrected =
                 await tenantInventoryDomain.reconcileReservedQuantity(
@@ -153,20 +173,15 @@ export async function resolveMismatch(input: {
                     expectedReserved
                 );
 
-            const after = {
-                stock: corrected.stock,
-                reserved: corrected.reserved
-            };
+            const after = corrected.reserved;
 
             events.push({
-                type: "InventoryAdjusted",
+                type: "InventoryReconciled",
                 tenantId,
                 productId: request.productId,
                 from: before,
                 to: after
             });
-
-            markProcessed(request.idempotencyKey);
 
             return { events };
         }

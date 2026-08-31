@@ -27,11 +27,16 @@ export type CustomerSnapshot = {
 export type ItemSnapshot = {
     productId: string;
     sku: string;
+
     title: string;
     description: string;
+
+    price: number; // GST-inclusive MRP snapshot
+    discountPercent: number;
+
     hsnCode: string;
     gstRate: GstRate;
-    price: number; // snapshot, incl. GST, in paise
+
     quantity: number;
 };
 
@@ -63,14 +68,6 @@ export type Order = {
     updatedAt: string;
 };
 
-export type CreatePOSOrderDTO = {
-    items: {
-        productId: string;
-        quantity: number;
-    }[];
-    paymentMethod?: PaymentMethod;
-};
-
 export type OrderListItem = Pick<
     Order,
     | "orderId"
@@ -79,4 +76,6 @@ export type OrderListItem = Pick<
     | "total"
     | "status"
     | "createdAt"
->;
+> & {
+    isStaffOrder: boolean;
+};

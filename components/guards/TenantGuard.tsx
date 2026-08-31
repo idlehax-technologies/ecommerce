@@ -9,6 +9,13 @@ import { useActiveMembership } from "@/hooks/useActiveMembership";
 
 import type { MembershipRole } from "@/types/membership";
 
+import {
+    getMembershipLandingPage,
+    getNoMembershipLandingPage,
+    getSuperadminLandingPage,
+    getUnauthenticatedLandingPage,
+} from "@/lib/navigation/defaultLandingPage";
+
 type Props = {
     allowRoles?: MembershipRole[];
     children: React.ReactNode;
@@ -42,19 +49,19 @@ export default function TenantGuard({
 
         // not logged in
         if (!user) {
-            router.replace("/login");
+            router.replace(getUnauthenticatedLandingPage());
             return;
         }
 
         // superadmin belongs to platform plane
         if (user.isSuperadmin) {
-            router.replace("/platform/tenants");
+            router.replace(getSuperadminLandingPage());
             return;
         }
 
         // authenticated but no approved membership
         if (!membership) {
-            router.replace("/profile");
+            router.replace(getNoMembershipLandingPage());
             return;
         }
 
@@ -63,8 +70,10 @@ export default function TenantGuard({
             allowRoles &&
             !allowRoles.includes(membership.role)
         ) {
-            router.replace("/home");
+            router.replace(getMembershipLandingPage(membership.role));
+            return;
         }
+
     }, [
         user,
         membership,

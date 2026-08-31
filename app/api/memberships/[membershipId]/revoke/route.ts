@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { guardRequest } from "@/lib/security/requestGuard";
-import {
-    requireMembershipRole,
-    requireTenant,
-} from "@/lib/auth/guards";
+import { requireMembershipRole, requireMembership } from "@/lib/auth/guards";
 import { revokeMembership } from "@/lib/memberships/domain";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 import { dispatchEvent } from "@/lib/events/dispatcher";
@@ -20,10 +17,10 @@ export async function POST(
             csrf: true,
         });
 
-        requireMembershipRole(user, ["staff"]);
-        const actor = requireTenant(user);
+        await requireMembershipRole(user, ["staff", "admin"]);
+        const actor = await requireMembership(user);
 
-        const result = revokeMembership(actor, membershipId);
+        const result = await revokeMembership(actor, membershipId);
 
         await dispatchEvent(result.event, { actorId: actor.userId });
 

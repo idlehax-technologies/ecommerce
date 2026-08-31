@@ -3,12 +3,7 @@ import type { Payment } from "@/types/payment";
 import type { Order } from "@/types/order";
 import type { DomainEvent } from "@/types/domainEvent";
 
-import {
-    savePayment,
-    getPaymentByOrder,
-    updatePayment,
-    listPaymentsByTenant,
-} from "./storage";
+import { paymentStore } from "./storage";
 
 import {
     PaymentAlreadyExistsError,
@@ -22,10 +17,13 @@ import {
 
 import * as ordersDomain from "@/lib/orders/domain";
 
-export function listTenantPayments(
+export async function listTenantPayments(
     tenantId: string
-): Payment[] {
-    return listPaymentsByTenant(tenantId);
+): Promise<Payment[]> {
+
+    return paymentStore.listByTenant(
+        tenantId
+    );
 }
 
 /**
@@ -34,19 +32,20 @@ export function listTenantPayments(
  * - creates payment record
  * - does NOT emit event (no state change in order)
  */
-export function recordPayment(
+export async function recordPayment(
     tenantId: string,
     orderId: string,
     method: Payment["method"]
-): {
+): Promise<{
     payment: Payment;
     order: Order;
-} {
+}> {
 
-    const order = ordersDomain.getTenantOrder(
-        tenantId,
-        orderId
-    );
+    const order =
+        await ordersDomain.getTenantOrder(
+            tenantId,
+            orderId
+        );
 
     if (order.status !== "RESERVED") {
         throw new InvalidOrderTransitionError(
@@ -55,7 +54,10 @@ export function recordPayment(
         );
     }
 
-    const existing = getPaymentByOrder(orderId);
+    const existing =
+        await paymentStore.getByOrder(
+            orderId
+        );
 
     if (existing) {
         throw new PaymentAlreadyExistsError();
@@ -69,15 +71,15 @@ export function recordPayment(
         paymentId: randomUUID(),
         orderId,
         tenantId,
-        method,
         amount: order.total,
         currency: order.currency,
+        method,
         status: "PENDING",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
     };
 
-    savePayment(payment);
+    await paymentStore.save(payment);
 
     return {
         payment,
@@ -94,7 +96,8 @@ export function recordPayment(
  * - emit DomainEvent (PaymentConfirmed)
  *
  * MUST:
- * - always return event (no undefined)
+ * - return empty events for idempotent calls
+ * - emit PaymentConfirmed only on actual transition
  * - never emit OrderPaid manually
  */
 export async function confirmPayment(
@@ -107,13 +110,11 @@ export async function confirmPayment(
 }> {
 
     const payment =
-        getPaymentByOrder(orderId);
+        await paymentStore.getByOrder(
+            orderId
+        );
 
-    if (!payment) {
-        throw new PaymentNotFoundError();
-    }
-
-    if (payment.tenantId !== tenantId) {
+    if (!payment || payment.tenantId !== tenantId) {
         throw new PaymentNotFoundError();
     }
 
@@ -121,29 +122,26 @@ export async function confirmPayment(
     if (payment.status === "CONFIRMED") {
 
         const order =
-            ordersDomain.getTenantOrder(
+            await ordersDomain.getTenantOrder(
                 tenantId,
                 orderId
             );
 
-        const paymentConfirmedEvent: DomainEvent = {
-            type: "PaymentConfirmed",
-            order,
-            payment,
-        };
-
         return {
             payment,
             order,
-            events: [paymentConfirmedEvent],
+            events: [],
         };
     }
 
+    const previousStatus = payment.status;
+
     payment.status = "CONFIRMED";
+
     payment.updatedAt =
         new Date().toISOString();
 
-    updatePayment(payment);
+    await paymentStore.update(payment);
 
     const orderResult =
         await ordersDomain.markOrderPaid(
@@ -156,12 +154,12 @@ export async function confirmPayment(
 
     const paymentConfirmedEvent: DomainEvent = {
         type: "PaymentConfirmed",
-        order,
         payment,
+        from: previousStatus,
+        to: payment.status,
     };
 
-    const orderPaidEvent =
-        orderResult.event;
+    const orderPaidEvent = orderResult.event;
 
     return {
         payment,

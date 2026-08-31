@@ -8,9 +8,9 @@ export type BaseJob = {
     jobId: string;
     status: JobStatus;
     attempts: number;
-    lastError?: string;
     runAt: string;
     createdAt: string;
+    lastError?: string;
     dedupKey?: string;
 };
 

@@ -1,42 +1,65 @@
-import { notFound } from "next/navigation";
-import { Box, Typography, Paper, Divider } from "@mui/material";
+"use client";
+
+import { useEffect, useState } from "react";
+
+import {
+    Box,
+    Stack,
+    Typography,
+    Paper,
+    Divider,
+    CircularProgress,
+} from "@mui/material";
 
 import TenantInventoryDashboard from "@/components/tenantInventory/TenantInventoryDashboard";
 
-import { getUserFromRequest } from "@/lib/auth";
-import { requireTenant } from "@/lib/auth/guards";
+import { getTenantInventoryView } from "@/lib/api/tenantInventory";
 
-import { getTenantProvisioningView } from "@/lib/tenantInventory/service";
+import { TenantProvisioningRow } from "@/lib/mappers/tenantProvisioningView";
 
-export default async function TenantInventoryPage() {
-    const rawUser = await getUserFromRequest();
+export default function TenantInventoryPage() {
 
-    const actor = requireTenant(rawUser);
+    const [rows, setRows] = useState<TenantProvisioningRow[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const view = await getTenantProvisioningView(actor.tenantId);
+    async function load() {
+        try {
+            setLoading(true);
+            const res = await getTenantInventoryView();
+            setRows(res.rows);
 
-    if (!view) return notFound();
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    useEffect(() => {
+        load();
+    }, []);
+
+    if (loading) {
+        return <CircularProgress />;
+    }
 
     return (
-        <Box p={4} display="flex" flexDirection="column" gap={3}>
+        <Stack spacing={3} sx={{ p: 4 }}>
             <Box>
                 <Typography variant="h5" fontWeight={600}>
                     Inventory
                 </Typography>
 
                 <Typography variant="body2" color="text.secondary">
-                    Products available for sale in this tenant.
+                    Products available for sale in this tenant
                 </Typography>
             </Box>
 
             <Divider />
 
-            <Paper elevation={2}>
+            <Paper elevation={2} sx={{ p: 2 }}>
                 <TenantInventoryDashboard
-                    tenantId={actor.tenantId}
-                    rows={view}
+                    rows={rows}
                 />
             </Paper>
-        </Box>
+        </Stack>
     );
 }

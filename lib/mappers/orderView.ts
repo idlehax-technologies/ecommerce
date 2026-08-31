@@ -10,5 +10,6 @@ export function toOrderListItem(
         total: order.total,
         status: order.status,
         createdAt: order.createdAt,
+        isStaffOrder: !!order.placedByStaffId,
     };
 }

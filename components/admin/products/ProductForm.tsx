@@ -15,9 +15,6 @@ import {
   updateProduct,
 } from "@/lib/api/products";
 
-import type { Product } from "@/types/product";
-import { useSnackbar } from "@/contexts/SnackbarContext";
-
 import {
   GST_RATES,
   type GstRate,
@@ -28,10 +25,16 @@ import {
   type ProductCategory,
 } from "@/lib/products/categories";
 
+import { useSnackbar } from "@/contexts/SnackbarContext";
+
+import type { Product } from "@/types/product";
+
 type ProductFormValues = {
   title: string;
   description: string;
+
   price: number;
+  discountPercent: number;
 
   gstRate: GstRate | "";
   hsnCode: string;
@@ -67,6 +70,7 @@ export default function ProductForm(props: Props) {
       title: product?.title ?? "",
       description: product?.description ?? "",
       price: product?.price ?? 0,
+      discountPercent: product?.discountPercent ?? 0,
       gstRate: product?.gstRate ?? "",
       hsnCode: product?.hsnCode ?? "",
       category: product?.category ?? "",
@@ -116,7 +120,7 @@ export default function ProductForm(props: Props) {
   }
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={2}>
       <TextField
         label="Title"
         required
@@ -150,6 +154,23 @@ export default function ProductForm(props: Props) {
         value={values.price}
         onChange={(e) =>
           setValues({ ...values, price: Number(e.target.value) })
+        }
+      />
+
+      <TextField
+        label="Discount (%)"
+        type="number"
+        required
+        slotProps={{
+          htmlInput: {
+            min: 0,
+            max: 100,
+            step: 1,
+          },
+        }}
+        value={values.discountPercent}
+        onChange={(e) =>
+          setValues({ ...values, discountPercent: Number(e.target.value) })
         }
       />
 

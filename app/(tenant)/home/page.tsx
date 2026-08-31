@@ -1,26 +1,90 @@
-import { Container, Typography, Box } from "@mui/material";
-import { getUserFromRequest } from "@/lib/auth";
-import { requireTenant } from "@/lib/auth/guards";
-import { getTenantProvisioningView } from "@/lib/tenantInventory/service";
-import ProductGrid from "@/components/products/ProductGrid";
+"use client";
 
-export default async function ProductsPage() {
-    const actor = requireTenant(await getUserFromRequest());
+import { useEffect, useState } from "react";
 
-    const rows = await getTenantProvisioningView(actor.tenantId);
+import {
+    Stack,
+    Typography,
+    CircularProgress,
+} from "@mui/material";
 
-    // Only visible products
-    const visible = rows.filter(r => r.enabled);
+import HomeDashboard from "@/components/home/HomeDashboard";
+
+import { getTenantProductView } from "@/lib/api/tenantInventory";
+import { getTenant } from "@/lib/api/tenants";
+
+import type {
+    TenantProductRow,
+} from "@/lib/mappers/tenantProductView";
+import type { Tenant } from "@/types/tenant";
+
+export default function HomePage() {
+
+    const [rows, setRows] = useState<TenantProductRow[]>([]);
+    const [tenant, setTenant] = useState<Tenant | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    async function load() {
+        try {
+            setLoading(true);
+
+            const [productRes, tenantRes] = await Promise.all([
+                getTenantProductView(),
+                getTenant(),
+            ]);
+
+            setRows(productRes.rows);
+            setTenant(tenantRes.tenant);
+
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    useEffect(() => {
+        load();
+    }, []);
+
+    if (loading) {
+        return <CircularProgress />;
+    }
+
+    if (!tenant) {
+        return null;
+    }
 
     return (
-        <Container sx={{ mt: 4 }}>
-            <Typography variant="h4" textAlign="center" gutterBottom>
-                Products
+        <Stack
+            sx={{
+                px: {
+                    xs: 2,
+                    sm: 4,
+                    md: 8,
+                    lg: 16,
+                },
+                py: {
+                    xs: 1,
+                    sm: 2,
+                },
+            }}
+        >
+            <Typography
+                variant="h5"
+                fontWeight={600}
+                textAlign="center"
+                sx={{
+                    fontSize: {
+                        xs: "1.25rem", // h6 (20px)
+                        sm: "1.5rem",  // h5 (24px)
+                    },
+                }}
+            >
+                {tenant.name}
             </Typography>
 
-            <Box mt={4}>
-                <ProductGrid rows={visible} />
-            </Box>
-        </Container>
+            <HomeDashboard
+                rows={rows}
+            />
+        </Stack>
     );
 }

@@ -1,22 +1,20 @@
-import type { AuditLog }
-    from "@/types/audit";
+import type { AuditLog } from "@/types/audit";
 
-import {
-    appendAudit as appendAuditStorage,
-    listAuditByTenant as listAuditByTenantStorage,
-} from "./storage";
+import { auditStore } from "./storage";
 
-export function appendAudit(
+export async function appendAudit(
     log: AuditLog
-): void {
-    appendAuditStorage(log);
+): Promise<void> {
+
+    await auditStore.append(log);
 }
 
-export function getAuditLogs(
+export async function getAuditLogs(
     tenantId: string,
     limit?: number
-): AuditLog[] {
-    return listAuditByTenantStorage(
+): Promise<AuditLog[]> {
+
+    return auditStore.listByTenant(
         tenantId,
         limit
     );

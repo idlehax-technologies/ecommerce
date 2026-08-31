@@ -1,3 +1,4 @@
+import type { AuthUser } from "@/types/auth";
 import type { UserProfile } from "@/types/profile";
 import type { Tenant } from "@/types/tenant";
 import type { Product } from "@/types/product";
@@ -20,11 +21,12 @@ export function toSellerSnapshot(
 }
 
 export function toCustomerSnapshot(
+    user: AuthUser,
     profile: UserProfile
 ): CustomerSnapshot {
     return {
         fullName: profile.fullName,
-        phone: profile.phone,
+        phone: user.phone,
         email: profile.email,
         addressText: profile.addressText,
     };
@@ -45,6 +47,17 @@ export function toItemSnapshot(
         gstRate: product.gstRate,
 
         price: product.price,
+        discountPercent: product.discountPercent,
+
         quantity,
+    };
+}
+
+export function toGuestCustomerSnapshot(): CustomerSnapshot {
+    return {
+        fullName: "Walk-in Customer",
+        phone: "",
+        email: "",
+        addressText: "",
     };
 }

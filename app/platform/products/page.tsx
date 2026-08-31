@@ -1,39 +1,50 @@
 import Link from "next/link";
 
 import {
-  Container,
+  Box,
   Typography,
   Stack,
   Button,
   Paper,
+  Divider,
 } from "@mui/material";
 
-import { getUserFromRequest } from "@/lib/auth";
+import { getUserFromRequest } from "@/lib/session/session";
 import { requireSuperadmin } from "@/lib/auth/guards";
-
-import { QUERY_LIMITS } from "@/lib/config/queryLimits";
 
 import { listPlatformProducts } from "@/lib/products/service";
 
-import ProductTable from "@/components/admin/products/ProductTable";
+import { QUERY_LIMITS } from "@/lib/config/queryLimits";
+
+import ProductsDashboard
+  from "@/components/admin/products/ProductsDashboard";
 
 export default async function ProductsPage() {
 
   const rawUser = await getUserFromRequest();
   requireSuperadmin(rawUser);
 
-  const products = await listPlatformProducts(QUERY_LIMITS.PRODUCTS);
+  const products =
+    await listPlatformProducts(
+      QUERY_LIMITS.PRODUCTS
+    );
 
   return (
-    <Container sx={{ py: 4 }}>
+    <Stack spacing={3} sx={{ p: 4 }}>
       <Stack
         direction="row"
         justifyContent="space-between"
-        mb={3}
+        alignItems="center"
       >
-        <Typography variant="h5">
-          Products
-        </Typography>
+        <Box>
+          <Typography variant="h5" fontWeight={600}>
+            Products
+          </Typography>
+
+          <Typography variant="body2" color="text.secondary">
+            View and manage platform products
+          </Typography>
+        </Box>
 
         <Link href="/platform/products/new">
           <Button variant="contained">
@@ -42,11 +53,13 @@ export default async function ProductsPage() {
         </Link>
       </Stack>
 
-      <Paper>
-        <ProductTable
+      <Divider />
+
+      <Paper elevation={2} sx={{ p: 2 }}>
+        <ProductsDashboard
           products={products}
         />
       </Paper>
-    </Container>
+    </Stack>
   );
 }

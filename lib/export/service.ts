@@ -10,7 +10,7 @@ export async function exportData(
 
     const result = await generateExport(tenantId, request);
 
-    const csv = toCSV(result.rows);
+    const csv = toCSV(result.headers, result.rows);
 
     return {
         filename: result.filename,

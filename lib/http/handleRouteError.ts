@@ -13,6 +13,7 @@ import { recordError } from "../metrics";
 import { JobDomainError } from "../jobs/errors";
 import { ReconciliationDomainError } from "../reconciliation/errors";
 import { ExportDomainError } from "../export/errors";
+import { SecurityDomainError } from "../security/errors";
 
 /**
  * Central HTTP error translator.
@@ -34,7 +35,8 @@ export function handleRouteError(err: unknown) {
         err instanceof TenantInventoryDomainError ||
         err instanceof JobDomainError ||
         err instanceof ReconciliationDomainError ||
-        err instanceof ExportDomainError
+        err instanceof ExportDomainError ||
+        err instanceof SecurityDomainError
     ) {
         return NextResponse.json(
             { error: err.message },

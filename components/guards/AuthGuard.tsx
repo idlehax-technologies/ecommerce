@@ -6,6 +6,11 @@ import { CircularProgress } from "@mui/material";
 
 import { useAuth } from "@/contexts/AuthContext";
 
+import {
+    getSuperadminLandingPage,
+    getUnauthenticatedLandingPage,
+} from "@/lib/navigation/defaultLandingPage";
+
 type Props = {
     children: React.ReactNode;
 };
@@ -28,14 +33,16 @@ export default function AuthGuard({
 
         // not logged in
         if (!user) {
-            router.replace("/login");
+            router.replace(getUnauthenticatedLandingPage());
             return;
         }
 
         // superadmin belongs to platform plane
         if (user.isSuperadmin) {
-            router.replace("/platform/tenants");
+            router.replace(getSuperadminLandingPage());
+            return;
         }
+
     }, [user, loading, router]);
 
     if (loading) {

@@ -7,7 +7,6 @@ import { listActiveTenants } from "@/lib/tenants/domain";
 import { guardRequest } from "@/lib/security/requestGuard";
 
 export async function GET(req: Request) {
-
     try {
         await guardRequest(req, { requireAuth: true });
 

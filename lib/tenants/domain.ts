@@ -26,7 +26,7 @@ export async function createTenant(
 
     const tenant = toNewTenant(dto);
 
-    tenantStore.save(tenant);
+    await tenantStore.save(tenant);
 
     return tenant;
 }
@@ -36,14 +36,16 @@ export async function listTenants(): Promise<Tenant[]> {
 }
 
 export async function listActiveTenants(): Promise<PublicTenant[]> {
-    return tenantStore
-        .getAll()
+    const tenants = await tenantStore.getAll();
+
+    return tenants
         .filter((t) => t.status === "ACTIVE")
         .map(toPublicTenant);
 }
 
 export async function getTenant(tenantId: string): Promise<Tenant> {
-    const tenant = tenantStore.get(tenantId);
+    const tenant = await tenantStore.get(tenantId);
+
     assertExists(tenant);
 
     return tenant;
@@ -57,7 +59,7 @@ export async function updateTenant(
 
     const updated = toUpdatedTenant(current, dto);
 
-    tenantStore.save(updated);
+    await tenantStore.save(updated);
 
     return updated;
 }
@@ -76,7 +78,7 @@ export async function activateTenant(tenantId: string): Promise<Tenant> {
         updatedAt: now(),
     };
 
-    tenantStore.save(updated);
+    await tenantStore.save(updated);
 
     return updated;
 }
@@ -95,7 +97,7 @@ export async function suspendTenant(tenantId: string): Promise<Tenant> {
         updatedAt: now(),
     };
 
-    tenantStore.save(updated);
+    await tenantStore.save(updated);
 
     return updated;
 }
@@ -114,7 +116,7 @@ export async function archiveTenant(tenantId: string): Promise<Tenant> {
         updatedAt: now(),
     };
 
-    tenantStore.save(updated);
+    await tenantStore.save(updated);
 
     return updated;
 }

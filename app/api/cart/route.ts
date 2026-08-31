@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 
-import { requireTenant } from "@/lib/auth/guards";
+import { requireMembershipRole, requireMembership } from "@/lib/auth/guards";
 import { guardRequest } from "@/lib/security/requestGuard";
 
 import * as cartDomain from "@/lib/cart/domain";
+import { getCartView } from "@/lib/cart/service";
+import { assertAddToCartDTO } from "@/lib/cart/guards";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
-
-import { assertAddToCartDTO } from "@/lib/cart/guards";
 
 import {
     recordLatency,
@@ -22,14 +22,20 @@ export async function GET(req: Request) {
             requireAuth: true,
         });
 
-        const actor = requireTenant(user);
+        await requireMembershipRole(user, ["customer"]);
 
-        const cart = cartDomain.getUserCart(
+        const actor = await requireMembership(user);
+
+        const cart = await cartDomain.getUserCart(
             actor.tenantId,
             actor.userId
         );
 
-        return NextResponse.json({ cart });
+        const view = await getCartView(cart);
+
+        return NextResponse.json({
+            cart: view,
+        });
 
     } catch (err: unknown) {
         return handleRouteError(err);
@@ -49,7 +55,9 @@ export async function POST(req: Request) {
             csrf: true,
         });
 
-        const actor = requireTenant(user);
+        await requireMembershipRole(user, ["customer"]);
+
+        const actor = await requireMembership(user);
 
         recordUser(actor.userId);
 
@@ -63,9 +71,13 @@ export async function POST(req: Request) {
             body
         );
 
+        const view = await getCartView(cart);
+
         recordLatency(Date.now() - start);
 
-        return NextResponse.json({ cart });
+        return NextResponse.json({
+            cart: view,
+        });
 
     } catch (err: unknown) {
 
@@ -88,11 +100,13 @@ export async function DELETE(req: Request) {
             csrf: true,
         });
 
-        const actor = requireTenant(user);
+        await requireMembershipRole(user, ["customer"]);
+
+        const actor = await requireMembership(user);
 
         recordUser(actor.userId);
 
-        cartDomain.clearCart(
+        await cartDomain.clearCart(
             actor.tenantId,
             actor.userId
         );

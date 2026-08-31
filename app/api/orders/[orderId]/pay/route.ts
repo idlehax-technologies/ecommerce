@@ -1,22 +1,20 @@
 import { NextResponse } from "next/server";
 
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireMembershipRole, requireTenant } from "@/lib/auth/guards";
+import { requireMembershipRole, requireMembership } from "@/lib/auth/guards";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import * as paymentsDomain from "@/lib/payments/domain";
 import * as ordersDomain from "@/lib/orders/domain";
 
-import {
-    assertPayOrderDTO,
-} from "@/lib/orders/validators";
+import { assertOrderVisible } from "@/lib/orders/guards";
+import { assertPayOrderDTO } from "@/lib/orders/validators";
 
 import {
     recordLatency,
     recordRequest,
     recordUser,
 } from "@/lib/metrics";
-import { assertOrderVisible } from "@/lib/orders/guards";
 
 export async function POST(
     req: Request,
@@ -33,12 +31,12 @@ export async function POST(
             csrf: true,
         });
 
-        requireMembershipRole(user, ["customer"]);
+        await requireMembershipRole(user, ["customer", "staff"]);
 
-        const actor = requireTenant(user);
+        const actor = await requireMembership(user);
         recordUser(actor.userId);
 
-        const targetOrder = ordersDomain.getTenantOrder(
+        const targetOrder = await ordersDomain.getTenantOrder(
             actor.tenantId,
             orderId
         );
@@ -49,7 +47,25 @@ export async function POST(
 
         assertPayOrderDTO(body);
 
-        const result = paymentsDomain.recordPayment(
+        if (
+            actor.role === "customer" &&
+            body.method !== "UPI"
+        ) {
+            throw new Error(
+                "Customers can only pay using UPI"
+            );
+        }
+
+        if (
+            actor.role === "staff" &&
+            body.method !== "CASH"
+        ) {
+            throw new Error(
+                "Staff can only confirm cash payments"
+            );
+        }
+
+        const result = await paymentsDomain.recordPayment(
             actor.tenantId,
             orderId,
             body.method

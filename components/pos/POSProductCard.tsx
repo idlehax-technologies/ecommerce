@@ -1,86 +1,135 @@
 "use client";
 
 import {
+    Box,
     Card,
+    CardActionArea,
     CardContent,
-    CardMedia,
-    Typography,
     Chip,
     Stack,
-    CardActionArea,
+    Typography,
 } from "@mui/material";
 
-import type { POSRow } from "@/lib/mappers/posView";
+import ProductImage from "@/components/products/ProductImage";
 
-type POSRowWithAction = POSRow & {
-    onSelect: () => void;
-};
+import { getDiscountedPrice } from "@/lib/calculations/pricing";
+import { formatINR } from "@/lib/format/currency";
+
+import type {
+    POSRowWithAction,
+} from "@/lib/mappers/posView";
 
 type Props = {
     row: POSRowWithAction;
 };
 
-export default function POSProductCard({ row }: Props) {
-    const { product, stock, reserved, inCart, available, onSelect } = row;
+export default function POSProductCard({
+    row,
+}: Props) {
 
-    const price = (product.price / 100).toFixed(2);
+    const { product, available, inCart, onSelect } = row;
+
     const image = product.images?.[0];
 
     const disabled = available <= 0;
 
+    const discountedPrice =
+        getDiscountedPrice(
+            product.price,
+            product.discountPercent
+        );
+
     return (
         <Card
             sx={{
+                height: "100%",
                 opacity: disabled ? 0.5 : 1,
-                cursor: disabled ? "not-allowed" : "pointer",
             }}
         >
             <CardActionArea
                 disabled={disabled}
-                onClick={!disabled ? onSelect : undefined}
+                onClick={disabled ? undefined : onSelect}
+                sx={{
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "stretch",
+                }}
             >
-                {image && (
-                    <CardMedia
-                        component="img"
-                        height="160"
-                        image={image}
-                        alt={product.title}
-                    />
-                )}
+                <ProductImage
+                    src={image}
+                    alt={product.title}
+                />
 
-                <CardContent>
-                    <Stack spacing={1}>
+                <CardContent sx={{ flexGrow: 1 }}>
+                    <Stack
+                        spacing={0.5}
+                        height="100%"
+                    >
                         <Typography fontWeight={600}>
                             {product.title}
                         </Typography>
 
-                        <Typography>
-                            ₹{price}
-                        </Typography>
+                        {product.discountPercent > 0 ? (
+                            <Stack>
+                                <Stack
+                                    direction="row"
+                                    spacing={0.5}
+                                    alignItems="center"
+                                >
+                                    <Typography fontWeight={600}>
+                                        {formatINR(discountedPrice)}
+                                    </Typography>
 
-                        {/* 🔥 Stock + reservation feedback */}
-                        <Stack direction="row" spacing={1} flexWrap="wrap">
-                            <Chip
-                                label={`Stock: ${stock}`}
-                                size="small"
-                            />
+                                    <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                        sx={{ textDecoration: "line-through" }}
+                                    >
+                                        {formatINR(product.price)}
+                                    </Typography>
+                                </Stack>
 
+                                <Typography
+                                    variant="body2"
+                                    color="success.main"
+                                >
+                                    {product.discountPercent}
+                                    % OFF on MRP
+                                </Typography>
+                            </Stack>
+                        ) : (
+                            <Typography fontWeight={600}>
+                                {formatINR(product.price)}
+                            </Typography>
+                        )}
+
+                        <Box flexGrow={1} />
+
+                        <Stack
+                            direction="row"
+                            spacing={0.75}
+                        >
                             {inCart > 0 && (
                                 <Chip
-                                    label={`${inCart} in cart`}
-                                    color="info"
                                     size="small"
+                                    color="info"
+                                    label={`${inCart} in cart`}
                                 />
                             )}
 
                             <Chip
+                                size="small"
+                                color={
+                                    available > 0
+                                        ? "success"
+                                        : "error"
+                                }
                                 label={
                                     available > 0
                                         ? `${available} left`
                                         : "Out of stock"
                                 }
-                                color={available > 0 ? "success" : "error"}
-                                size="small"
                             />
                         </Stack>
                     </Stack>

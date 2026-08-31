@@ -17,7 +17,9 @@ import type {
 import TenantInventorySection
     from "./TenantInventorySection";
 
-const LOW_STOCK_THRESHOLD = 5;
+import {
+    LOW_STOCK_THRESHOLD
+} from "@/lib/tenantInventory/constants";
 
 const SECTIONS = [
     "ALL",
@@ -28,17 +30,10 @@ const SECTIONS = [
 ] as const;
 
 type Props = {
-    tenantId: string;
     rows: TenantProvisioningRow[];
 };
 
-export default function TenantInventoryDashboard({
-    tenantId,
-    rows,
-}: Props) {
-
-    const [inventory, setInventory] =
-        useState(rows);
+export default function TenantInventoryDashboard({ rows }: Props) {
 
     const [search, setSearch] =
         useState("");
@@ -46,25 +41,12 @@ export default function TenantInventoryDashboard({
     const [statusFilter, setStatusFilter] =
         useState<typeof SECTIONS[number]>("ALL");
 
-    function updateRow(
-        productId: string,
-        patch: Partial<TenantProvisioningRow>
-    ) {
-        setInventory(prev =>
-            prev.map(row =>
-                row.product.productId === productId
-                    ? { ...row, ...patch }
-                    : row
-            )
-        );
-    }
-
     const filtered = useMemo(() => {
 
         const q =
             search.toLowerCase();
 
-        return inventory.filter((row) => {
+        return rows.filter((row) => {
 
             return (
                 row.product.title
@@ -84,7 +66,7 @@ export default function TenantInventoryDashboard({
             );
 
     }, [
-        inventory,
+        rows,
         search,
     ]);
 
@@ -131,7 +113,7 @@ export default function TenantInventoryDashboard({
             };
 
     return (
-        <Stack spacing={3}>
+        <Stack spacing={2}>
 
             <TextField
                 label="Search inventory"
@@ -165,14 +147,12 @@ export default function TenantInventoryDashboard({
             </ToggleButtonGroup>
 
             {Object.entries(visible).map(
-                ([title, inventory]) =>
-                    inventory.length ? (
+                ([section, rows]) =>
+                    rows.length ? (
                         <TenantInventorySection
-                            key={title}
-                            tenantId={tenantId}
-                            title={`${title} (${inventory.length})`}
-                            rows={inventory}
-                            onRowChange={updateRow}
+                            key={section}
+                            title={`${section} (${rows.length})`}
+                            rows={rows}
                         />
                     ) : null
             )}

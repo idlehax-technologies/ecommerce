@@ -1,47 +1,89 @@
 import { getActiveProduct } from "@/lib/products/domain";
-import { getProfile } from "@/lib/profiles/domain";
 import { getTenant } from "@/lib/tenants/domain";
 
 import * as ordersDomain from "@/lib/orders/domain";
 import * as tenantInventoryDomain from "@/lib/tenantInventory/domain";
-import * as paymentsDomain from "@/lib/payments/domain";
 
 import {
-    toCustomerSnapshot,
+    toGuestCustomerSnapshot,
     toItemSnapshot,
     toSellerSnapshot,
 } from "@/lib/orders/mappers";
 
+import { EmptyOrderItemsError } from "@/lib/orders/errors";
+
 import type { Order } from "@/types/order";
 import type { DomainEvent } from "@/types/domainEvent";
-import { PaymentMethod } from "@/types/payment";
+import type {
+    POSInput,
+    POSItemInput,
+    RemovedPOSItem,
+    POSResult,
+} from "@/types/pos";
 
-import { ProfileNotFoundError } from "@/lib/profiles/errors";
+async function findUnavailableItems(
+    tenantId: string,
+    items: POSItemInput[]
+): Promise<RemovedPOSItem[]> {
 
-type POSItemInput = {
-    productId: string;
-    quantity: number;
-};
+    const removed: RemovedPOSItem[] = [];
 
-type POSInput = {
-    tenantId: string;
-    staffId: string;
-    items: POSItemInput[];
-    paymentMethod?: PaymentMethod;
-};
+    for (const item of items) {
 
-export async function executePOS(input: POSInput): Promise<{
-    order: Order & { placedByStaffId: string };
-    events: DomainEvent[];
-}> {
-    if (!input.items.length) {
-        throw new Error("POS requires items");
+        const provision =
+            await tenantInventoryDomain.findTenantProvision(
+                tenantId,
+                item.productId
+            );
+
+        if (
+            !provision ||
+            !provision.enabled
+        ) {
+            removed.push({
+                productId: item.productId,
+                reason: "NOT_PROVISIONED",
+            });
+
+            continue;
+        }
+
+        try {
+
+            await getActiveProduct(
+                item.productId
+            );
+
+        } catch {
+
+            removed.push({
+                productId: item.productId,
+                reason: "INACTIVE",
+            });
+        }
     }
 
-    const profile = getProfile(input.staffId);
+    return removed;
+}
 
-    if (!profile) {
-        throw new ProfileNotFoundError();
+export async function executePOS(
+    input: POSInput
+): Promise<POSResult> {
+    if (!input.items.length) {
+        throw new EmptyOrderItemsError();
+    }
+
+    const unavailableItems =
+        await findUnavailableItems(
+            input.tenantId,
+            input.items
+        );
+
+    if (unavailableItems.length > 0) {
+        return {
+            success: false,
+            removedItems: unavailableItems,
+        };
     }
 
     const tenant =
@@ -55,9 +97,7 @@ export async function executePOS(input: POSInput): Promise<{
         );
 
     const customer =
-        toCustomerSnapshot(
-            profile
-        );
+        toGuestCustomerSnapshot();
 
     const items =
         await Promise.all(
@@ -103,36 +143,8 @@ export async function executePOS(input: POSInput): Promise<{
 
         const events: DomainEvent[] = [orderCreatedEvent];
 
-        // payment flow (2-step)
-        if (input.paymentMethod) {
-            // STEP 1 — create payment (PENDING)
-            paymentsDomain.recordPayment(
-                input.tenantId,
-                order.orderId,
-                input.paymentMethod
-            );
-
-            // STEP 2 — confirm payment (returns BOTH events)
-            const paymentResult = await paymentsDomain.confirmPayment(
-                input.tenantId,
-                order.orderId
-            );
-
-            // include BOTH events
-            events.push(...paymentResult.events);
-
-            const enrichedPaidOrder: Order & { placedByStaffId: string } = {
-                ...paymentResult.order,
-                placedByStaffId: input.staffId,
-            };
-
-            return {
-                order: enrichedPaidOrder,
-                events,
-            };
-        }
-
         return {
+            success: true,
             order: enrichedOrder,
             events,
         };

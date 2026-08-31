@@ -8,77 +8,65 @@ import {
     useCallback,
 } from "react";
 
-import * as api from "@/lib/api/cart";
+import * as cartApi from "@/lib/api/cart";
+import type { CartView } from "@/lib/mappers/cartView";
 
-import type {
-    Cart,
-    CartContextValue,
-} from "@/types/cart";
+type CartContextValue = {
+    cart: CartView | null;
+    loading: boolean;
 
-const CartContext =
-    createContext<CartContextValue | null>(null);
+    refresh: () => Promise<void>;
+    add: (id: string) => Promise<void>;
+    update: (id: string, q: number) => Promise<void>;
+    remove: (id: string) => Promise<void>;
+    clear: () => Promise<void>;
+};
+
+const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const [cart, setCart] = useState<CartView | null>(null);
 
-    const [cart, setCart] =
-        useState<Cart | null>(null);
+    const [loading, setLoading] = useState(true);
 
     const refresh = useCallback(async () => {
-
-        const res = await api.getCart();
-
-        setCart(res.cart);
-
+        try {
+            setLoading(true);
+            const res = await cartApi.getCart();
+            setCart(res.cart);
+        } catch {
+            // Not an error condition for UI — this actor may not have cart access.
+            setCart(null);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
-    const add = useCallback(async (
-        productId: string
-    ) => {
+    const add = useCallback(
+        async (productId: string) => {
+            const res = await cartApi.addToCart({ productId, });
+            setCart(res.cart);
+        }, []);
 
-        const res = await api.addToCart({
-            productId,
-        });
+    const update = useCallback(
+        async (productId: string, quantity: number) => {
+            const res = await cartApi.updateItem(productId, { quantity });
+            setCart(res.cart);
+        }, []);
 
-        setCart(res.cart);
-
-    }, []);
-
-    const update = useCallback(async (
-        productId: string,
-        quantity: number
-    ) => {
-
-        const res = await api.updateItem(
-            productId,
-            { quantity }
-        );
-
-        setCart(res.cart);
-
-    }, []);
-
-    const remove = useCallback(async (
-        productId: string
-    ) => {
-
-        const res = await api.removeItem(
-            productId
-        );
-
-        setCart(res.cart);
-
-    }, []);
+    const remove = useCallback(
+        async (productId: string) => {
+            const res = await cartApi.removeItem(productId);
+            setCart(res.cart);
+        }, []);
 
     const clear = useCallback(async () => {
-
-        await api.clearCart();
-
+        await cartApi.clearCart();
         setCart(null);
-
     }, []);
 
     useEffect(() => {
@@ -89,6 +77,7 @@ export function CartProvider({
         <CartContext.Provider
             value={{
                 cart,
+                loading,
                 refresh,
                 add,
                 update,
@@ -102,12 +91,11 @@ export function CartProvider({
 }
 
 export function useCart() {
-
     const ctx = useContext(CartContext);
 
     if (!ctx) {
         throw new Error(
-            "CartProvider missing"
+            "useCart must be used within CartProvider"
         );
     }
 

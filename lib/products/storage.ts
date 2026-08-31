@@ -1,203 +1,92 @@
 import type { Product } from "@/types/product";
+import { prisma } from "@/lib/db/prisma";
 
-/**
- * We keep the store on globalThis so that Next.js hot-reload
- * does NOT recreate it on every file change.
- */
-const globalForProducts = globalThis as unknown as {
-    __productStore?: Map<string, Product>;
-};
-
-const store: Map<string, Product> =
-    globalForProducts.__productStore ?? new Map();
-
-globalForProducts.__productStore = store;
-
-/**
- * --------------------------------------------------------
- * One-time DEV SEED
- * --------------------------------------------------------
- * We seed only if the store is empty.
- * This ensures:
- * - Runs once on server start
- * - Does NOT duplicate on HMR
- * - Behaves like a fake database bootstrap
- */
-function seedIfEmpty() {
-    if (store.size > 0) return;
-
-    const now = new Date().toISOString();
-
-    const demoProducts: Product[] = [
-        {
-            productId: "p-001",
-            title: "Wireless Mouse",
-            description: "Ergonomic Bluetooth mouse with silent clicks.",
-            price: 79900,
-            currency: "INR",
-            gstRate: 18,
-            hsnCode: "1111",
-            status: "ACTIVE",
-            sku: "WM-ERG-01",
-            images: ["https://picsum.photos/seed/mouse/400"],
-            category: "Workspace",
-            tags: ["wireless", "office", "bluetooth"],
-            createdAt: now,
-            updatedAt: now,
-        },
-        {
-            productId: "p-002",
-            title: "Mechanical Keyboard",
-            description: "RGB mechanical keyboard with hot-swappable switches.",
-            price: 349900,
-            currency: "INR",
-            gstRate: 18,
-            hsnCode: "2222",
-            status: "ACTIVE",
-            sku: "KB-MECH-RGB",
-            images: ["https://picsum.photos/seed/keyboard/400"],
-            category: "Workspace",
-            tags: ["keyboard", "gaming", "rgb"],
-            createdAt: now,
-            updatedAt: now,
-        },
-        {
-            productId: "p-003",
-            title: "27\" Monitor",
-            description: "4K IPS display for design and productivity.",
-            price: 2299900,
-            currency: "INR",
-            gstRate: 18,
-            hsnCode: "3333",
-            status: "ACTIVE",
-            sku: "MON-27-4K",
-            images: ["https://picsum.photos/seed/monitor/400"],
-            category: "Workspace",
-            tags: ["4k", "ips", "workstation"],
-            createdAt: now,
-            updatedAt: now,
-        },
-        {
-            productId: "p-004",
-            title: "USB-C Dock",
-            description: "Multiport dock with HDMI, LAN, and PD charging.",
-            price: 599900,
-            currency: "INR",
-            gstRate: 18,
-            hsnCode: "4444",
-            status: "ACTIVE",
-            sku: "DOCK-UC10",
-            images: ["https://picsum.photos/seed/dock/400"],
-            category: "Workspace",
-            tags: ["usb-c", "laptop", "dock"],
-            createdAt: now,
-            updatedAt: now,
-        },
-        {
-            productId: "p-005",
-            title: "Noise Cancelling Headphones",
-            description: "Over-ear ANC headphones with 30h battery.",
-            price: 1299900,
-            currency: "INR",
-            gstRate: 18,
-            hsnCode: "5555",
-            status: "ACTIVE",
-            sku: "AUD-ANC-X",
-            images: ["https://picsum.photos/seed/headphones/400"],
-            category: "Audio",
-            tags: ["audio", "anc", "wireless"],
-            createdAt: now,
-            updatedAt: now,
-        },
-        {
-            productId: "p-006",
-            title: "Laptop Stand",
-            description: "Aluminium stand for ergonomic desk setups.",
-            price: 149900,
-            currency: "INR",
-            gstRate: 18,
-            hsnCode: "6666",
-            status: "ACTIVE",
-            sku: "STAND-LAP",
-            images: ["https://picsum.photos/seed/stand/400"],
-            category: "Workspace",
-            tags: ["ergonomic", "desk"],
-            createdAt: now,
-            updatedAt: now,
-        },
-        {
-            productId: "p-007",
-            title: "Webcam 1080p",
-            description: "Full HD webcam with dual microphones.",
-            price: 299900,
-            currency: "INR",
-            gstRate: 18,
-            hsnCode: "7777",
-            status: "ACTIVE",
-            sku: "CAM-FHD",
-            images: ["https://picsum.photos/seed/webcam/400"],
-            category: "Workspace",
-            tags: ["remote", "camera"],
-            createdAt: now,
-            updatedAt: now,
-        },
-        {
-            productId: "p-008",
-            title: "External SSD 1TB",
-            description: "High-speed NVMe portable SSD.",
-            price: 899900,
-            currency: "INR",
-            gstRate: 18,
-            hsnCode: "8888",
-            status: "ACTIVE",
-            sku: "SSD-1TB-NVME",
-            images: ["https://picsum.photos/seed/ssd/400"],
-            category: "Storage",
-            tags: ["ssd", "backup", "portable"],
-            createdAt: now,
-            updatedAt: now,
-        },
-        {
-            productId: "p-009",
-            title: "Smart Desk Lamp",
-            description: "Adjustable LED lamp with touch controls.",
-            price: 199900,
-            currency: "INR",
-            gstRate: 18,
-            hsnCode: "9999",
-            status: "ACTIVE",
-            sku: "LAMP-SMART",
-            images: ["https://picsum.photos/seed/lamp/400"],
-            category: "Workspace",
-            tags: ["lighting", "desk"],
-            createdAt: now,
-            updatedAt: now,
-        },
-    ];
-
-    demoProducts.forEach(p => store.set(p.productId, p));
-}
-
-seedIfEmpty();
-
-/**
- * Public storage API
- */
 export const productStore = {
-    get(id: string): Product | undefined {
-        const product = store.get(id);
+    async get(productId: string): Promise<Product | undefined> {
+        const product = await prisma.product.findUnique({
+            where: { productId },
+        });
 
-        return product
-            ? { ...product }
-            : undefined;
+        if (!product) {
+            return undefined;
+        }
+
+        return {
+            productId: product.productId,
+            sku: product.sku,
+            title: product.title,
+            description: product.description,
+            price: product.price,
+            discountPercent: product.discountPercent,
+            currency: product.currency as Product["currency"],
+            hsnCode: product.hsnCode,
+            gstRate: Number(product.gstRate) as Product["gstRate"],
+            status: product.status,
+            images: product.images,
+            category: product.category as Product["category"],
+            tags: product.tags,
+            createdAt: product.createdAt.toISOString(),
+            updatedAt: product.updatedAt.toISOString(),
+        };
     },
 
-    getAll(): Product[] {
-        return Array.from(store.values())
-            .map(p => ({ ...p }));
+    async getAll(): Promise<Product[]> {
+        const products = await prisma.product.findMany();
+
+        return products.map((product) => ({
+            productId: product.productId,
+            sku: product.sku,
+            title: product.title,
+            description: product.description,
+            price: product.price,
+            discountPercent: product.discountPercent,
+            currency: product.currency as Product["currency"],
+            hsnCode: product.hsnCode,
+            gstRate: Number(product.gstRate) as Product["gstRate"],
+            status: product.status,
+            images: product.images,
+            category: product.category as Product["category"],
+            tags: product.tags,
+            createdAt: product.createdAt.toISOString(),
+            updatedAt: product.updatedAt.toISOString(),
+        }));
     },
 
-    save(p: Product): void {
-        store.set(p.productId, { ...p });
+    async save(product: Product): Promise<void> {
+        await prisma.product.upsert({
+            where: {
+                productId: product.productId,
+            },
+            create: {
+                productId: product.productId,
+                sku: product.sku,
+                title: product.title,
+                description: product.description,
+                price: product.price,
+                discountPercent: product.discountPercent,
+                currency: product.currency,
+                hsnCode: product.hsnCode,
+                gstRate: product.gstRate,
+                status: product.status,
+                images: product.images,
+                category: product.category,
+                tags: product.tags,
+                createdAt: new Date(product.createdAt),
+                updatedAt: new Date(product.updatedAt),
+            },
+            update: {
+                title: product.title,
+                description: product.description,
+                price: product.price,
+                discountPercent: product.discountPercent,
+                hsnCode: product.hsnCode,
+                gstRate: product.gstRate,
+                status: product.status,
+                images: product.images,
+                category: product.category,
+                tags: product.tags,
+                updatedAt: new Date(product.updatedAt),
+            },
+        });
     },
 };

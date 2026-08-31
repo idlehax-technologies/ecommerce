@@ -12,7 +12,15 @@ export type AuditEventType =
     | "MEMBERSHIP_EXPIRED"
     | "MEMBERSHIP_ROLE_UPDATED"
     | "INVENTORY_ADJUSTED"
+    | "INVENTORY_RECONCILED"
     | "PAYMENT_CONFIRMED";
+
+// INVENTORY uses productId as entityId; tenantId + entityId identify the TenantInventory
+export type AuditEntityType =
+    | "ORDER"
+    | "MEMBERSHIP"
+    | "INVENTORY"
+    | "PAYMENT";
 
 export type AuditLog = {
     auditId: string;
@@ -22,11 +30,11 @@ export type AuditLog = {
 
     eventType: AuditEventType;
 
-    entityType: string;
+    entityType: AuditEntityType;
     entityId: string;
 
     from?: Record<string, unknown>;
-    to?: Record<string, unknown>;
+    to: Record<string, unknown>;
 
     metadata: Record<string, unknown>;
 

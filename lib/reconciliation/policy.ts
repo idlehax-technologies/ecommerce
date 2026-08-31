@@ -42,22 +42,22 @@ const POLICY_MAP: Record<
 
     INVENTORY_NEGATIVE_RESERVED: {
         mismatchType: "INVENTORY_NEGATIVE_RESERVED",
-        allowedActions: ["ADJUST_INVENTORY"],
-        recommendedAction: "ADJUST_INVENTORY",
+        allowedActions: ["RECONCILE_RESERVED"],
+        recommendedAction: "RECONCILE_RESERVED",
         requiresConfirmation: true,
     },
 
     INVENTORY_RESERVED_EXCEEDS_STOCK: {
         mismatchType: "INVENTORY_RESERVED_EXCEEDS_STOCK",
-        allowedActions: ["ADJUST_INVENTORY"],
-        recommendedAction: "ADJUST_INVENTORY",
+        allowedActions: ["RECONCILE_RESERVED"],
+        recommendedAction: "RECONCILE_RESERVED",
         requiresConfirmation: true,
     },
 
     INVENTORY_RESERVATION_MISMATCH: {
         mismatchType: "INVENTORY_RESERVATION_MISMATCH",
-        allowedActions: ["ADJUST_INVENTORY"],
-        recommendedAction: "ADJUST_INVENTORY",
+        allowedActions: ["RECONCILE_RESERVED"],
+        recommendedAction: "RECONCILE_RESERVED",
         requiresConfirmation: true,
     },
 };

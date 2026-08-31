@@ -1,18 +1,28 @@
 "use client";
 
+import { useState } from "react";
+
 import {
-    Stack,
-    Button,
     MenuItem,
     Select,
 } from "@mui/material";
-import type { SelectChangeEvent } from "@mui/material/Select";
-import { useState } from "react";
 
-import { updateMembershipRole } from "@/lib/api/memberships";
-import { useSnackbar } from "@/contexts/SnackbarContext";
+import type {
+    SelectChangeEvent,
+} from "@mui/material/Select";
 
-import type { MembershipView, MembershipRole } from "@/types/membership";
+import {
+    updateMembershipRole,
+} from "@/lib/api/memberships";
+
+import {
+    useSnackbar,
+} from "@/contexts/SnackbarContext";
+
+import type {
+    MembershipView,
+    MembershipRole,
+} from "@/types/membership";
 
 type Props = {
     membership: MembershipView;
@@ -23,49 +33,73 @@ export default function MembershipRoleActions({
     membership,
     reload,
 }: Props) {
-    const { membershipId, role: currentRole } = membership;
+    const { membershipId, role: currentRole, status } = membership;
 
     const { show } = useSnackbar();
 
     const [role, setRole] = useState<MembershipRole>(currentRole);
+
     const [loading, setLoading] = useState(false);
 
-    function handleChange(e: SelectChangeEvent) {
-        setRole(e.target.value as MembershipRole);
-    }
+    async function updateRole(
+        e: SelectChangeEvent
+    ) {
+        const nextRole = e.target.value as MembershipRole;
 
-    async function submit() {
+        if (
+            loading ||
+            nextRole === currentRole ||
+            status !== "APPROVED"
+        ) {
+            return;
+        }
+
         try {
             setLoading(true);
-            await updateMembershipRole(membershipId, role);
+            setRole(nextRole);
+
+            await updateMembershipRole(
+                membershipId,
+                nextRole
+            );
+
             show("Role updated");
             reload();
+
         } catch (err: unknown) {
+            setRole(currentRole);
+
             if (err instanceof Error) {
                 show(err.message, "error");
             } else {
-                show("Update failed", "error");
+                show("Failed to update role", "error");
             }
+
         } finally {
             setLoading(false);
         }
     }
 
     return (
-        <Stack direction="row" spacing={2}>
-            <Select size="small" value={role} onChange={handleChange}>
-                <MenuItem value="customer">Customer</MenuItem>
-                <MenuItem value="staff">Staff</MenuItem>
-                <MenuItem value="admin">Admin</MenuItem>
-            </Select>
-
-            <Button
-                variant="contained"
-                disabled={loading || role === currentRole}
-                onClick={submit}
-            >
-                Update Role
-            </Button>
-        </Stack>
+        <Select
+            size="small"
+            value={role}
+            disabled={
+                loading ||
+                status !== "APPROVED"
+            }
+            onChange={updateRole}
+            fullWidth
+        >
+            <MenuItem value="customer">
+                Customer
+            </MenuItem>
+            <MenuItem value="staff">
+                Staff
+            </MenuItem>
+            <MenuItem value="admin">
+                Admin
+            </MenuItem>
+        </Select>
     );
 }

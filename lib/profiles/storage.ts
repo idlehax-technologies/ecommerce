@@ -1,26 +1,45 @@
 import type { UserProfile } from "@/types/profile";
-
-const globalStore = globalThis as {
-    __profileStore?: Map<string, UserProfile>;
-};
-
-const store: Map<string, UserProfile> =
-    globalStore.__profileStore ?? new Map();
-
-globalStore.__profileStore = store;
+import { prisma } from "@/lib/db/prisma";
 
 export const profileStore = {
-    get(userId: string): UserProfile | null {
-        const profile = store.get(userId);
+    async get(userId: string): Promise<UserProfile | null> {
+        const profile = await prisma.profile.findUnique({
+            where: { userId },
+        });
 
-        return profile
-            ? { ...profile }
-            : null;
+        if (!profile) {
+            return null;
+        }
+
+        return {
+            userId: profile.userId,
+            fullName: profile.fullName,
+            email: profile.email,
+            addressText: profile.addressText,
+            createdAt: profile.createdAt.toISOString(),
+            updatedAt: profile.updatedAt.toISOString(),
+        };
     },
 
-    save(profile: UserProfile): void {
-        store.set(profile.userId, {
-            ...profile,
+    async save(profile: UserProfile): Promise<void> {
+        await prisma.profile.upsert({
+            where: {
+                userId: profile.userId,
+            },
+            create: {
+                userId: profile.userId,
+                fullName: profile.fullName,
+                email: profile.email,
+                addressText: profile.addressText,
+                createdAt: new Date(profile.createdAt),
+                updatedAt: new Date(profile.updatedAt),
+            },
+            update: {
+                fullName: profile.fullName,
+                email: profile.email,
+                addressText: profile.addressText,
+                updatedAt: new Date(profile.updatedAt),
+            },
         });
     },
 };

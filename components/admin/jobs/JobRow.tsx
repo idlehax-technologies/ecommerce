@@ -1,28 +1,31 @@
 "use client";
 
 import { useState } from "react";
-
 import { useRouter } from "next/navigation";
 
 import {
-    TableRow,
-    TableCell,
-    Button,
+    Paper,
     Stack,
+    Typography,
+    Button,
+    Divider,
 } from "@mui/material";
+
+import JobStatusBadge from "./JobStatusBadge";
+
+import { retryJobApi } from "@/lib/api/jobs";
+import { formatDateTime } from "@/lib/format/datetime";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 
 import type { Job } from "@/types/job";
 
-import { retryJobApi } from "@/lib/api/jobs";
-
-import { useSnackbar } from "@/contexts/SnackbarContext";
-
-export default function JobRow({ job }: { job: Job }) {
-
+export default function JobRow({
+    job,
+}: {
+    job: Job;
+}) {
     const router = useRouter();
-
     const { show } = useSnackbar();
-
     const [loading, setLoading] = useState(false);
 
     async function retry() {
@@ -45,32 +48,70 @@ export default function JobRow({ job }: { job: Job }) {
     }
 
     return (
-        <TableRow hover>
-            <TableCell>{job.type}</TableCell>
-            <TableCell>{job.status}</TableCell>
-            <TableCell>{job.attempts}</TableCell>
+        <Paper
+            elevation={2}
+            sx={{ p: 2 }}
+        >
+            <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+            >
+                <Stack spacing={0.25}>
+                    <Typography fontWeight={600}>
+                        {job.type}
+                    </Typography>
 
-            <TableCell>
-                {new Date(job.runAt).toLocaleString()}
-            </TableCell>
+                    <Typography
+                        variant="body2"
+                        color="text.secondary"
+                    >
+                        Attempts: {job.attempts}
+                    </Typography>
+                </Stack>
 
-            <TableCell align="right">
                 <Stack
-                    direction="row"
-                    spacing={1}
-                    justifyContent="flex-end"
+                    spacing={0.5}
+                    alignItems="flex-end"
                 >
-                    {job.status === "FAILED" && (
+                    <Typography variant="body2">
+                        {formatDateTime(job.runAt)}
+                    </Typography>
+
+                    <JobStatusBadge
+                        status={job.status}
+                    />
+                </Stack>
+            </Stack>
+
+            {job.status === "FAILED" && (
+                <>
+                    <Divider sx={{ my: 1.5 }} />
+
+                    <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                    >
+                        <Typography
+                            variant="body2"
+                            color="error"
+                            sx={{ wordBreak: "break-word" }}
+                        >
+                            {job.lastError}
+                        </Typography>
+
                         <Button
                             size="small"
+                            variant="outlined"
                             onClick={retry}
                             disabled={loading}
                         >
                             Retry
                         </Button>
-                    )}
-                </Stack>
-            </TableCell>
-        </TableRow>
+                    </Stack>
+                </>
+            )}
+        </Paper>
     );
 }

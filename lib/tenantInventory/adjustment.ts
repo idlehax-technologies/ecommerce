@@ -1,15 +1,12 @@
 import { tenantInventoryStore } from "./storage";
 import { requireProvision } from "./guards";
-
-import {
-    isInventoryProcessed,
-    markInventoryProcessed
-} from "./idempotency";
+import { InventoryInvariantViolationError } from "./errors";
 
 import type { AdjustedInventorySnapshot, StockAdjustmentRequest } from "@/types/stockAdjustment";
 import type { DomainEvent } from "@/types/domainEvent";
 
-import { InventoryInvariantViolationError } from "./errors";
+import { getTenant } from "../tenants/domain";
+import { claimInventoryIdempotency } from "../redis/idempotency";
 
 /**
  * STOCK ADJUSTMENT (DOMAIN)
@@ -38,12 +35,18 @@ export async function adjustStockBy(input: {
 }> {
     const { tenantId, request } = input;
 
+    await getTenant(tenantId);
+
     // ------------------------------
     // IDEMPOTENCY
     // ------------------------------
 
-    if (isInventoryProcessed(request.idempotencyKey)) {
-        const existing = tenantInventoryStore.get(tenantId, request.productId);
+    const claimed = await claimInventoryIdempotency(
+        request.idempotencyKey
+    );
+
+    if (!claimed) {
+        const existing = await tenantInventoryStore.get(tenantId, request.productId);
 
         requireProvision(existing, request.productId);
 
@@ -61,13 +64,12 @@ export async function adjustStockBy(input: {
     // MUTATION
     // ------------------------------
 
-    let before: { stock: number; reserved: number } | null = null;
+    let before: number | null = null;
 
-    const updated = tenantInventoryStore.update(
+    const updated = await tenantInventoryStore.update(
         tenantId,
         request.productId,
         (record) => {
-
             const newStock = record.stock + request.delta;
 
             if (newStock < record.reserved) {
@@ -76,10 +78,7 @@ export async function adjustStockBy(input: {
                 );
             }
 
-            before = {
-                stock: record.stock,
-                reserved: record.reserved,
-            };
+            before = record.stock;
 
             return {
                 ...record,
@@ -97,16 +96,7 @@ export async function adjustStockBy(input: {
         );
     }
 
-    const after = {
-        stock: updated.stock,
-        reserved: updated.reserved,
-    };
-
-    // ------------------------------
-    // IDEMPOTENCY MARK
-    // ------------------------------
-
-    markInventoryProcessed(request.idempotencyKey);
+    const after = updated.stock;
 
     // ------------------------------
     // EVENT

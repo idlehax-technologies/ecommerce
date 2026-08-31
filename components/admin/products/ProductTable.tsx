@@ -1,39 +1,95 @@
 "use client";
 
+import Link from "next/link";
+
 import {
   Table,
-  TableBody,
-  TableCell,
   TableHead,
+  TableBody,
   TableRow,
+  TableCell,
+  TableContainer,
+  Button,
 } from "@mui/material";
 
+import ProductStatusBadge from "./ProductStatusBadge";
+import { formatINR } from "@/lib/format/currency";
 import type { Product } from "@/types/product";
 
-import ProductRow from "./ProductRow";
+export default function ProductTable({
+  products,
+}: {
+  products: Product[];
+}) {
 
-export default function ProductTable({ products }: { products: Product[] }) {
   return (
-    <Table>
-      <TableHead>
-        <TableRow>
-          <TableCell>Title</TableCell>
-          <TableCell>SKU</TableCell>
-          <TableCell>Category</TableCell>
-          <TableCell>Price (incl. GST)</TableCell>
-          <TableCell>Status</TableCell>
-          <TableCell align="right" />
-        </TableRow>
-      </TableHead>
+    <TableContainer>
+      <Table
+        sx={{
+          tableLayout: "fixed",
+          width: "100%",
+        }}
+      >
+        <TableHead>
+          <TableRow>
+            <TableCell sx={{ width: "26%" }}>
+              Product
+            </TableCell>
+            <TableCell sx={{ width: "16%" }}>
+              SKU
+            </TableCell>
+            <TableCell sx={{ width: "12%" }}>
+              Status
+            </TableCell>
+            <TableCell sx={{ width: "16%" }}>
+              Category
+            </TableCell>
+            <TableCell sx={{ width: "16%" }}>
+              Price
+            </TableCell>
+            <TableCell align="center" sx={{ width: "14%" }}>
+              Details
+            </TableCell>
+          </TableRow>
+        </TableHead>
 
-      <TableBody>
-        {products.map((product) => (
-          <ProductRow
-            key={product.productId}
-            product={product}
-          />
-        ))}
-      </TableBody>
-    </Table>
+        <TableBody>
+          {products.map((product) => (
+            <TableRow key={product.productId}>
+              <TableCell>
+                {product.title}
+              </TableCell>
+
+              <TableCell>
+                {product.sku}
+              </TableCell>
+
+              <TableCell>
+                <ProductStatusBadge
+                  status={product.status}
+                />
+              </TableCell>
+
+              <TableCell>
+                {product.category}
+              </TableCell>
+
+              <TableCell>
+                {formatINR(product.price)}
+              </TableCell>
+
+              <TableCell align="center">
+                <Button
+                  component={Link}
+                  href={`/platform/products/${product.productId}`}
+                >
+                  View Details
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
 }

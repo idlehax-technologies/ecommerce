@@ -1,17 +1,27 @@
-import type { Order } from "@/types/order";
+import {
+    getDiscountedPrice,
+    getDiscountAmount,
+} from "@/lib/calculations/pricing";
+
 import type {
     AnalyticsSummary,
-    RevenuePoint,
+    DailyAnalytics,
     ProductSales,
     TenantAnalytics,
 } from "@/types/analytics";
 
-function isRevenueOrder(order: Order): boolean {
-    return order.status === "PAID" || order.status === "PICKED_UP";
+import type { Order } from "@/types/order";
+
+const TOP_PRODUCTS_LIMIT = 10;
+
+type ProductAccumulator = Omit<ProductSales, "productId">;
+
+function now(): string {
+    return new Date().toISOString();
 }
 
-function isRefund(order: Order): boolean {
-    return order.status === "REFUNDED";
+function isRevenueOrder(order: Order): boolean {
+    return order.status === "PAID" || order.status === "PICKED_UP";
 }
 
 export function computeAnalytics(
@@ -20,95 +30,171 @@ export function computeAnalytics(
 ): TenantAnalytics {
 
     let totalOrders = 0;
-    let totalRevenue = 0;
+
+    let reservedOrders = 0;
+    let paidOrders = 0;
+    let pickedUpOrders = 0;
+    let cancelledOrders = 0;
+    let expiredOrders = 0;
+    let refundedOrders = 0;
+
     let totalUnitsSold = 0;
 
-    const revenueByDate = new Map<string, number>();
+    let grossRevenue = 0;
+    let discountGiven = 0;
+    let netRevenue = 0;
 
-    const productMap = new Map<
-        string,
-        { name: string; units: number; revenue: number }
-    >();
+    const dailyAnalyticsByDate =
+        new Map<string, Omit<DailyAnalytics, "date">>();
+
+    const productMap = new Map<string, ProductAccumulator>();
 
     for (const order of orders) {
 
-        if (order.status === "CANCELLED" || order.status === "EXPIRED") {
-            continue;
+        switch (order.status) {
+
+            case "RESERVED":
+                reservedOrders++;
+                continue;
+
+            case "PAID":
+                paidOrders++;
+                break;
+
+            case "PICKED_UP":
+                pickedUpOrders++;
+                break;
+
+            case "CANCELLED":
+                cancelledOrders++;
+                continue;
+
+            case "EXPIRED":
+                expiredOrders++;
+                continue;
+
+            case "REFUNDED":
+                refundedOrders++;
+                continue;
         }
 
         totalOrders++;
 
         const date = order.createdAt.slice(0, 10);
 
-        if (isRevenueOrder(order)) {
-            totalRevenue += order.total;
+        const dailyAnalytics =
+            dailyAnalyticsByDate.get(date) ?? {
+                orders: 0,
+                unitsSold: 0,
 
-            revenueByDate.set(
-                date,
-                (revenueByDate.get(date) ?? 0) + order.total
-            );
-        }
+                grossRevenue: 0,
+                discountGiven: 0,
+                netRevenue: 0,
+            };
 
-        if (isRefund(order)) {
-            totalRevenue -= order.total;
-
-            revenueByDate.set(
-                date,
-                (revenueByDate.get(date) ?? 0) - order.total
-            );
-        }
+        dailyAnalytics.orders++;
 
         for (const item of order.items) {
 
+            const itemGrossRevenue =
+                item.price * item.quantity;
+
+            const itemDiscountGiven =
+                getDiscountAmount(
+                    item.price,
+                    item.discountPercent
+                ) * item.quantity;
+
+            const itemNetRevenue =
+                getDiscountedPrice(
+                    item.price,
+                    item.discountPercent
+                ) * item.quantity;
+
             totalUnitsSold += item.quantity;
 
-            const existing = productMap.get(item.productId) ?? {
-                name: item.name,
-                units: 0,
-                revenue: 0,
-            };
+            dailyAnalytics.unitsSold += item.quantity;
 
-            existing.units += item.quantity;
+            const existing =
+                productMap.get(item.productId) ?? {
+                    title: item.title,
+                    sku: item.sku,
+
+                    unitsSold: 0,
+
+                    grossRevenue: 0,
+                    discountGiven: 0,
+                    netRevenue: 0,
+                };
+
+            existing.unitsSold += item.quantity;
 
             if (isRevenueOrder(order)) {
-                existing.revenue += item.price * item.quantity;
-            }
 
-            if (isRefund(order)) {
-                existing.revenue -= item.price * item.quantity;
+                grossRevenue += itemGrossRevenue;
+
+                discountGiven += itemDiscountGiven;
+
+                netRevenue += itemNetRevenue;
+
+                dailyAnalytics.grossRevenue +=
+                    itemGrossRevenue;
+
+                dailyAnalytics.discountGiven +=
+                    itemDiscountGiven;
+
+                dailyAnalytics.netRevenue +=
+                    itemNetRevenue;
+
+                existing.grossRevenue +=
+                    itemGrossRevenue;
+
+                existing.discountGiven +=
+                    itemDiscountGiven;
+
+                existing.netRevenue +=
+                    itemNetRevenue;
             }
 
             productMap.set(item.productId, existing);
         }
+
+        dailyAnalyticsByDate.set(date, dailyAnalytics);
     }
 
-    const revenueTimeline: RevenuePoint[] =
-        Array.from(revenueByDate.entries())
-            .sort(([a], [b]) => a.localeCompare(b))
-            .map(([date, revenue]) => ({ date, revenue }));
+    const dailyAnalytics: DailyAnalytics[] =
+        Array.from(dailyAnalyticsByDate.entries())
+            .sort(([a], [b]) => b.localeCompare(a))
+            .map(([date, analytics]) => ({ date, ...analytics }));
 
     const topProducts: ProductSales[] =
         Array.from(productMap.entries())
-            .map(([productId, data]) => ({
-                productId,
-                name: data.name,
-                unitsSold: data.units,
-                revenue: data.revenue,
-            }))
-            .sort((a, b) => b.revenue - a.revenue)
-            .slice(0, 10);
+            .map(([productId, data]) => ({ productId, ...data }))
+            .sort((a, b) => b.netRevenue - a.netRevenue)
+            .slice(0, TOP_PRODUCTS_LIMIT);
 
     const summary: AnalyticsSummary = {
         totalOrders,
-        totalRevenue,
+
+        reservedOrders,
+        paidOrders,
+        pickedUpOrders,
+        cancelledOrders,
+        expiredOrders,
+        refundedOrders,
+
         totalUnitsSold,
+
+        grossRevenue,
+        discountGiven,
+        netRevenue,
     };
 
     return {
         tenantId,
-        generatedAt: new Date().toISOString(),
+        generatedAt: now(),
         summary,
-        revenueTimeline,
+        dailyAnalytics,
         topProducts,
     };
 }

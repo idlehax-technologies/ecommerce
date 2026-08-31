@@ -6,14 +6,11 @@ import { verifyOtp } from "@/lib/auth/domain";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 import { guardRequest } from "@/lib/security/requestGuard";
-
-const SEVEN_DAYS = 60 * 60 * 24 * 7;
+import { AUTH_COOKIE, AUTH_COOKIE_OPTIONS } from "@/lib/auth/cookies";
 
 export async function POST(req: Request) {
     try {
-        await guardRequest(req, {
-            rateLimitKey: "otp_verify", // ✅ NEW
-        });
+        await guardRequest(req);
 
         const body: unknown = await req.json();
 
@@ -24,13 +21,7 @@ export async function POST(req: Request) {
 
         const res = NextResponse.json({ user });
 
-        res.cookies.set("auth", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            path: "/",
-            maxAge: SEVEN_DAYS,
-        });
+        res.cookies.set(AUTH_COOKIE, token, AUTH_COOKIE_OPTIONS);
 
         return res;
     } catch (err: unknown) {

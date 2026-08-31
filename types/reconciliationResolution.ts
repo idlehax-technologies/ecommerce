@@ -1,13 +1,13 @@
-import { ReconciliationMismatchType } from "./reconciliation";
+import type { ReconciliationMismatchType } from "./reconciliation";
 
 export type ResolutionActionType =
     | "CONFIRM_PAYMENT"
     | "CREATE_PAYMENT"
     | "CANCEL_ORDER"
-    | "ADJUST_INVENTORY";
+    | "RECONCILE_RESERVED";
 
 export type ResolutionRequest = {
-    idempotencyKey: string; // ✅ NEW
+    idempotencyKey: string;
 
     mismatchType: ReconciliationMismatchType;
 

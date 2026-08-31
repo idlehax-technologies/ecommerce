@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireMembershipRole, requireTenant } from "@/lib/auth/guards";
+import { requireMembershipRole, requireMembership } from "@/lib/auth/guards";
 import {
     requestMembership,
     listMembershipsEnriched
@@ -15,11 +15,11 @@ export async function GET(req: Request) {
     try {
         const user = await guardRequest(req, { requireAuth: true });
 
-        requireMembershipRole(user, ["staff"]);
-        const actor = requireTenant(user);
+        await requireMembershipRole(user, ["staff", "admin"]);
+        const actor = await requireMembership(user);
 
         const memberships =
-            listMembershipsEnriched(
+            await listMembershipsEnriched(
                 actor.tenantId,
                 QUERY_LIMITS.MEMBERSHIPS
             );
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
         const body: unknown = await req.json();
         assertRequestMembership(body);
 
-        const result = requestMembership(user.userId, body.tenantId);
+        const result = await requestMembership(user.userId, body.tenantId);
 
         await dispatchEvent(result.event, { actorId: user.userId });
 

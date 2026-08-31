@@ -3,21 +3,20 @@ import { apiFetch } from "./fetch";
 import type {
     TenantProvisioningRow,
 } from "@/lib/mappers/tenantProvisioningView";
+import {
+    TenantProductRow
+} from "@/lib/mappers/tenantProductView";
 
 import type {
     ProvisionProductDTO,
     TenantInventory,
 } from "@/types/tenantInventory";
 
-export async function getTenantInventoryView(
-    tenantId: string
-): Promise<{
+export async function getTenantInventoryView(): Promise<{
     rows: TenantProvisioningRow[];
 }> {
-    return apiFetch<{
-        rows: TenantProvisioningRow[];
-    }>(
-        `/api/admin/tenants/${tenantId}/inventory`
+    return apiFetch<{ rows: TenantProvisioningRow[] }>(
+        "/api/inventory"
     );
 }
 
@@ -35,5 +34,13 @@ export async function provisionProduct(
             method: "PUT",
             body: JSON.stringify(dto),
         }
+    );
+}
+
+export async function getTenantProductView(): Promise<{
+    rows: TenantProductRow[];
+}> {
+    return apiFetch<{ rows: TenantProductRow[] }>(
+        "/api/inventory/products"
     );
 }

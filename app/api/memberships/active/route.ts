@@ -11,7 +11,7 @@ export async function GET(req: Request) {
             return NextResponse.json({ membership: null });
         }
 
-        const membership = getActiveMembership(
+        const membership = await getActiveMembership(
             user.userId,
             user.activeMembershipId
         );

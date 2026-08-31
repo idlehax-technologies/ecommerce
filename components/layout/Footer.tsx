@@ -1,36 +1,85 @@
-'use client';
+"use client";
 
-import { Box, Typography } from '@mui/material';
+import Link from "next/link";
 
-const Footer = () => {
+import {
+  Box,
+  Stack,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
+
+export default function Footer() {
+
+  const theme = useTheme();
+  const smUp = useMediaQuery(theme.breakpoints.up("sm"));
+
+  const year = new Date().getFullYear();
+
   return (
     <Box
       component="footer"
       sx={{
-        backgroundColor: 'primary.main',
-        color: '#fff',
-        py: 2,
-        textAlign: 'center',
-        marginTop: '40px',
-        boxShadow: `
-      0px -2px 4px -1px rgba(0,0,0,0.2),
-      0px -4px 5px 0px rgba(0,0,0,0.14),
-      0px -1px 10px 0px rgba(0,0,0,0.12)
-    `,
+        position: "sticky",
+        bottom: 0,
+        zIndex: "appBar",
+
+        py: { xs: 1, sm: 2 },
+        px: { xs: 2, sm: 3 },
+
+        bgcolor: "background.default",
+
+        borderTop: 1,
+        borderColor: "divider",
       }}
     >
-      <Typography variant="body2" sx={{ marginTop: '2px' }}>
-        © {new Date().getFullYear()} My Ecommerce Store
-      </Typography>
+      {smUp ? (
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          spacing={2}
+        >
+          <Typography
+            variant="body2"
+            color="text.secondary"
+          >
+            ©{"\u00A0"}{year}{"\u00A0"}everyShop.in{" | "}All{"\u00A0"}Rights{"\u00A0"}Reserved
+          </Typography>
 
-      <Typography
-        variant="caption"
-        sx={{ opacity: 0.8, display: 'block', marginTop: '4px' }}
-      >
-        Built with Next.js & MUI
-      </Typography>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+          >
+            Designed{"\u00A0"}and{"\u00A0"}Developed{"\u00A0"}by{" "}
+            <Link
+              href="https://www.idlehax.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "inherit" }}
+            >
+              Idlehax{"\u00A0"}Technologies
+            </Link>
+          </Typography>
+        </Stack>
+      ) : (
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          textAlign="center"
+        >
+          ©{"\u00A0"}{year}{"\u00A0"}everyShop.in{" • "}By{"\u00A0"}
+          <Link
+            href="https://www.idlehax.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "inherit" }}
+          >
+            Idlehax{"\u00A0"}Technologies
+          </Link>
+        </Typography>
+      )}
     </Box>
   );
-};
-
-export default Footer;
+}

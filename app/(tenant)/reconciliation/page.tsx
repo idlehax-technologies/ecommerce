@@ -4,23 +4,30 @@ import { useEffect, useState } from "react";
 
 import {
     Container,
-    Typography,
     Box,
+    Stack,
+    Typography,
+    Divider,
+    Paper,
     CircularProgress,
 } from "@mui/material";
 
-import ReconciliationReportView from "@/components/reconciliation/ReconciliationReportView";
+import ReconciliationDashboard
+    from "@/components/reconciliation/ReconciliationDashboard";
 
-import ExportButtons from "@/components/export/ExportButtons";
+import ReconciliationExportAction
+    from "@/components/reconciliation/ReconciliationExportAction";
 
-import { getReconciliation } from "@/lib/api/reconciliation";
+import { getReconciliation }
+    from "@/lib/api/reconciliation";
 
-import type { ReconciliationReport } from "@/types/reconciliation";
+import type {
+    ReconciliationReport,
+} from "@/types/reconciliation";
 
 export default function ReconciliationPage() {
 
     const [report, setReport] = useState<ReconciliationReport | null>(null);
-
     const [loading, setLoading] = useState(true);
 
     async function load() {
@@ -46,21 +53,35 @@ export default function ReconciliationPage() {
     }
 
     return (
-        <Container sx={{ mt: 6 }}>
-            <Typography variant="h4" gutterBottom>
-                Reconciliation
-            </Typography>
+        <Container maxWidth="md">
+            <Stack spacing={3} sx={{ p: 6 }}>
+                <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                >
+                    <Box>
+                        <Typography variant="h5" fontWeight={600}>
+                            Reconciliation
+                        </Typography>
 
-            <Box mb={2}>
-                <ExportButtons />
-            </Box>
+                        <Typography variant="body2" color="text.secondary">
+                            Review and resolve data inconsistencies
+                        </Typography>
+                    </Box>
 
-            <Box mt={3}>
-                <ReconciliationReportView
-                    report={report}
-                    reload={load}
-                />
-            </Box>
+                    <ReconciliationExportAction />
+                </Stack>
+
+                <Divider />
+
+                <Paper elevation={2} sx={{ p: 2 }}>
+                    <ReconciliationDashboard
+                        report={report}
+                        reload={load}
+                    />
+                </Paper>
+            </Stack>
         </Container>
     );
 }

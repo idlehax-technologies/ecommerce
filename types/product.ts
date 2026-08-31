@@ -7,19 +7,20 @@ export type ProductStatus =
 
 export type Product = {
   productId: string;
+  sku: string;
 
   title: string;
   description: string;
 
   price: number;
+  discountPercent: number;
   currency: "INR";
 
-  gstRate: GstRate;
   hsnCode: string;
+  gstRate: GstRate;
 
   status: ProductStatus;
 
-  sku: string;
   images: string[];
   category: ProductCategory;
   tags: string[];
@@ -33,6 +34,7 @@ export type CreateProductDTO = {
   description: string;
 
   price: number;
+  discountPercent: number;
 
   gstRate: GstRate;
   hsnCode: string;

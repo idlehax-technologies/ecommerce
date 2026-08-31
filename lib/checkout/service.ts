@@ -1,3 +1,5 @@
+import { authStore } from "@/lib/auth/storage";
+
 import { getProfile } from "@/lib/profiles/domain";
 import { getTenant } from "@/lib/tenants/domain";
 import { getActiveProduct } from "@/lib/products/domain";
@@ -15,8 +17,10 @@ import {
 } from "../orders/mappers";
 
 import type { Order } from "@/types/order";
+import type { CheckoutResult } from "@/types/checkout";
 import type { DomainEvent } from "@/types/domainEvent";
 
+import { AuthUserNotFoundError } from "../auth/errors";
 import { ProfileNotFoundError } from "../profiles/errors";
 
 /**
@@ -38,21 +42,37 @@ import { ProfileNotFoundError } from "../profiles/errors";
 export async function executeCheckout(
     tenantId: string,
     userId: string
-): Promise<{
-    order: Order;
-    event: DomainEvent;
-}> {
+): Promise<CheckoutResult> {
 
     // STEP 1 — Load cart
 
-    const cart = cartDomain.getUserCart(
+    const cart = await cartDomain.getUserCart(
         tenantId,
         userId
     );
 
     requireCartNotEmpty(cart);
 
-    const profile = getProfile(userId);
+    const removedItems =
+        await cartDomain.removeUnavailableItems(
+            tenantId,
+            userId
+        );
+
+    if (removedItems.length > 0) {
+        return {
+            success: false,
+            removedItems,
+        };
+    }
+
+    const user = await authStore.getById(userId);
+
+    if (!user) {
+        throw new AuthUserNotFoundError();
+    }
+
+    const profile = await getProfile(userId);
 
     if (!profile) {
         throw new ProfileNotFoundError();
@@ -62,7 +82,10 @@ export async function executeCheckout(
 
     const seller = toSellerSnapshot(tenant);
 
-    const customer = toCustomerSnapshot(profile);
+    const customer = toCustomerSnapshot(
+        user,
+        profile
+    );
 
     const items =
         await Promise.all(
@@ -121,7 +144,7 @@ export async function executeCheckout(
 
     // STEP 5 — Clear cart AFTER successful order creation
 
-    cartDomain.clearCart(
+    await cartDomain.clearCart(
         tenantId,
         userId
     );
@@ -129,5 +152,9 @@ export async function executeCheckout(
     // 🚨 CRITICAL: DO NOT execute event here
     // Event execution must happen in route via dispatchEvent
 
-    return result;
+    return {
+        success: true,
+        order: result.order,
+        event: result.event,
+    };
 }

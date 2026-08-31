@@ -3,25 +3,26 @@ import { toNewProfile, toUpdatedProfile } from "./mappers";
 import type { ProfileDTO, UserProfile } from "@/types/profile";
 import { assertCompleteProfile } from "./guards";
 
-export function getProfile(userId: string): UserProfile | null {
+export async function getProfile(
+    userId: string
+): Promise<UserProfile | null> {
     return profileStore.get(userId);
 }
 
-export function upsertProfile(
+export async function upsertProfile(
     userId: string,
-    phone: string,
     dto: ProfileDTO
-): UserProfile {
+): Promise<UserProfile> {
     assertCompleteProfile(dto);
-    const existing = getProfile(userId);
+    const existing = await getProfile(userId);
 
     if (!existing) {
-        const profile = toNewProfile(userId, phone, dto);
-        profileStore.save(profile);
+        const profile = toNewProfile(userId, dto);
+        await profileStore.save(profile);
         return profile;
     }
 
     const updated = toUpdatedProfile(existing, dto);
-    profileStore.save(updated);
+    await profileStore.save(updated);
     return updated;
 }

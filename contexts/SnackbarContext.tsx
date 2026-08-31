@@ -8,17 +8,20 @@ type SnackbarState = {
     severity: AlertColor;
 };
 
-const SnackbarContext = createContext<{
-    show: (msg: string, severity?: SnackbarState["severity"]) => void;
-} | null>(null);
+type SnackbarContextValue = {
+    show: (
+        message: string,
+        severity?: AlertColor
+    ) => void;
+};
 
-export function useSnackbar() {
-    const c = useContext(SnackbarContext);
-    if (!c) throw new Error("Snackbar not provided");
-    return c;
-}
+const SnackbarContext = createContext<SnackbarContextValue | null>(null);
 
-export function SnackbarProvider({ children }: { children: React.ReactNode }) {
+export function SnackbarProvider({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
     const [state, setState] = useState<SnackbarState | null>(null);
 
     const show = useCallback((
@@ -35,18 +38,33 @@ export function SnackbarProvider({ children }: { children: React.ReactNode }) {
     return (
         <SnackbarContext.Provider value={{ show }}>
             {children}
-            <Snackbar
-                open={!!state}
-                autoHideDuration={3000}
-                onClose={close}
-            >
-                <Alert
-                    severity={state?.severity || "success"}
+
+            {state && (
+                <Snackbar
+                    open
+                    autoHideDuration={3000}
                     onClose={close}
                 >
-                    {state?.message}
-                </Alert>
-            </Snackbar>
+                    <Alert
+                        severity={state.severity}
+                        onClose={close}
+                    >
+                        {state.message}
+                    </Alert>
+                </Snackbar>
+            )}
         </SnackbarContext.Provider>
     );
+}
+
+export function useSnackbar() {
+    const ctx = useContext(SnackbarContext);
+
+    if (!ctx) {
+        throw new Error(
+            "useSnackbar must be used within SnackbarProvider"
+        );
+    }
+
+    return ctx;
 }

@@ -1,18 +1,30 @@
 "use client";
 
-import { Container, Typography, Stack, Divider, CircularProgress } from "@mui/material";
+import { useEffect, useState } from "react";
+
+import {
+    Box,
+    Stack,
+    Typography,
+    Paper,
+    Divider,
+    CircularProgress,
+} from "@mui/material";
+
+import AnalyticsSummary from "@/components/analytics/AnalyticsSummary";
+import OrderStatusBreakdown from "@/components/analytics/OrderStatusBreakdown";
+import DailyAnalyticsTable from "@/components/analytics/DailyAnalyticsTable";
+import TopProductsTable from "@/components/analytics/TopProductsTable";
+import OrdersExportAction from "@/components/analytics/OrdersExportAction";
 
 import { getAnalytics } from "@/lib/api/analytics";
+import { formatDateTime } from "@/lib/format/datetime";
 
-import AnalyticsSummaryView from "@/components/analytics/AnalyticsSummary";
-import ProductTable from "@/components/analytics/ProductTable";
-import { useEffect, useState } from "react";
-import { TenantAnalytics } from "@/types/analytics";
+import type { TenantAnalytics } from "@/types/analytics";
 
 export default function AnalyticsPage() {
 
     const [analytics, setAnalytics] = useState<TenantAnalytics | null>(null);
-
     const [loading, setLoading] = useState(true);
 
     async function load() {
@@ -20,6 +32,7 @@ export default function AnalyticsPage() {
             setLoading(true);
             const res = await getAnalytics();
             setAnalytics(res.analytics);
+
         } finally {
             setLoading(false);
         }
@@ -38,30 +51,58 @@ export default function AnalyticsPage() {
     }
 
     return (
-        <Container sx={{ mt: 6 }}>
-
-            <Typography variant="h4" gutterBottom>
-                Analytics
-            </Typography>
-
-            <Stack spacing={4}>
-
-                <AnalyticsSummaryView summary={analytics.summary} />
-
-                <Divider />
-
-                <div>
-
-                    <Typography variant="h6" gutterBottom>
-                        Top Products
+        <Stack spacing={3} sx={{ p: 4 }}>
+            <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+            >
+                <Box>
+                    <Typography variant="h5" fontWeight={600}>
+                        Analytics
                     </Typography>
 
-                    <ProductTable products={analytics.topProducts} />
+                    <Typography variant="body2" color="text.secondary">
+                        Business performance summary and sales insights
+                    </Typography>
 
-                </div>
+                    <Typography variant="body2" color="text.secondary">
+                        Generated: {formatDateTime(analytics.generatedAt)}
+                    </Typography>
+                </Box>
 
+                <OrdersExportAction />
             </Stack>
 
-        </Container>
+            <Divider />
+
+            <Paper elevation={2} sx={{ p: 2 }}>
+                <Stack spacing={2}>
+                    <Paper elevation={2} sx={{ p: 2 }}>
+                        <AnalyticsSummary
+                            summary={analytics.summary}
+                        />
+                    </Paper>
+
+                    <Paper elevation={2} sx={{ p: 2 }}>
+                        <OrderStatusBreakdown
+                            summary={analytics.summary}
+                        />
+                    </Paper>
+
+                    <Paper elevation={2} sx={{ p: 2 }}>
+                        <DailyAnalyticsTable
+                            dailyAnalytics={analytics.dailyAnalytics}
+                        />
+                    </Paper>
+
+                    <Paper elevation={2} sx={{ p: 2 }}>
+                        <TopProductsTable
+                            topProducts={analytics.topProducts}
+                        />
+                    </Paper>
+                </Stack>
+            </Paper>
+        </Stack>
     );
 }

@@ -1,3 +1,5 @@
+import { cookies } from "next/headers";
+
 import {
     createTenant,
     listTenants,
@@ -8,15 +10,18 @@ import {
     updateTenant,
 } from "./domain";
 
-import { getUserFromRequest } from "@/lib/auth";
+import {
+    getAdminMembershipForTenant,
+    getStaffMembershipForTenant,
+} from "@/lib/memberships/domain";
+
+import { getUserFromRequest } from "@/lib/session/session";
 import { requireSuperadmin } from "@/lib/auth/guards";
+
+import { signToken } from "@/lib/session/jwt";
+import { AUTH_COOKIE, AUTH_COOKIE_OPTIONS } from "@/lib/auth/cookies";
+
 import { CreateTenantDTO, Tenant, UpdateTenantDTO } from "@/types/tenant";
-
-import { cookies } from "next/headers";
-import { signToken } from "@/lib/jwt";
-import { getAdminMembershipForTenant } from "../memberships/domain";
-
-const SEVEN_DAYS = 60 * 60 * 24 * 7;
 
 /* -------------------------------------------------------------------------- */
 /* READ                                                                        */
@@ -76,23 +81,37 @@ export async function assumeTenantAdminUseCase(
 ): Promise<void> {
     const user = requireSuperadmin(await getUserFromRequest());
 
-    const adminMembership = getAdminMembershipForTenant(tenantId);
+    const adminMembership = await getAdminMembershipForTenant(tenantId);
 
     const token = signToken({
         userId: adminMembership.userId,
         phone: user.phone,
-        activeMembershipId: adminMembership.membershipId,
         isSuperadmin: false,
+        activeMembershipId: adminMembership.membershipId,
         impersonatedBy: user.userId,
     });
 
     const cookieStore = await cookies();
 
-    cookieStore.set("auth", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: SEVEN_DAYS,
+    cookieStore.set(AUTH_COOKIE, token, AUTH_COOKIE_OPTIONS);
+}
+
+export async function assumeTenantStaffUseCase(
+    tenantId: string
+): Promise<void> {
+    const user = requireSuperadmin(await getUserFromRequest());
+
+    const staffMembership = await getStaffMembershipForTenant(tenantId);
+
+    const token = signToken({
+        userId: staffMembership.userId,
+        phone: user.phone,
+        isSuperadmin: false,
+        activeMembershipId: staffMembership.membershipId,
+        impersonatedBy: user.userId,
     });
+
+    const cookieStore = await cookies();
+
+    cookieStore.set(AUTH_COOKIE, token, AUTH_COOKIE_OPTIONS);
 }

@@ -26,10 +26,8 @@ import type { Tenant } from "@/types/tenant";
 
 type TenantFormValues = {
     name: string;
-
     address: string;
     state: IndianState | "";
-
     gstin: string;
 };
 
@@ -98,7 +96,7 @@ export default function TenantForm(props: Props) {
     }
 
     return (
-        <Stack spacing={3}>
+        <Stack spacing={2}>
             <TextField
                 label="Name"
                 required

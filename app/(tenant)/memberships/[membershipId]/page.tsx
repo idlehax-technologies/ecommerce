@@ -2,13 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Container, CircularProgress, Typography } from "@mui/material";
 
+import {
+    Container,
+    Box,
+    Stack,
+    Typography,
+    Divider,
+    Paper,
+    CircularProgress,
+} from "@mui/material";
+
+import MembershipDetail from "@/components/memberships/MembershipDetail";
 import { getMembership } from "@/lib/api/memberships";
+import { formatDateTime } from "@/lib/format/datetime";
 import type { MembershipView } from "@/types/membership";
-import MembershipDetailCard from "@/components/memberships/MembershipDetailCard";
 
-export default function Page() {
+export default function MembershipDetailPage() {
     const { membershipId } = useParams<{ membershipId: string }>();
 
     const [membership, setMembership] = useState<MembershipView | null>(null);
@@ -37,23 +47,31 @@ export default function Page() {
     }
 
     return (
-        <Container
-            maxWidth="sm"
-            sx={{ py: 4 }}
-        >
+        <Container maxWidth="md">
+            <Stack spacing={3} sx={{ p: 6 }}>
+                <Box>
+                    <Typography variant="h5" fontWeight={600}>
+                        Membership Details
+                    </Typography>
 
-            <Typography
-                variant="h5"
-                mb={3}
-            >
-                Membership Details
-            </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        Created: {formatDateTime(membership.createdAt)}
+                    </Typography>
 
-            <MembershipDetailCard
-                m={membership}
-                reload={load}
-            />
+                    <Typography variant="body2" color="text.secondary">
+                        Updated: {formatDateTime(membership.updatedAt)}
+                    </Typography>
+                </Box>
 
+                <Divider />
+
+                <Paper elevation={2} sx={{ p: 2 }}>
+                    <MembershipDetail
+                        membership={membership}
+                        reload={load}
+                    />
+                </Paper>
+            </Stack>
         </Container>
     );
 }

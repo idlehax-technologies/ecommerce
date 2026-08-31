@@ -1,7 +1,7 @@
 import type { Notification } from "@/types/notification";
 import { sendConsoleNotification } from "./consoleAdapter";
 
-export async function deliverNotification(n: Notification) {
+export async function deliverNotification(n: Notification): Promise<void> {
     switch (n.channel) {
         case "CONSOLE":
             return sendConsoleNotification(n);

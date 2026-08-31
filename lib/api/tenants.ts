@@ -1,11 +1,11 @@
+import { apiFetch } from "./fetch";
+
 import type {
     CreateTenantDTO,
     UpdateTenantDTO,
     Tenant,
     PublicTenant,
 } from "@/types/tenant";
-
-import { apiFetch } from "./fetch";
 
 export async function createTenant(
     dto: CreateTenantDTO
@@ -28,6 +28,28 @@ export async function updateTenant(
         {
             method: "PATCH",
             body: JSON.stringify(dto),
+        }
+    );
+}
+
+export async function assumeTenantAdmin(
+    tenantId: string
+): Promise<{ success: true }> {
+    return apiFetch<{ success: true }>(
+        `/api/admin/tenants/${tenantId}/assume-admin`,
+        {
+            method: "POST",
+        }
+    );
+}
+
+export async function assumeTenantStaff(
+    tenantId: string
+): Promise<{ success: true }> {
+    return apiFetch<{ success: true }>(
+        `/api/admin/tenants/${tenantId}/assume-staff`,
+        {
+            method: "POST",
         }
     );
 }
@@ -57,14 +79,10 @@ export async function fetchActiveTenants(): Promise<{
     );
 }
 
-export async function fetchTenant(
-    tenantId: string
-): Promise<{
+export async function getTenant(): Promise<{
     tenant: Tenant;
 }> {
-    return apiFetch<{
-        tenant: Tenant;
-    }>(
-        `/api/tenants/${tenantId}`
+    return apiFetch<{ tenant: Tenant }>(
+        "/api/tenants/tenant"
     );
 }
