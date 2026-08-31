@@ -1,16 +1,20 @@
 import { randomUUID } from "crypto";
 import { jobStore } from "./storage";
 import type { Job, JobType } from "@/types/job";
+import { JobNotFoundError, JobRetryNotAllowedError } from "./errors";
 
-export function enqueueJob<T extends JobType>(
+export async function enqueueJob<T extends JobType>(
     type: T,
     payload: Extract<Job, { type: T }>["payload"],
     runAt: string,
     dedupKey?: string
-) {
+): Promise<void> {
     if (dedupKey) {
-        const existing = jobStore.findByDedupKey(dedupKey);
-        if (existing && existing.status !== "FAILED") return;
+        const existing = await jobStore.findByDedupKey(dedupKey);
+
+        if (existing) {
+            return;
+        }
     }
 
     const base = {
@@ -64,18 +68,31 @@ export function enqueueJob<T extends JobType>(
         }
     }
 
-    jobStore.save(job);
+    await jobStore.save(job);
 }
 
-export function listJobs() {
+export async function listJobs(): Promise<Job[]> {
     return jobStore.list();
 }
 
-export function retryJob(jobId: string) {
-    jobStore.update(jobId, (j) => ({
+export async function retryJob(
+    jobId: string
+): Promise<void> {
+    const job = await jobStore.get(jobId);
+
+    if (!job) {
+        throw new JobNotFoundError();
+    }
+
+    if (job.status !== "FAILED") {
+        throw new JobRetryNotAllowedError();
+    }
+
+    await jobStore.update(jobId, (j) => ({
         ...j,
         status: "PENDING",
         attempts: 0,
         lastError: undefined,
+        runAt: new Date().toISOString(),
     }));
 }

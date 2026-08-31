@@ -1,39 +1,114 @@
-import { Container } from "@mui/material";
-import { notFound } from "next/navigation";
+"use client";
 
-import { getUserFromRequest } from "@/lib/auth";
-import { requireTenant, requireAuth } from "@/lib/auth/guards";
-import { getTenantOrder } from "@/lib/orders/domain";
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+
+import {
+    Container,
+    Box,
+    Stack,
+    Typography,
+    Divider,
+    Paper,
+    CircularProgress,
+} from "@mui/material";
+
+import { getOrder } from "@/lib/api/orders";
+import { getTenant } from "@/lib/api/tenants";
+
+import { formatDateTime } from "@/lib/format/datetime";
+import { useActiveMembership } from "@/hooks/useActiveMembership";
 
 import OrderDetail from "@/components/orders/OrderDetail";
 
-type PageProps = {
-    params: Promise<{ orderId: string }>;
-};
+import type { Order } from "@/types/order";
+import type { Tenant } from "@/types/tenant";
 
-export default async function OrderDetailPage({ params }: PageProps) {
-    const { orderId } = await params;
+export default function OrderDetailPage() {
+    const { orderId } = useParams<{ orderId: string }>();
 
-    const rawUser = await getUserFromRequest();
-    const user = requireAuth(rawUser);
-    const actor = requireTenant(user);
+    const { membership, loading: membershipLoading } = useActiveMembership();
 
-    let order;
-    try {
-        order = getTenantOrder(actor.tenantId, orderId);
+    const [order, setOrder] = useState<Order | null>(null);
+    const [tenant, setTenant] = useState<Tenant | null>(null);
 
-        // 🔥 Step 8 critical guard
-        if (order.userId !== user.userId) {
-            notFound();
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<Error | null>(null);
+
+    if (error) {
+        throw error;
+    }
+
+    async function load() {
+
+        try {
+            setLoading(true);
+            setError(null);
+
+            const orderRes = await getOrder(orderId);
+            setOrder(orderRes.order);
+
+            const tenantRes = await getTenant();
+            setTenant(tenantRes.tenant);
+
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err);
+            } else {
+                setError(new Error("Failed to load order"));
+            }
+
+        } finally {
+            setLoading(false);
         }
+    }
 
-    } catch {
-        notFound();
+    useEffect(() => {
+        load();
+    }, [orderId]);
+
+    if (
+        loading ||
+        membershipLoading
+    ) {
+        return <CircularProgress />;
+    }
+
+    if (
+        !order ||
+        !membership ||
+        !tenant
+    ) {
+        return null;
     }
 
     return (
-        <Container sx={{ mt: 6 }}>
-            <OrderDetail order={order} />
+        <Container maxWidth="md">
+            <Stack
+                spacing={2}
+                sx={{ p: { xs: 0, sm: 6 } }}
+            >
+                <Box>
+                    <Typography variant="h5" fontWeight={600}>
+                        Order Details
+                    </Typography>
+
+                    <Typography variant="body2" color="text.secondary">
+                        Placed: {formatDateTime(order.createdAt)}
+                    </Typography>
+                </Box>
+
+                <Divider />
+
+                <Paper elevation={2} sx={{ p: 2 }}>
+                    <OrderDetail
+                        order={order}
+                        reload={load}
+                        actorRole={membership.role}
+                        hasGst={!!tenant.gstin}
+                    />
+                </Paper>
+            </Stack>
         </Container>
     );
 }

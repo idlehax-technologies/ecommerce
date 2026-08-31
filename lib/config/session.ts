@@ -1,0 +1,3 @@
+const THIRTY_DAYS = 60 * 60 * 24 * 30;
+
+export const SESSION_MAX_AGE_SECONDS = THIRTY_DAYS;

@@ -1,19 +1,31 @@
 import { NextResponse } from "next/server";
-import { requireTenant } from "@/lib/auth/guards";
+
+import { requireMembershipRole, requireMembership } from "@/lib/auth/guards";
 import { guardRequest } from "@/lib/security/requestGuard";
+
 import * as cartDomain from "@/lib/cart/domain";
-import { handleRouteError } from "@/lib/http/handleRouteError";
+import { getCartView } from "@/lib/cart/service";
 import { assertUpdateCartItemDTO } from "@/lib/cart/guards";
-import { recordLatency, recordRequest, recordUser } from "@/lib/metrics";
+
+import { handleRouteError } from "@/lib/http/handleRouteError";
+
+import {
+    recordLatency,
+    recordRequest,
+    recordUser,
+} from "@/lib/metrics";
 
 export async function PATCH(
     req: Request,
     { params }: { params: Promise<{ productId: string }> }
 ) {
+
     const start = Date.now();
+
     recordRequest();
 
     try {
+
         const { productId } = await params;
 
         const user = await guardRequest(req, {
@@ -21,20 +33,35 @@ export async function PATCH(
             csrf: true,
         });
 
-        const actor = requireTenant(user);
+        await requireMembershipRole(user, ["customer"]);
+
+        const actor = await requireMembership(user);
+
         recordUser(actor.userId);
 
         const body: unknown = await req.json();
 
         assertUpdateCartItemDTO(body);
 
-        const cart = cartDomain.updateItem(actor, productId, body);
+        const cart = await cartDomain.updateItem(
+            actor.tenantId,
+            actor.userId,
+            productId,
+            body
+        );
+
+        const view = await getCartView(cart);
 
         recordLatency(Date.now() - start);
 
-        return NextResponse.json(cart);
-    } catch (err) {
+        return NextResponse.json({
+            cart: view,
+        });
+
+    } catch (err: unknown) {
+
         recordLatency(Date.now() - start);
+
         return handleRouteError(err);
     }
 }
@@ -43,10 +70,13 @@ export async function DELETE(
     req: Request,
     { params }: { params: Promise<{ productId: string }> }
 ) {
+
     const start = Date.now();
+
     recordRequest();
 
     try {
+
         const { productId } = await params;
 
         const user = await guardRequest(req, {
@@ -54,16 +84,30 @@ export async function DELETE(
             csrf: true,
         });
 
-        const actor = requireTenant(user);
+        await requireMembershipRole(user, ["customer"]);
+
+        const actor = await requireMembership(user);
+
         recordUser(actor.userId);
 
-        const cart = cartDomain.removeItem(actor, productId);
+        const cart = await cartDomain.removeItem(
+            actor.tenantId,
+            actor.userId,
+            productId
+        );
+
+        const view = await getCartView(cart);
 
         recordLatency(Date.now() - start);
 
-        return NextResponse.json(cart);
-    } catch (err) {
+        return NextResponse.json({
+            cart: view,
+        });
+
+    } catch (err: unknown) {
+
         recordLatency(Date.now() - start);
+
         return handleRouteError(err);
     }
 }

@@ -1,9 +1,9 @@
 import { runTenantReconciliation } from "./domain";
 import type { ReconciliationReport } from "@/types/reconciliation";
 
-export function getReconciliationReport(
+export async function getReconciliationReport(
     tenantId: string
-): ReconciliationReport {
+): Promise<ReconciliationReport> {
 
     // idempotent: pure function, no side effects
     return runTenantReconciliation(tenantId);

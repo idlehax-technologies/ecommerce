@@ -1,34 +1,32 @@
 import { cookies } from "next/headers";
-
-const CSRF_COOKIE = "csrf_token";
-const CSRF_HEADER = "x-csrf-token";
+import { CSRF_COOKIE, CSRF_COOKIE_OPTIONS, CSRF_HEADER } from "../auth/cookies";
+import { CsrfValidationError } from "./errors";
 
 export function generateCsrfToken(): string {
     return crypto.randomUUID();
 }
 
-export async function ensureCsrfCookie() {
+export async function ensureCsrfCookie(): Promise<void> {
     const cookieStore = await cookies();
 
     if (!cookieStore.get(CSRF_COOKIE)) {
         const token = generateCsrfToken();
 
-        cookieStore.set(CSRF_COOKIE, token, {
-            httpOnly: false, // must be readable by client
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            path: "/",
-        });
+        cookieStore.set(
+            CSRF_COOKIE,
+            token,
+            CSRF_COOKIE_OPTIONS
+        );
     }
 }
 
-export async function validateCsrf(req: Request) {
+export async function validateCsrf(req: Request): Promise<void> {
     const cookieStore = await cookies();
 
     const cookieToken = cookieStore.get(CSRF_COOKIE)?.value;
     const headerToken = req.headers.get(CSRF_HEADER);
 
     if (!cookieToken || !headerToken || cookieToken !== headerToken) {
-        throw new Error("CSRF validation failed");
+        throw new CsrfValidationError();
     }
 }

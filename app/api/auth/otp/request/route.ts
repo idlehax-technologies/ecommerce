@@ -9,9 +9,7 @@ import { guardRequest } from "@/lib/security/requestGuard";
 
 export async function POST(req: Request) {
     try {
-        await guardRequest(req, {
-            rateLimitKey: "otp_request", // ✅ NEW
-        });
+        await guardRequest(req);
 
         const body: unknown = await req.json();
 
@@ -21,7 +19,7 @@ export async function POST(req: Request) {
         await requestOtp(input);
 
         return NextResponse.json({ success: true });
-    } catch (err) {
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

@@ -13,18 +13,6 @@ export class ProductNotFoundError extends ProductDomainError {
   }
 }
 
-export class ProductForbiddenError extends ProductDomainError {
-  constructor(message = "Product does not belong to your tenant") {
-    super(message, 403);
-  }
-}
-
-export class ProductDeletedError extends ProductDomainError {
-  constructor(message = "Product has been deleted") {
-    super(message, 409);
-  }
-}
-
 export class ProductInactiveError extends ProductDomainError {
   constructor(message = "Product is inactive") {
     super(message, 409);
@@ -37,14 +25,8 @@ export class ProductInvalidInputError extends ProductDomainError {
   }
 }
 
-export class ProductConflictError extends ProductDomainError {
-  constructor(message = "Product conflict") {
-    super(message, 409);
-  }
-}
-
-export class ProductOutOfStockError extends ProductDomainError {
-  constructor(message = "Product is out of stock") {
+export class ProductSkuAlreadyExistsError extends ProductDomainError {
+  constructor(message = "Product SKU already exists") {
     super(message, 409);
   }
 }

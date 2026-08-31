@@ -187,6 +187,40 @@ export function mapEventToNotifications(
                 }
             ];
 
+        case "MembershipExpired":
+            return [
+                {
+                    notificationId: randomUUID(),
+                    tenantId: event.membership.tenantId,
+                    userId: event.membership.userId,
+                    channel: "CONSOLE",
+                    title: "Membership expired",
+                    message: "Your membership has expired.",
+                    reference: {
+                        type: "MEMBERSHIP",
+                        id: event.membership.membershipId,
+                    },
+                    createdAt: now,
+                }
+            ];
+
+        case "MembershipRoleUpdated":
+            return [
+                {
+                    notificationId: randomUUID(),
+                    tenantId: event.membership.tenantId,
+                    userId: event.membership.userId,
+                    channel: "CONSOLE",
+                    title: "Role updated",
+                    message: `Your role has been changed from ${event.from} to ${event.to}.`,
+                    reference: {
+                        type: "MEMBERSHIP",
+                        id: event.membership.membershipId,
+                    },
+                    createdAt: now,
+                }
+            ];
+
         // -------------------------
         // DEFAULT
         // -------------------------

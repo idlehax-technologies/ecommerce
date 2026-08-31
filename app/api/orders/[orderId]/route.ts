@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
+
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireTenant } from "@/lib/auth/guards";
+
+import { requireMembershipRole, requireMembership } from "@/lib/auth/guards";
+
 import { handleRouteError } from "@/lib/http/handleRouteError";
+
+import { assertOrderVisible } from "@/lib/orders/guards";
 
 import * as ordersDomain from "@/lib/orders/domain";
 
@@ -13,12 +18,20 @@ export async function GET(
         const { orderId } = await params;
 
         const user = await guardRequest(req, { requireAuth: true });
-        const actor = requireTenant(user);
 
-        const order = ordersDomain.getTenantOrder(actor.tenantId, orderId);
+        await requireMembershipRole(user, ["customer", "staff"]);
+        const actor = await requireMembership(user);
 
-        return NextResponse.json(order);
-    } catch (err) {
+        const order = await ordersDomain.getTenantOrder(
+            actor.tenantId,
+            orderId
+        );
+
+        assertOrderVisible(actor, order);
+
+        return NextResponse.json({ order });
+
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

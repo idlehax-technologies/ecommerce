@@ -1,121 +1,104 @@
-"use client";
+import { revalidatePath } from "next/cache";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
 import {
   Container,
-  Paper,
-  Typography,
-  CircularProgress,
+  Box,
   Stack,
-  Alert,
+  Typography,
+  Divider,
+  Paper,
 } from "@mui/material";
 
-import ProductForm from "@/components/admin/products/ProductForm";
+import { getUserFromRequest } from "@/lib/session/session";
+import { requireSuperadmin } from "@/lib/auth/guards";
+import { formatDateTime } from "@/lib/format/datetime";
+
 import {
-  getProduct,
-  updateProduct,
-  deleteProduct,
-} from "@/lib/api/productManagement";
+  activatePlatformProduct,
+  deactivatePlatformProduct,
+  getPlatformProduct,
+} from "@/lib/products/service";
 
-import type { Product, UpdateProductDTO } from "@/types/product";
+import ProductDetail
+  from "@/components/admin/products/ProductDetail";
 
-export default function ProductDetailPage() {
-  const { productId } = useParams<{ productId: string }>();
-  const router = useRouter();
+type PageProps = {
+  params: Promise<{ productId: string }>;
+};
 
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export default async function ProductDetailPage({
+  params,
+}: PageProps) {
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      setError(null);
+  const rawUser = await getUserFromRequest();
+  requireSuperadmin(rawUser);
 
-      try {
-        const data = await getProduct(productId);
-        setProduct(data);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to load product");
-      } finally {
-        setLoading(false);
-      }
+  const { productId } = await params;
+
+  const product = await getPlatformProduct(productId);
+
+  async function toggleStatus() {
+    "use server";
+
+    if (product.status === "ACTIVE") {
+      await deactivatePlatformProduct(product.productId);
+
+    } else {
+      await activatePlatformProduct(product.productId);
     }
 
-    load();
-  }, [productId]);
-
-  async function handleUpdate(values: UpdateProductDTO) {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const updated = await updateProduct(productId, values);
-      setProduct(updated);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to update");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleDelete() {
-    setLoading(true);
-    setError(null);
-
-    try {
-      await deleteProduct(productId);
-      router.push("/platform/products");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to delete");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (loading) {
-    return (
-      <Container sx={{ py: 6 }}>
-        <Stack alignItems="center">
-          <CircularProgress />
-        </Stack>
-      </Container>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container sx={{ py: 4 }}>
-        <Alert severity="error">{error}</Alert>
-      </Container>
-    );
-  }
-
-  if (!product) {
-    return (
-      <Container sx={{ py: 6 }}>
-        <Typography align="center" color="text.secondary">
-          Product not found
-        </Typography>
-      </Container>
-    );
+    revalidatePath(`/platform/products/${productId}`);
   }
 
   return (
-    <Container sx={{ py: 4 }}>
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" mb={2}>
-          Edit Product
-        </Typography>
+    <Container maxWidth="md">
 
-        <ProductForm
-          mode="edit"
-          initial={product}
-          onSubmit={handleUpdate}
-          onDelete={handleDelete}
-        />
-      </Paper>
+      <Stack
+        spacing={3}
+        sx={{ p: 6 }}
+      >
+
+        <Box>
+
+          <Typography
+            variant="h5"
+            fontWeight={600}
+          >
+            Product Details
+          </Typography>
+
+          <Typography
+            variant="body2"
+            color="text.secondary"
+          >
+            Created:{" "}
+            {formatDateTime(product.createdAt)}
+          </Typography>
+
+          <Typography
+            variant="body2"
+            color="text.secondary"
+          >
+            Updated:{" "}
+            {formatDateTime(product.updatedAt)}
+          </Typography>
+
+        </Box>
+
+        <Divider />
+
+        <Paper
+          elevation={2}
+          sx={{ p: 2 }}
+        >
+          <ProductDetail
+            product={product}
+            toggleStatus={toggleStatus}
+          />
+        </Paper>
+
+      </Stack>
+
     </Container>
   );
 }

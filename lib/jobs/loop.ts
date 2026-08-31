@@ -1,19 +1,23 @@
+import { processRecurringJobs } from "./recurring";
+
+const SCHEDULER_INTERVAL_MS = 5_000;
+
 let started = false;
 
-export function startJobLoop() {
+export async function startJobLoop(): Promise<void> {
     if (started) return;
     started = true;
 
-    const INTERVAL = 5_000; // 5s tick (fine for now)
-
-    async function tick() {
+    async function tick(): Promise<void> {
         try {
+            await processRecurringJobs();
+
             const { runScheduler } = await import("./runner");
             await runScheduler();
-        } catch (err) {
+        } catch (err: unknown) {
             console.error("Job loop error:", err);
         } finally {
-            setTimeout(tick, INTERVAL);
+            setTimeout(tick, SCHEDULER_INTERVAL_MS);
         }
     }
 

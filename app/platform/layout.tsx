@@ -1,17 +1,24 @@
-import AccessGuard from "@/components/guards/AccessGuard";
-import Navbar from "@/components/Navbar";
+import { Box } from "@mui/material";
+import Navbar from "@/components/layout/Navbar";
+import Sidebar from "@/components/layout/Sidebar";
+import PlatformGuard from "@/components/guards/PlatformGuard";
 
-export default function TenantLayout({
+export default function PlatformLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
     return (
-        <AccessGuard
-            allowSuperadmin
-        >
+        <PlatformGuard>
             <Navbar />
-            {children}
-        </AccessGuard>
+
+            <Box sx={{ display: "flex", flex: 1 }}>
+                <Sidebar />
+
+                <Box sx={{ flex: 1 }}>
+                    {children}
+                </Box>
+            </Box>
+        </PlatformGuard>
     );
 }

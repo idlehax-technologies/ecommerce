@@ -1,18 +1,29 @@
-import { getUserFromRequest } from "@/lib/auth";
 import { validateCsrf } from "./csrf";
-import { rateLimit } from "./rateLimit";
-import { UnauthorizedError } from "../auth/errors";
+import { rateLimit } from "@/lib/redis/rateLimit";
+import { getUserFromRequest } from "@/lib/session/session";
+import { UnauthorizedError } from "@/lib/auth/errors";
+
 import type { AuthUser } from "@/types/auth";
+
+declare global {
+    var __devBypassLogged: boolean | undefined;
+}
 
 // 🔴 overloads
 export async function guardRequest(
     req: Request,
-    options: { requireAuth: true; csrf?: boolean; rateLimitKey?: string }
+    options: {
+        requireAuth: true;
+        csrf?: boolean;
+    }
 ): Promise<AuthUser>;
 
 export async function guardRequest(
     req: Request,
-    options?: { requireAuth?: false; csrf?: boolean; rateLimitKey?: string }
+    options?: {
+        requireAuth?: false;
+        csrf?: boolean;
+    }
 ): Promise<AuthUser | null>;
 
 // 🔴 implementation
@@ -21,20 +32,18 @@ export async function guardRequest(
     options?: {
         requireAuth?: boolean;
         csrf?: boolean;
-        rateLimitKey?: string;
     }
 ): Promise<AuthUser | null> {
 
     const isDevBypass =
+        process.env.NODE_ENV === "development" &&
         process.env.ALLOW_DEV_BYPASS === "true" &&
         req.headers.get("x-dev-bypass") === "true";
 
     if (isDevBypass) {
-        if (process.env.NODE_ENV === "development") {
-            if (!(globalThis as any).__devBypassLogged) {
-                console.log("DEV BYPASS ACTIVE");
-                (globalThis as any).__devBypassLogged = true;
-            }
+        if (!globalThis.__devBypassLogged) {
+            console.log("DEV BYPASS ACTIVE");
+            globalThis.__devBypassLogged = true;
         }
 
         return {
@@ -56,9 +65,13 @@ export async function guardRequest(
         req.headers.get("x-forwarded-for") ??
         "anon";
 
-    const key = `${baseKey}:${options?.rateLimitKey ?? "default"}`;
+    const pathname =
+        new URL(req.url).pathname;
 
-    rateLimit(key);
+    const key =
+        `${baseKey}:${pathname}`;
+
+    await rateLimit(key);
 
     if (options?.csrf) {
         await validateCsrf(req);

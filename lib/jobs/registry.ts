@@ -1,6 +1,6 @@
 import type { Job } from "@/types/job";
 
-export type JobExecutor<T extends Job = Job> = (job: T) => Promise<void>;
+type JobExecutor<T extends Job = Job> = (job: T) => Promise<void>;
 
 type ExecutorMap = {
     [K in Job["type"]]: JobExecutor<Extract<Job, { type: K }>>;

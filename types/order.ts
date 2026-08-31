@@ -1,34 +1,67 @@
+import { IndianState } from "@/lib/tenants/states";
+import { GstRate } from "@/lib/products/gst";
+import { PaymentMethod } from "./payment";
+
 export type OrderStatus =
     | "RESERVED"
     | "PAID"
     | "PICKED_UP"
     | "CANCELLED"
     | "EXPIRED"
-    | "REFUNDED"; // ✅ NEW
+    | "REFUNDED";
 
-export type PaymentMethod = "CASH" | "UPI" | "CARD" | "NET_BANKING";
+export type SellerSnapshot = {
+    name: string;
+    address: string;
+    state: IndianState;
+    gstin?: string;
+};
 
-export type OrderItem = {
+export type CustomerSnapshot = {
+    fullName: string;
+    phone: string;
+    email: string;
+    addressText: string;
+};
+
+export type ItemSnapshot = {
     productId: string;
+    sku: string;
 
-    name: string;     // snapshot
-    price: number;    // snapshot
+    title: string;
+    description: string;
+
+    price: number; // GST-inclusive MRP snapshot
+    discountPercent: number;
+
+    hsnCode: string;
+    gstRate: GstRate;
+
     quantity: number;
 };
 
 export type Order = {
     orderId: string;
+    orderNumber: string;
 
-    tenantId: string;     // belongs to one tenant
-    userId: string;       // who placed it
-    placedByStaffId?: string; // POS mode
+    tenantId: string;
+    userId: string;
 
-    items: OrderItem[];
+    seller: SellerSnapshot;
+    customer: CustomerSnapshot;
+
+    placedByStaffId?: string;
+
+    items: ItemSnapshot[];
 
     total: number;
     currency: "INR";
 
-    paymentMethod: PaymentMethod;
+    paymentMethod?: PaymentMethod;
+
+    invoiceNumber?: string;
+    invoiceIssuedAt?: string;
+
     status: OrderStatus;
 
     createdAt: string;
@@ -37,5 +70,12 @@ export type Order = {
 
 export type OrderListItem = Pick<
     Order,
-    "orderId" | "total" | "status" | "createdAt"
->;
+    | "orderId"
+    | "orderNumber"
+    | "invoiceNumber"
+    | "total"
+    | "status"
+    | "createdAt"
+> & {
+    isStaffOrder: boolean;
+};

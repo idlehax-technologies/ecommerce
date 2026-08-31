@@ -1,15 +1,14 @@
-// app/api/admin/tenants/[tenantId]/inventory/adjust/route.ts
-
 import { NextResponse } from "next/server";
 
 import { requireSuperadmin } from "@/lib/auth/guards";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
-import { adjustStock } from "@/lib/tenantInventory/adjustment";
+import { adjustStockBy } from "@/lib/tenantInventory/adjustment";
 
 import { dispatchEvent } from "@/lib/events/dispatcher";
 import { guardRequest } from "@/lib/security/requestGuard";
 import { recordLatency, recordRequest } from "@/lib/metrics";
+import { validateStockAdjustmentInput } from "@/lib/tenantInventory/validators";
 
 export async function POST(
     req: Request,
@@ -28,9 +27,11 @@ export async function POST(
 
         requireSuperadmin(user);
 
-        const body = await req.json();
+        const body: unknown = await req.json();
 
-        const result = adjustStock({
+        validateStockAdjustmentInput(body);
+
+        const result = await adjustStockBy({
             tenantId,
             actorId: user.userId,
             request: body,
@@ -46,7 +47,7 @@ export async function POST(
             updated: result.updated
         });
 
-    } catch (err) {
+    } catch (err: unknown) {
         recordLatency(Date.now() - start);
         return handleRouteError(err);
     }

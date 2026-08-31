@@ -1,0 +1,516 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TenantStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum MembershipRole {
+  customer
+  staff
+  admin
+}
+
+enum MembershipStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REVOKED
+  EXPIRED
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum OrderStatus {
+  RESERVED
+  PAID
+  PICKED_UP
+  CANCELLED
+  EXPIRED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+enum AuditEventType {
+  ORDER_CREATED
+  ORDER_PAID
+  ORDER_CANCELLED
+  ORDER_EXPIRED
+  ORDER_PICKED_UP
+  ORDER_REFUNDED
+
+  MEMBERSHIP_REQUESTED
+  MEMBERSHIP_APPROVED
+  MEMBERSHIP_REJECTED
+  MEMBERSHIP_REVOKED
+  MEMBERSHIP_EXPIRED
+  MEMBERSHIP_ROLE_UPDATED
+
+  INVENTORY_ADJUSTED
+  INVENTORY_RECONCILED
+
+  PAYMENT_CONFIRMED
+}
+
+enum AuditEntityType {
+  ORDER
+  MEMBERSHIP
+  INVENTORY
+  PAYMENT
+}
+
+enum JobType {
+  ORDER_EXPIRY
+  MEMBERSHIP_EXPIRY
+  NOTIFICATION_DISPATCH
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+model User {
+  // Primary key
+
+  userId String @id @db.VarChar(64)
+
+  // Scalar fields
+
+  phone        String  @unique @db.VarChar(10)
+  isSuperadmin Boolean
+
+  // Foreign key fields
+
+  activeMembershipId String? @unique @db.VarChar(64)
+
+  // Relation fields
+
+  profile             Profile?
+  memberships         Membership[]
+  activeMembership    Membership?  @relation("ActiveMembership", fields: [activeMembershipId], references: [membershipId], onDelete: SetNull)
+  carts               Cart[]
+  orders              Order[]
+  ordersPlacedByStaff Order[]      @relation("PlacedByStaff")
+  auditLogs           AuditLog[]
+}
+
+model Profile {
+  // Primary key (also foreign key)
+
+  userId String @id @db.VarChar(64)
+
+  // Scalar fields
+
+  fullName    String   @db.VarChar(128)
+  email       String   @unique @db.VarChar(320)
+  addressText String   @db.Text
+  createdAt   DateTime
+  updatedAt   DateTime
+
+  // Relation fields
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+}
+
+model Tenant {
+  // Primary key
+
+  tenantId String @id @db.VarChar(64)
+
+  // Scalar fields
+
+  name      String       @unique @db.VarChar(128)
+  address   String       @db.Text
+  state     String       @db.VarChar(50)
+  gstin     String?      @unique @db.VarChar(15)
+  status    TenantStatus
+  createdAt DateTime
+  updatedAt DateTime
+
+  // Relation fields
+
+  memberships            Membership[]
+  inventory              TenantInventory[]
+  carts                  Cart[]
+  orders                 Order[]
+  payments               Payment[]
+  auditLogs              AuditLog[]
+  orderExpiryJobPayloads OrderExpiryJobPayload[]
+}
+
+model Membership {
+  // Primary key
+
+  membershipId String @id @db.VarChar(64)
+
+  // Scalar fields
+
+  role      MembershipRole
+  status    MembershipStatus
+  createdAt DateTime
+  updatedAt DateTime
+
+  // Foreign key fields
+
+  userId   String @db.VarChar(64)
+  tenantId String @db.VarChar(64)
+
+  // Relation fields
+
+  user          User   @relation(fields: [userId], references: [userId], onDelete: Restrict)
+  tenant        Tenant @relation(fields: [tenantId], references: [tenantId], onDelete: Restrict)
+  activeForUser User?  @relation("ActiveMembership")
+
+  // Indexes
+
+  @@index([userId])
+  @@index([tenantId])
+}
+
+model Product {
+  // Primary key
+
+  productId String @id @db.VarChar(64)
+
+  // Scalar fields
+
+  sku             String        @unique @db.VarChar(20)
+  title           String        @db.VarChar(128)
+  description     String        @db.Text
+  price           Int
+  discountPercent Int
+  currency        String        @db.VarChar(3)
+  hsnCode         String        @db.VarChar(8)
+  gstRate         Decimal       @db.Decimal(4, 2)
+  status          ProductStatus
+  images          String[]
+  category        String        @db.VarChar(50)
+  tags            String[]
+  createdAt       DateTime
+  updatedAt       DateTime
+
+  // Relation fields
+
+  tenantInventory    TenantInventory[]
+  cartItems          CartItem[]
+  orderItemSnapshots OrderItemSnapshot[]
+}
+
+model TenantInventory {
+  // Scalar fields
+
+  enabled   Boolean
+  stock     Int
+  reserved  Int
+  createdAt DateTime
+  updatedAt DateTime
+
+  // Foreign key fields
+
+  tenantId  String @db.VarChar(64)
+  productId String @db.VarChar(64)
+
+  // Relation fields
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [tenantId], onDelete: Restrict)
+  product Product @relation(fields: [productId], references: [productId], onDelete: Restrict)
+
+  // Primary key (composite)
+
+  @@id([tenantId, productId])
+}
+
+model Cart {
+  // Scalar fields
+
+  updatedAt DateTime
+
+  // Foreign key fields
+
+  tenantId String @db.VarChar(64)
+  userId   String @db.VarChar(64)
+
+  // Relation fields
+
+  tenant Tenant     @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  items  CartItem[]
+
+  // Primary key (composite)
+
+  @@id([tenantId, userId])
+}
+
+model CartItem {
+  // Scalar fields
+
+  quantity Int
+
+  // Foreign key fields
+
+  tenantId  String @db.VarChar(64)
+  userId    String @db.VarChar(64)
+  productId String @db.VarChar(64)
+
+  // Relation fields
+
+  cart    Cart    @relation(fields: [tenantId, userId], references: [tenantId, userId], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [productId], onDelete: Cascade)
+
+  // Primary key (composite)
+
+  @@id([tenantId, userId, productId])
+}
+
+model Order {
+  // Primary key
+
+  orderId String @id @db.VarChar(64)
+
+  // Scalar fields
+
+  orderNumber     String         @unique @db.VarChar(20)
+  total           Int
+  currency        String         @db.VarChar(3)
+  paymentMethod   PaymentMethod?
+  invoiceNumber   String?        @db.VarChar(20)
+  invoiceIssuedAt DateTime?
+  status          OrderStatus
+  createdAt       DateTime
+  updatedAt       DateTime
+
+  // Foreign key fields
+
+  tenantId        String  @db.VarChar(64)
+  userId          String  @db.VarChar(64)
+  placedByStaffId String? @db.VarChar(64)
+
+  // Relation fields
+
+  tenant        Tenant @relation(fields: [tenantId], references: [tenantId], onDelete: Restrict)
+  user          User   @relation(fields: [userId], references: [userId], onDelete: Restrict)
+  placedByStaff User?  @relation("PlacedByStaff", fields: [placedByStaffId], references: [userId], onDelete: Restrict)
+
+  sellerSnapshot   OrderSellerSnapshot?
+  customerSnapshot OrderCustomerSnapshot?
+  itemSnapshots    OrderItemSnapshot[]
+  payment          Payment?
+  expiryJobPayload OrderExpiryJobPayload?
+
+  // Constraints
+
+  @@unique([tenantId, invoiceNumber])
+}
+
+model OrderSellerSnapshot {
+  // Primary key (also foreign key)
+
+  orderId String @id @db.VarChar(64)
+
+  // Scalar fields
+
+  name    String  @db.VarChar(128)
+  address String  @db.Text
+  state   String  @db.VarChar(50)
+  gstin   String? @db.VarChar(15)
+
+  // Relation fields
+
+  order Order @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+}
+
+model OrderCustomerSnapshot {
+  // Primary key (also foreign key)
+
+  orderId String @id @db.VarChar(64)
+
+  // Scalar fields
+
+  fullName    String @db.VarChar(128)
+  phone       String @db.VarChar(10)
+  email       String @db.VarChar(320)
+  addressText String @db.Text
+
+  // Relation fields
+
+  order Order @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+}
+
+model OrderItemSnapshot {
+  // Scalar fields
+
+  sku             String  @db.VarChar(20)
+  title           String  @db.VarChar(128)
+  description     String  @db.Text
+  price           Int
+  discountPercent Int
+  hsnCode         String  @db.VarChar(8)
+  gstRate         Decimal @db.Decimal(4, 2)
+  quantity        Int
+
+  // Foreign key fields
+
+  orderId   String @db.VarChar(64)
+  productId String @db.VarChar(64)
+
+  // Relation fields
+
+  order   Order   @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [productId], onDelete: Restrict)
+
+  // Primary key (composite)
+
+  @@id([orderId, productId])
+}
+
+model Payment {
+  // Primary key
+
+  paymentId String @id @db.VarChar(64)
+
+  // Scalar fields
+
+  amount    Int
+  currency  String        @db.VarChar(3)
+  method    PaymentMethod
+  status    PaymentStatus
+  createdAt DateTime
+  updatedAt DateTime
+
+  // Foreign key fields
+
+  orderId  String @unique @db.VarChar(64)
+  tenantId String @db.VarChar(64)
+
+  // Relation fields
+
+  order  Order  @relation(fields: [orderId], references: [orderId], onDelete: Restrict)
+  tenant Tenant @relation(fields: [tenantId], references: [tenantId], onDelete: Restrict)
+
+  // Indexes
+
+  @@index([tenantId])
+}
+
+model AuditLog {
+  // Primary key
+
+  auditId String @id @db.VarChar(64)
+
+  // Scalar fields
+
+  eventType  AuditEventType
+  entityType AuditEntityType
+  entityId   String          @db.VarChar(64)
+  from       Json?
+  to         Json
+  metadata   Json
+  createdAt  DateTime
+
+  // Foreign key fields
+
+  tenantId String @db.VarChar(64)
+  actorId  String @db.VarChar(64)
+
+  // Relation fields
+
+  tenant Tenant @relation(fields: [tenantId], references: [tenantId], onDelete: Restrict)
+  actor  User   @relation(fields: [actorId], references: [userId], onDelete: Restrict)
+
+  // Indexes
+
+  @@index([tenantId, createdAt])
+}
+
+model Job {
+  // Primary key
+
+  jobId String @id @db.VarChar(64)
+
+  // Scalar fields
+
+  type      JobType
+  status    JobStatus
+  attempts  Int
+  runAt     DateTime
+  createdAt DateTime
+  lastError String?   @db.Text
+  dedupKey  String?   @unique @db.VarChar(128)
+
+  // Relation fields
+
+  orderExpiryPayload          OrderExpiryJobPayload?
+  membershipExpiryPayload     MembershipExpiryJobPayload?
+  notificationDispatchPayload NotificationDispatchJobPayload?
+
+  // Indexes
+
+  @@index([type, status])
+  @@index([type, createdAt])
+}
+
+model OrderExpiryJobPayload {
+  // Primary key (also foreign key)
+
+  jobId String @id @db.VarChar(64)
+
+  // Foreign key fields
+
+  tenantId String @db.VarChar(64)
+  orderId  String @unique @db.VarChar(64)
+
+  // Relation fields
+
+  job    Job    @relation(fields: [jobId], references: [jobId], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [tenantId], onDelete: Restrict)
+  order  Order  @relation(fields: [orderId], references: [orderId], onDelete: Restrict)
+}
+
+model MembershipExpiryJobPayload {
+  // Primary key (also foreign key)
+
+  jobId String @id @db.VarChar(64)
+
+  // Relation fields
+
+  job Job @relation(fields: [jobId], references: [jobId], onDelete: Cascade)
+}
+
+model NotificationDispatchJobPayload {
+  // Primary key (also foreign key)
+
+  jobId String @id @db.VarChar(64)
+
+  // Scalar fields
+
+  event Json
+
+  // Relation fields
+
+  job Job @relation(fields: [jobId], references: [jobId], onDelete: Cascade)
+}

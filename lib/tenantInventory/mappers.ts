@@ -14,7 +14,7 @@ export function toNewProvision(
         tenantId,
         productId: dto.productId,
         enabled: dto.enabled,
-        stock: dto.stock,
+        stock: 0,
         reserved: 0,
         createdAt: now,
         updatedAt: now,
@@ -29,7 +29,6 @@ export function applyProvisionPatch(
     return {
         ...existing,
         enabled: dto.enabled,
-        stock: dto.stock,
         updatedAt: new Date().toISOString(),
     };
 }

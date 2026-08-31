@@ -3,11 +3,15 @@ import { projectAudit } from "@/lib/audit/projector";
 import { handleOrderEvent } from "@/lib/orders/reactions";
 import { enqueueJob } from "@/lib/jobs/service";
 import { recordEvent } from "../metrics";
+import { ORDER_EXPIRY_MS } from "../orders/domain";
 
 type OrderEvent = Extract<DomainEvent, { type: `Order${string}` }>;
 
-function buildNotificationDedupKey(event: DomainEvent): string {
+function buildNotificationDedupKey(
+    event: DomainEvent
+): string {
     switch (event.type) {
+
         case "OrderCreated":
         case "OrderPaid":
         case "OrderCancelled":
@@ -21,10 +25,8 @@ function buildNotificationDedupKey(event: DomainEvent): string {
         case "MembershipRejected":
         case "MembershipRevoked":
         case "MembershipExpired":
+        case "MembershipRoleUpdated":
             return `notif:membership:${event.membership.membershipId}:${event.type}`;
-
-        case "PaymentConfirmed":
-            return `notif:payment:${event.payment.paymentId}`;
 
         default:
             return `notif:generic:${event.type}`;
@@ -44,21 +46,20 @@ export async function dispatchEvent(
 
     // order expiry scheduling
     if (event.type === "OrderCreated") {
-        enqueueJob(
+        await enqueueJob(
             "ORDER_EXPIRY",
             {
                 tenantId: event.order.tenantId,
                 orderId: event.order.orderId,
             },
-            new Date(Date.now() + 15 * 60 * 1000).toISOString()
+            new Date(Date.now() + ORDER_EXPIRY_MS).toISOString()
         );
     }
 
-    // audit (must stay synchronous)
-    projectAudit(event, ctx);
+    await projectAudit(event, ctx);
 
     // ✅ NEW: notifications → job system
-    enqueueJob(
+    await enqueueJob(
         "NOTIFICATION_DISPATCH",
         { event },
         new Date().toISOString(),

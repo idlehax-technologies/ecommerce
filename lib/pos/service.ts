@@ -1,49 +1,124 @@
+import { getActiveProduct } from "@/lib/products/domain";
+import { getTenant } from "@/lib/tenants/domain";
+
 import * as ordersDomain from "@/lib/orders/domain";
 import * as tenantInventoryDomain from "@/lib/tenantInventory/domain";
-import * as paymentsDomain from "@/lib/payments/domain";
 
-import { getProduct } from "@/lib/products/domain";
+import {
+    toGuestCustomerSnapshot,
+    toItemSnapshot,
+    toSellerSnapshot,
+} from "@/lib/orders/mappers";
 
-import type { Order, OrderItem } from "@/types/order";
+import { EmptyOrderItemsError } from "@/lib/orders/errors";
+
+import type { Order } from "@/types/order";
 import type { DomainEvent } from "@/types/domainEvent";
+import type {
+    POSInput,
+    POSItemInput,
+    RemovedPOSItem,
+    POSResult,
+} from "@/types/pos";
 
-export type POSItemInput = {
-    productId: string;
-    quantity: number;
-};
+async function findUnavailableItems(
+    tenantId: string,
+    items: POSItemInput[]
+): Promise<RemovedPOSItem[]> {
 
-export type POSInput = {
-    tenantId: string;
-    staffId: string;
-    items: POSItemInput[];
-    paymentMethod?: "CASH" | "UPI" | "CARD" | "NET_BANKING";
-};
+    const removed: RemovedPOSItem[] = [];
 
-export async function executePOS(input: POSInput): Promise<{
-    order: Order & { placedByStaffId: string };
-    events: DomainEvent[];
-}> {
+    for (const item of items) {
+
+        const provision =
+            await tenantInventoryDomain.findTenantProvision(
+                tenantId,
+                item.productId
+            );
+
+        if (
+            !provision ||
+            !provision.enabled
+        ) {
+            removed.push({
+                productId: item.productId,
+                reason: "NOT_PROVISIONED",
+            });
+
+            continue;
+        }
+
+        try {
+
+            await getActiveProduct(
+                item.productId
+            );
+
+        } catch {
+
+            removed.push({
+                productId: item.productId,
+                reason: "INACTIVE",
+            });
+        }
+    }
+
+    return removed;
+}
+
+export async function executePOS(
+    input: POSInput
+): Promise<POSResult> {
     if (!input.items.length) {
-        throw new Error("POS requires items");
+        throw new EmptyOrderItemsError();
     }
 
-    const orderItems: OrderItem[] = [];
+    const unavailableItems =
+        await findUnavailableItems(
+            input.tenantId,
+            input.items
+        );
 
-    // build snapshot
-    for (const item of input.items) {
-        const product = await getProduct(item.productId);
-
-        orderItems.push({
-            productId: product.productId,
-            name: product.title,
-            price: product.price,
-            quantity: item.quantity,
-        });
+    if (unavailableItems.length > 0) {
+        return {
+            success: false,
+            removedItems: unavailableItems,
+        };
     }
+
+    const tenant =
+        await getTenant(
+            input.tenantId
+        );
+
+    const seller =
+        toSellerSnapshot(
+            tenant
+        );
+
+    const customer =
+        toGuestCustomerSnapshot();
+
+    const items =
+        await Promise.all(
+            input.items.map(
+                async (item) => {
+                    const product =
+                        await getActiveProduct(
+                            item.productId
+                        );
+
+                    return toItemSnapshot(
+                        product,
+                        item.quantity
+                    );
+                }
+            )
+        );
 
     // reserve stock
-    for (const item of orderItems) {
-        tenantInventoryDomain.reserveStock(
+    for (const item of items) {
+        await tenantInventoryDomain.reserveStock(
             input.tenantId,
             item.productId,
             item.quantity
@@ -52,10 +127,13 @@ export async function executePOS(input: POSInput): Promise<{
 
     try {
         const { order, event: orderCreatedEvent } =
-            ordersDomain.createOrder(
+            await ordersDomain.createOrder(
                 input.tenantId,
                 input.staffId,
-                orderItems
+                seller,
+                customer,
+                items,
+                input.staffId
             );
 
         const enrichedOrder: Order & { placedByStaffId: string } = {
@@ -65,44 +143,16 @@ export async function executePOS(input: POSInput): Promise<{
 
         const events: DomainEvent[] = [orderCreatedEvent];
 
-        // payment flow (2-step)
-        if (input.paymentMethod) {
-            // STEP 1 — create payment (PENDING)
-            paymentsDomain.recordPayment(
-                input.tenantId,
-                order.orderId,
-                input.paymentMethod
-            );
-
-            // STEP 2 — confirm payment (returns BOTH events)
-            const paymentResult = paymentsDomain.confirmPayment(
-                input.tenantId,
-                order.orderId
-            );
-
-            // include BOTH events
-            events.push(...paymentResult.events);
-
-            const enrichedPaidOrder: Order & { placedByStaffId: string } = {
-                ...paymentResult.order,
-                placedByStaffId: input.staffId,
-            };
-
-            return {
-                order: enrichedPaidOrder,
-                events,
-            };
-        }
-
         return {
+            success: true,
             order: enrichedOrder,
             events,
         };
 
     } catch (err) {
         // rollback reservation
-        for (const item of orderItems) {
-            tenantInventoryDomain.releaseStock(
+        for (const item of items) {
+            await tenantInventoryDomain.releaseStock(
                 input.tenantId,
                 item.productId,
                 item.quantity

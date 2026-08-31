@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireTenant } from "@/lib/auth/guards";
+import { requireMembershipRole, requireMembership } from "@/lib/auth/guards";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import * as paymentsDomain from "@/lib/payments/domain";
+import * as ordersDomain from "@/lib/orders/domain";
 import { dispatchEvent } from "@/lib/events/dispatcher";
 import { recordLatency, recordRequest, recordUser } from "@/lib/metrics";
+import { assertOrderVisible } from "@/lib/orders/guards";
 
 export async function POST(
     req: Request,
@@ -23,10 +25,19 @@ export async function POST(
             csrf: true,
         });
 
-        const actor = requireTenant(user);
+        await requireMembershipRole(user, ["customer", "staff"]);
+
+        const actor = await requireMembership(user);
         recordUser(actor.userId);
 
-        const result = paymentsDomain.confirmPayment(
+        const targetOrder = await ordersDomain.getTenantOrder(
+            actor.tenantId,
+            orderId
+        );
+
+        assertOrderVisible(actor, targetOrder);
+
+        const result = await paymentsDomain.confirmPayment(
             actor.tenantId,
             orderId
         );
@@ -42,7 +53,7 @@ export async function POST(
             order: result.order,
         });
 
-    } catch (err) {
+    } catch (err: unknown) {
         recordLatency(Date.now() - start);
         return handleRouteError(err);
     }

@@ -1,61 +1,99 @@
 "use client";
 
+import Link from "next/link";
+
 import {
     Table,
     TableHead,
+    TableBody,
     TableRow,
     TableCell,
-    TableBody,
+    TableContainer,
     Button,
 } from "@mui/material";
-import { useRouter } from "next/navigation";
-import MembershipStatusBadge from "./MembershipStatusBadge";
-import { MembershipView } from "@/types/membership";
+
+import type { MembershipView }
+    from "@/types/membership";
+
+import MembershipStatusBadge
+    from "./MembershipStatusBadge";
+
+type Props = {
+    data: MembershipView[];
+};
 
 export default function MembershipTable({
     data,
-}: {
-    data: MembershipView[];
-}) {
-    const router = useRouter();
+}: Props) {
 
     return (
-        <Table>
-            <TableHead>
-                <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Phone</TableCell>
-                    <TableCell>Email</TableCell>
-                    <TableCell>Tenant</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell />
-                </TableRow>
-            </TableHead>
-
-            <TableBody>
-                {data.map((m) => (
-                    <TableRow key={m.membershipId}>
-                        <TableCell>{m.user.fullName || "-"}</TableCell>
-                        <TableCell>{m.user.phone || "-"}</TableCell>
-                        <TableCell>{m.user.email || "-"}</TableCell>
-                        <TableCell>{m.tenant.name || "-"}</TableCell>
-                        <TableCell>
-                            <MembershipStatusBadge status={m.status} />
+        <TableContainer>
+            <Table
+                sx={{
+                    tableLayout: "fixed",
+                    width: "100%",
+                }}
+            >
+                <TableHead>
+                    <TableRow>
+                        <TableCell sx={{ width: "20%" }}>
+                            Name
                         </TableCell>
-                        <TableCell>
-                            <Button
-                                onClick={() =>
-                                    router.push(
-                                        `/memberships/${m.membershipId}`
-                                    )
-                                }
-                            >
-                                View Details
-                            </Button>
+                        <TableCell sx={{ width: "14%" }}>
+                            Phone
+                        </TableCell>
+                        <TableCell sx={{ width: "28%" }}>
+                            Email
+                        </TableCell>
+                        <TableCell sx={{ width: "14%" }}>
+                            Status
+                        </TableCell>
+                        <TableCell sx={{ width: "10%" }}>
+                            Role
+                        </TableCell>
+                        <TableCell align="center" sx={{ width: "14%" }}>
+                            Details
                         </TableCell>
                     </TableRow>
-                ))}
-            </TableBody>
-        </Table>
+                </TableHead>
+
+                <TableBody>
+                    {data.map((m) => (
+                        <TableRow key={m.membershipId}>
+                            <TableCell>
+                                {m.user.fullName}
+                            </TableCell>
+
+                            <TableCell>
+                                {m.user.phone}
+                            </TableCell>
+
+                            <TableCell>
+                                {m.user.email}
+                            </TableCell>
+
+                            <TableCell>
+                                <MembershipStatusBadge
+                                    status={m.status}
+                                />
+                            </TableCell>
+
+                            <TableCell>
+                                {m.role}
+                            </TableCell>
+
+                            <TableCell align="center">
+                                <Button
+                                    component={Link}
+                                    href={`/memberships/${m.membershipId}`}
+                                >
+                                    View Details
+                                </Button>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </TableContainer>
     );
 }

@@ -1,24 +1,34 @@
-import { Container, Typography, Box } from "@mui/material";
-import { getUserFromRequest } from "@/lib/auth";
-import { requireMembershipRole, requireTenant } from "@/lib/auth/guards";
+"use client";
+
+import {
+    Box,
+    Stack,
+    Typography,
+    Paper,
+    Divider,
+} from "@mui/material";
 
 import POSClient from "@/components/pos/POSClient";
 
-export default async function POSPage() {
-    const rawUser = await getUserFromRequest();
-
-    requireMembershipRole(rawUser, ["staff"]);
-    requireTenant(rawUser);
+export default function POSPage() {
 
     return (
-        <Container sx={{ mt: 4 }}>
-            <Typography variant="h4" gutterBottom>
-                Staff POS
-            </Typography>
+        <Stack spacing={3} sx={{ p: 4 }}>
+            <Box>
+                <Typography variant="h5" fontWeight={600}>
+                    Point of Sale
+                </Typography>
 
-            <Box mt={3}>
-                <POSClient />
+                <Typography variant="body2" color="text.secondary">
+                    Create and manage in-store orders
+                </Typography>
             </Box>
-        </Container>
+
+            <Divider />
+
+            <Paper elevation={2} sx={{ p: 2 }}>
+                <POSClient />
+            </Paper>
+        </Stack>
     );
 }

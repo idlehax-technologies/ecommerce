@@ -1,53 +1,45 @@
-// app/admin/tenants/new/page.tsx
+import {
+    Container,
+    Box,
+    Stack,
+    Typography,
+    Divider,
+    Paper,
+} from "@mui/material";
 
-import { redirect } from "next/navigation";
-import { Container, Stack, TextField, Button, Typography, Card, CardContent } from "@mui/material";
-
-import { createTenantUseCase } from "@/lib/tenants/service";
-import { getUserFromRequest } from "@/lib/auth";
+import { getUserFromRequest } from "@/lib/session/session";
 import { requireSuperadmin } from "@/lib/auth/guards";
 
-/**
- * Superadmin Tenant Creation Page (Server Action Driven)
- */
+import TenantForm from "@/components/admin/tenants/TenantForm";
 
-export default async function NewTenantPage() {
+export default async function CreateTenantPage() {
 
     const rawUser = await getUserFromRequest();
-
     requireSuperadmin(rawUser);
 
-    async function create(formData: FormData) {
-        "use server";
-
-        const name = formData.get("name") as string;
-
-        await createTenantUseCase({ name });
-
-        redirect("/platform/tenants");
-    }
-
     return (
-        <Container maxWidth="sm" sx={{ py: 6 }}>
-            <Card>
-                <CardContent>
-                    <form action={create}>
-                        <Stack spacing={3}>
-                            <Typography variant="h5">Create Tenant</Typography>
+        <Container maxWidth="md">
+            <Stack spacing={3} sx={{ p: 6 }}>
+                <Box>
+                    <Typography variant="h5" fontWeight={600}>
+                        Create Tenant
+                    </Typography>
 
-                            <TextField label="School Name" name="name" required fullWidth />
+                    <Typography variant="body2" color="text.secondary">
+                        Register a new tenant organization
+                    </Typography>
+                </Box>
 
-                            <Stack direction="row" spacing={2}>
-                                <Button type="submit" variant="contained">
-                                    Create
-                                </Button>
+                <Divider />
 
-                                <Button href="/platform/tenants">Cancel</Button>
-                            </Stack>
-                        </Stack>
-                    </form>
-                </CardContent>
-            </Card>
+                <Paper elevation={2} sx={{ p: 2 }}>
+                    <Paper elevation={2} sx={{ p: 2 }}>
+                        <TenantForm
+                            mode="create"
+                        />
+                    </Paper>
+                </Paper>
+            </Stack>
         </Container>
     );
 }

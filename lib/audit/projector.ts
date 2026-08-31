@@ -1,9 +1,8 @@
 import { randomUUID } from "crypto";
 import type { DomainEvent } from "@/types/domainEvent";
-import type { AuditEventType } from "@/types/audit";
+import type { AuditEventType, AuditEntityType } from "@/types/audit";
 
-// 🔴 import ONLY internal write
-import { __internal_appendAudit as appendAudit } from "./storage";
+import { appendAudit } from "./domain";
 
 function mapEventType(e: DomainEvent): AuditEventType {
     switch (e.type) {
@@ -20,6 +19,7 @@ function mapEventType(e: DomainEvent): AuditEventType {
         case "MembershipExpired": return "MEMBERSHIP_EXPIRED";
         case "MembershipRoleUpdated": return "MEMBERSHIP_ROLE_UPDATED";
         case "InventoryAdjusted": return "INVENTORY_ADJUSTED";
+        case "InventoryReconciled": return "INVENTORY_RECONCILED";
         case "PaymentConfirmed": return "PAYMENT_CONFIRMED";
         default: {
             const _exhaustive: never = e;
@@ -28,13 +28,17 @@ function mapEventType(e: DomainEvent): AuditEventType {
     }
 }
 
-export function projectAudit(
+export async function projectAudit(
     event: DomainEvent,
     ctx: { actorId: string }
-) {
+): Promise<void> {
     const now = new Date().toISOString();
 
-    function base(tenantId: string, entityType: string, entityId: string) {
+    function base(
+        tenantId: string,
+        entityType: AuditEntityType,
+        entityId: string
+    ) {
         return {
             auditId: randomUUID(),
             tenantId,
@@ -50,20 +54,46 @@ export function projectAudit(
     switch (event.type) {
 
         case "OrderCreated":
-            appendAudit({
-                ...base(event.order.tenantId, "ORDER", event.order.orderId),
+            await appendAudit({
+                ...base(
+                    event.order.tenantId,
+                    "ORDER",
+                    event.order.orderId
+                ),
                 to: { status: event.order.status },
-                metadata: {}
+                metadata: {
+                    orderNumber: event.order.orderNumber,
+                    total: event.order.total,
+                    isStaffOrder: Boolean(event.order.placedByStaffId),
+                }
             });
             break;
 
         case "OrderPaid":
+            await appendAudit({
+                ...base(
+                    event.order.tenantId,
+                    "ORDER",
+                    event.order.orderId
+                ),
+                from: { status: event.from },
+                to: { status: event.to },
+                metadata: {
+                    method: event.order.paymentMethod,
+                }
+            });
+            break;
+
         case "OrderCancelled":
         case "OrderExpired":
         case "OrderPickedUp":
         case "OrderRefunded":
-            appendAudit({
-                ...base(event.order.tenantId, "ORDER", event.order.orderId),
+            await appendAudit({
+                ...base(
+                    event.order.tenantId,
+                    "ORDER",
+                    event.order.orderId
+                ),
                 from: { status: event.from },
                 to: { status: event.to },
                 metadata: {}
@@ -71,7 +101,7 @@ export function projectAudit(
             break;
 
         case "MembershipRequested":
-            appendAudit({
+            await appendAudit({
                 ...base(
                     event.membership.tenantId,
                     "MEMBERSHIP",
@@ -85,7 +115,8 @@ export function projectAudit(
         case "MembershipApproved":
         case "MembershipRejected":
         case "MembershipRevoked":
-            appendAudit({
+        case "MembershipExpired":
+            await appendAudit({
                 ...base(
                     event.membership.tenantId,
                     "MEMBERSHIP",
@@ -98,7 +129,7 @@ export function projectAudit(
             break;
 
         case "MembershipRoleUpdated":
-            appendAudit({
+            await appendAudit({
                 ...base(
                     event.membership.tenantId,
                     "MEMBERSHIP",
@@ -111,23 +142,47 @@ export function projectAudit(
             break;
 
         case "InventoryAdjusted":
-            appendAudit({
-                ...base(event.tenantId, "PRODUCT", event.productId),
-                from: event.from,
-                to: event.to,
-                metadata: {}
+            await appendAudit({
+                ...base(
+                    event.tenantId,
+                    "INVENTORY",
+                    event.productId
+                ),
+                from: { stock: event.from },
+                to: { stock: event.to },
+                metadata: {
+                    delta: event.to - event.from,
+                }
+            });
+            break;
+
+        case "InventoryReconciled":
+            await appendAudit({
+                ...base(
+                    event.tenantId,
+                    "INVENTORY",
+                    event.productId
+                ),
+                from: { reserved: event.from },
+                to: { reserved: event.to },
+                metadata: {
+                    delta: event.to - event.from,
+                }
             });
             break;
 
         case "PaymentConfirmed":
-            appendAudit({
+            await appendAudit({
                 ...base(
-                    event.order.tenantId,
+                    event.payment.tenantId,
                     "PAYMENT",
                     event.payment.paymentId
                 ),
+                from: { status: event.from },
+                to: { status: event.to },
                 metadata: {
-                    orderId: event.order.orderId
+                    orderId: event.payment.orderId,
+                    method: event.payment.method,
                 }
             });
             break;

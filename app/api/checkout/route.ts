@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireTenant } from "@/lib/auth/guards";
+import { requireMembershipRole, requireMembership } from "@/lib/auth/guards";
 import { handleRouteError } from "@/lib/http/handleRouteError";
-
-import { assertCheckoutDTO } from "@/lib/checkout/validators";
-import { toCheckoutInput } from "@/lib/checkout/mappers";
 import { executeCheckout } from "@/lib/checkout/service";
 
 import { dispatchEvent } from "@/lib/events/dispatcher";
@@ -20,28 +17,33 @@ export async function POST(req: Request) {
             csrf: true,
         });
 
-        const actor = requireTenant(user);
+        await requireMembershipRole(user, ["customer"]);
+
+        const actor = await requireMembership(user);
         recordUser(actor.userId);
 
-        const body: unknown = await req.json();
+        const result = await executeCheckout(
+            actor.tenantId,
+            actor.userId
+        );
 
-        assertCheckoutDTO(body);
+        if (!result.success) {
+            recordLatency(Date.now() - start);
 
-        const input = toCheckoutInput(actor.userId, actor.tenantId, body);
-
-        const result = await executeCheckout(input);
+            return NextResponse.json({
+                removedItems: result.removedItems,
+            });
+        }
 
         await dispatchEvent(result.event, { actorId: actor.userId });
 
         recordLatency(Date.now() - start);
 
         return NextResponse.json({
-            success: true,
-            orderId: result.order.orderId,
-            message: "Order placed successfully",
+            order: result.order
         });
 
-    } catch (err) {
+    } catch (err: unknown) {
         recordLatency(Date.now() - start);
         return handleRouteError(err);
     }

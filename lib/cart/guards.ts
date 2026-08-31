@@ -2,6 +2,7 @@ import type {
     Cart,
     AddToCartDTO,
     UpdateCartItemDTO,
+    CartItem,
 } from "@/types/cart";
 
 import {
@@ -15,7 +16,7 @@ import {
    Aggregate guards
    ========================================================= */
 
-export function requireItem(cart: Cart, productId: string) {
+export function requireItem(cart: Cart, productId: string): CartItem {
     const item = cart.items.find((i) => i.productId === productId);
     if (!item) throw new CartItemNotFoundError();
     return item;

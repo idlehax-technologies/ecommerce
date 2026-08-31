@@ -1,14 +1,59 @@
-import { Box, Typography } from "@mui/material";
-import type { CartItem } from "@/types/cart";
+"use client";
 
-export default function CartSummary({ items }: { items: CartItem[] }) {
-    const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+import { Box, Stack, Typography } from "@mui/material";
+
+import { getCartTotals } from "@/lib/calculations/pricing";
+import { formatINR } from "@/lib/format/currency";
+import type { CartItemView } from "@/lib/mappers/cartView";
+
+export default function CartSummary({
+    items,
+    hasGst,
+}: {
+    items: CartItemView[];
+    hasGst: boolean;
+}) {
+    const { mrpTotal, payableTotal, savings } = getCartTotals(items);
 
     return (
-        <Box display="flex" justifyContent="flex-end">
-            <Typography variant="h6" fontWeight={600}>
-                Subtotal: ₹ {(subtotal / 100).toFixed(2)}
-            </Typography>
-        </Box>
+        <Stack spacing={0.5}>
+            {savings > 0 && (
+                <Box display="flex" justifyContent="space-between">
+                    <Typography variant="body2" color="text.secondary">
+                        MRP
+                    </Typography>
+
+                    <Typography
+                        variant="body2"
+                        sx={{ textDecoration: "line-through" }}
+                    >
+                        {formatINR(mrpTotal)}
+                    </Typography>
+                </Box>
+            )}
+
+            {savings > 0 && (
+                <Box display="flex" justifyContent="space-between">
+                    <Typography variant="body2" color="success.main">
+                        Savings
+                    </Typography>
+
+                    <Typography variant="body2" color="success.main">
+                        {formatINR(savings)}
+                    </Typography>
+                </Box>
+            )}
+
+            <Box display="flex" justifyContent="space-between">
+                <Typography fontWeight={600}>
+                    Total
+                </Typography>
+
+                <Typography fontWeight={600}>
+                    {formatINR(payableTotal)}
+                    {hasGst && " (incl. GST)"}
+                </Typography>
+            </Box>
+        </Stack>
     );
 }

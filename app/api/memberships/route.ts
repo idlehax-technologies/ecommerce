@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireAccess, requireAuth } from "@/lib/auth/guards";
+import { requireMembershipRole, requireMembership } from "@/lib/auth/guards";
 import {
     requestMembership,
-    listMembershipsEnriched,
-    listAllMembershipsEnriched
+    listMembershipsEnriched
 } from "@/lib/memberships/domain";
 import { assertRequestMembership } from "@/lib/memberships/validators";
 import { handleRouteError } from "@/lib/http/handleRouteError";
@@ -16,18 +15,17 @@ export async function GET(req: Request) {
     try {
         const user = await guardRequest(req, { requireAuth: true });
 
-        const actor = requireAccess(user, ["staff"]);
+        await requireMembershipRole(user, ["staff", "admin"]);
+        const actor = await requireMembership(user);
 
         const memberships =
-            actor.type === "superadmin"
-                ? listAllMembershipsEnriched(QUERY_LIMITS.MEMBERSHIPS)
-                : listMembershipsEnriched(
-                    actor.membership.tenantId,
-                    QUERY_LIMITS.MEMBERSHIPS
-                );
+            await listMembershipsEnriched(
+                actor.tenantId,
+                QUERY_LIMITS.MEMBERSHIPS
+            );
 
         return NextResponse.json({ memberships });
-    } catch (err) {
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }
@@ -42,12 +40,14 @@ export async function POST(req: Request) {
         const body: unknown = await req.json();
         assertRequestMembership(body);
 
-        const result = requestMembership(user.userId, body.tenantId);
+        const result = await requestMembership(user.userId, body.tenantId);
 
         await dispatchEvent(result.event, { actorId: user.userId });
 
-        return NextResponse.json(result.membership);
-    } catch (err) {
+        return NextResponse.json({
+            membership: result.membership
+        });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

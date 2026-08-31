@@ -1,40 +1,90 @@
 "use client";
-import { createContext, useContext, useEffect, useState } from "react";
-import * as api from "@/lib/api/cart";
-import type { Cart, CartContextValue } from "@/types/cart";
+
+import {
+    createContext,
+    useContext,
+    useEffect,
+    useState,
+    useCallback,
+} from "react";
+
+import * as cartApi from "@/lib/api/cart";
+import type { CartView } from "@/lib/mappers/cartView";
+
+type CartContextValue = {
+    cart: CartView | null;
+    loading: boolean;
+
+    refresh: () => Promise<void>;
+    add: (id: string) => Promise<void>;
+    update: (id: string, q: number) => Promise<void>;
+    remove: (id: string) => Promise<void>;
+    clear: () => Promise<void>;
+};
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-export function CartProvider({ children }: { children: React.ReactNode }) {
-    const [cart, setCart] = useState<Cart | null>(null);
+export function CartProvider({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
+    const [cart, setCart] = useState<CartView | null>(null);
 
-    async function refresh() {
-        setCart(await api.getCart());
-    }
+    const [loading, setLoading] = useState(true);
 
-    async function add(productId: string) {
-        setCart(await api.addToCart({ productId }));
-    }
+    const refresh = useCallback(async () => {
+        try {
+            setLoading(true);
+            const res = await cartApi.getCart();
+            setCart(res.cart);
+        } catch {
+            // Not an error condition for UI — this actor may not have cart access.
+            setCart(null);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
-    async function update(productId: string, quantity: number) {
-        setCart(await api.updateItem(productId, { quantity }));
-    }
+    const add = useCallback(
+        async (productId: string) => {
+            const res = await cartApi.addToCart({ productId, });
+            setCart(res.cart);
+        }, []);
 
-    async function remove(productId: string) {
-        setCart(await api.removeItem(productId));
-    }
+    const update = useCallback(
+        async (productId: string, quantity: number) => {
+            const res = await cartApi.updateItem(productId, { quantity });
+            setCart(res.cart);
+        }, []);
 
-    async function clear() {
-        await api.clearCart();
-        await refresh();
-    }
+    const remove = useCallback(
+        async (productId: string) => {
+            const res = await cartApi.removeItem(productId);
+            setCart(res.cart);
+        }, []);
+
+    const clear = useCallback(async () => {
+        await cartApi.clearCart();
+        setCart(null);
+    }, []);
 
     useEffect(() => {
         refresh();
-    }, []);
+    }, [refresh]);
 
     return (
-        <CartContext.Provider value={{ cart, refresh, add, update, remove, clear }}>
+        <CartContext.Provider
+            value={{
+                cart,
+                loading,
+                refresh,
+                add,
+                update,
+                remove,
+                clear,
+            }}
+        >
             {children}
         </CartContext.Provider>
     );
@@ -42,6 +92,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
 export function useCart() {
     const ctx = useContext(CartContext);
-    if (!ctx) throw new Error("CartProvider missing");
+
+    if (!ctx) {
+        throw new Error(
+            "useCart must be used within CartProvider"
+        );
+    }
+
     return ctx;
 }

@@ -1,106 +1,197 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Grid, Stack, Alert } from "@mui/material";
 
-import POSProductGrid from "./POSProductGrid";
-import POSCart from "./POSCart";
+import {
+    Alert,
+    CircularProgress,
+} from "@mui/material";
 
-import { getTenantInventoryView } from "@/lib/api/tenantInventory";
-import { createPOSOrder } from "@/lib/api/orders";
+import POSDashboard from "./POSDashboard";
 
-import { mapToPOSRows } from "@/lib/mappers/posView";
-import type { POSRow } from "@/lib/mappers/posView";
-import type { TenantProvisioningRow } from "@/lib/mappers/tenantProvisioningView";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 
-type BaseRow = TenantProvisioningRow;
+import { createPOSOrder } from "@/lib/api/pos";
+import { getTenant } from "@/lib/api/tenants";
+import { getTenantProductView } from "@/lib/api/tenantInventory";
 
-type POSRowWithAction = POSRow & {
-    onSelect: () => void;
-};
+import type { Tenant } from "@/types/tenant";
+import type { TenantProductRow } from "@/lib/mappers/tenantProductView";
 
 export default function POSClient() {
-    const [rows, setRows] = useState<BaseRow[]>([]);
+
+    const router = useRouter();
+    const { show } = useSnackbar();
+
+    const [rows, setRows] = useState<TenantProductRow[]>([]);
+    const [tenant, setTenant] = useState<Tenant | null>(null);
     const [cart, setCart] = useState<Record<string, number>>({});
+
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        getTenantInventoryView("tenant-demo")
-            .then((res) => setRows(res.rows))
-            .catch(() => setError("Failed to load products"));
-    }, []);
+    async function load() {
+        try {
+            setLoading(true);
+            setError(null);
 
-    const posRows: POSRow[] = mapToPOSRows(rows, cart);
+            const [productRes, tenantRes] = await Promise.all([
+                getTenantProductView(),
+                getTenant(),
+            ]);
 
-    const rowsWithActions: POSRowWithAction[] = posRows.map((r) => ({
-        ...r,
-        onSelect: () => add(r.product.productId),
-    }));
+            setRows(productRes.rows);
+            setTenant(tenantRes.tenant);
 
-    function add(productId: string) {
-        const row = posRows.find((r) => r.product.productId === productId);
-        if (!row) return;
+        } catch (err: unknown) {
 
-        if (row.available <= 0) return;
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError("Failed to load POS");
+            }
 
-        setCart((c) => ({
-            ...c,
-            [productId]: (c[productId] || 0) + 1,
-        }));
+        } finally {
+            setLoading(false);
+        }
     }
 
-    function update(productId: string, nextQty: number) {
-        const row = rows.find((r) => r.product.productId === productId);
-        if (!row) return;
+    useEffect(() => {
+        load();
+    }, []);
 
-        if (nextQty <= 0) {
-            const { [productId]: _, ...rest } = cart;
-            setCart(rest);
+    function add(productId: string) {
+        const row = rows.find(
+            (row) => row.product.productId === productId
+        );
+
+        if (!row) {
             return;
         }
 
-        if (nextQty > row.stock) return;
+        const quantity = cart[productId] ?? 0;
 
-        setCart((c) => ({
-            ...c,
-            [productId]: nextQty,
+        if (quantity >= row.available) {
+            return;
+        }
+
+        setCart((current) => ({
+            ...current,
+            [productId]: quantity + 1,
         }));
     }
 
-    async function submit(paymentMethod?: string) {
-        try {
-            await createPOSOrder({
-                items: Object.entries(cart).map(([productId, quantity]) => ({
-                    productId,
-                    quantity,
-                })),
-                paymentMethod,
+    function update(
+        productId: string,
+        quantity: number
+    ) {
+        const row = rows.find(
+            (row) => row.product.productId === productId
+        );
+
+        if (!row) {
+            return;
+        }
+
+        if (quantity <= 0) {
+            setCart((current) => {
+                const { [productId]: _, ...rest } = current;
+                return rest;
             });
 
-            window.location.reload();
-        } catch (e: any) {
-            setError(e.message);
+            return;
+        }
+
+        if (quantity > row.available) {
+            return;
+        }
+
+        setCart((current) => ({
+            ...current,
+            [productId]: quantity,
+        }));
+    }
+
+    function removeUnavailableProducts(
+        productIds: string[]
+    ) {
+        setCart((current) => {
+            const next = { ...current };
+
+            for (const productId of productIds) {
+                delete next[productId];
+            }
+
+            return next;
+        });
+    }
+
+    async function submit() {
+        try {
+            const result = await createPOSOrder({
+                items: Object.entries(cart)
+                    .map(([productId, quantity]) => ({
+                        productId,
+                        quantity,
+                    })),
+            });
+
+            if ("removedItems" in result) {
+                removeUnavailableProducts(
+                    result.removedItems.map(
+                        (item) => item.productId
+                    )
+                );
+
+                show(
+                    "Unavailable products were removed from the order",
+                    "warning"
+                );
+
+                return;
+            }
+
+            setCart({});
+
+            router.push(
+                `/orders/${result.order.orderId}`
+            );
+
+        } catch (err: unknown) {
+
+            if (err instanceof Error) {
+                show(err.message, "error");
+            } else {
+                show("Failed to create POS order", "error");
+            }
         }
     }
 
+    if (loading) {
+        return <CircularProgress />;
+    }
+
+    if (error) {
+        return (
+            <Alert severity="error">
+                {error}
+            </Alert>
+        );
+    }
+
+    if (!tenant) {
+        return null;
+    }
+
     return (
-        <Grid container spacing={4}>
-            <Grid size={{ xs: 12, md: 8 }}>
-                <POSProductGrid rows={rowsWithActions} />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 4 }}>
-                <Stack spacing={2}>
-                    {error && <Alert severity="error">{error}</Alert>}
-
-                    <POSCart
-                        cart={cart}
-                        rows={rows}
-                        onUpdate={update}
-                        onSubmit={submit}
-                    />
-                </Stack>
-            </Grid>
-        </Grid>
+        <POSDashboard
+            rows={rows}
+            cart={cart}
+            hasGst={!!tenant.gstin}
+            onAdd={add}
+            onUpdate={update}
+            onSubmit={submit}
+        />
     );
 }

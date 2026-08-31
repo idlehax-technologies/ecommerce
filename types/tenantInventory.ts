@@ -21,5 +21,4 @@ export type TenantInventory = {
 export type ProvisionProductDTO = {
     productId: string;
     enabled: boolean;
-    stock: number;
 };

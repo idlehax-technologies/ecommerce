@@ -1,14 +1,19 @@
 import { apiFetch } from "./fetch";
+
 import type { Order } from "@/types/order";
+import type { Payment } from "@/types/payment";
 
 export async function confirmPayment(orderId: string): Promise<{
+    payment: Payment;
     order: Order;
 }> {
-    return apiFetch(`/api/payments/${orderId}/confirm`, {
-        method: "POST",
-    });
-}
-
-export function getReceiptUrl(orderId: string): string {
-    return `/api/orders/${orderId}/receipt`;
+    return apiFetch<{
+        payment: Payment;
+        order: Order;
+    }>(
+        `/api/payments/${orderId}/confirm`,
+        {
+            method: "POST",
+        }
+    );
 }

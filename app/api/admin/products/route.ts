@@ -1,37 +1,13 @@
-// app/api/admin/products/route.ts
-
 import { NextResponse } from "next/server";
 
-import { getUserFromRequest } from "@/lib/auth";
 import { requireSuperadmin } from "@/lib/auth/guards";
 
-import {
-  listProductsForPlatform,
-  createPlatformProduct,
-} from "@/lib/products/service";
+import { createPlatformProduct } from "@/lib/products/service";
 
 import { validateCreateProduct } from "@/lib/products/validators";
-import type { CreateProductDTO } from "@/types/product";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 import { guardRequest } from "@/lib/security/requestGuard";
-
-import { QUERY_LIMITS } from "@/lib/config/queryLimits";
-
-export async function GET(req: Request) {
-  try {
-    const user = await guardRequest(req, { requireAuth: true });
-    requireSuperadmin(user);
-
-    const products = await listProductsForPlatform(
-      QUERY_LIMITS.PRODUCTS
-    );
-
-    return NextResponse.json({ products });
-  } catch (err: unknown) {
-    return handleRouteError(err);
-  }
-}
 
 export async function POST(req: Request) {
   try {
@@ -44,11 +20,9 @@ export async function POST(req: Request) {
     const body: unknown = await req.json();
     validateCreateProduct(body);
 
-    const dto = body as CreateProductDTO;
+    const product = await createPlatformProduct(body);
 
-    const product = await createPlatformProduct(dto);
-
-    return NextResponse.json({ product }, { status: 201 });
+    return NextResponse.json({ product });
   } catch (err: unknown) {
     return handleRouteError(err);
   }

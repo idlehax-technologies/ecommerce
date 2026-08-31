@@ -1,36 +1,26 @@
-export type CheckoutItem = {
-  productId: string;
-  quantity: number;
+import { Order } from "./order";
+import { DomainEvent } from "./domainEvent";
+
+export type RemovedCartItem = {
+    productId: string;
+    reason: "INACTIVE" | "NOT_PROVISIONED";
 };
 
-export type CheckoutRequest = {
-  items: CheckoutItem[];
-};
-
-export type CheckoutInput = {
-  userId: string;
-  tenantId: string;
-  items: CheckoutItem[];
-};
-
-export type CheckoutSuccessResponse = {
-  success: true;
-  orderId: string;
-  message: string;
-};
-
-export type CheckoutFailureResponse = {
-  success: false;
-  errorCode:
-  | "UNAUTHORIZED"
-  | "INVALID_INPUT"
-  | "PRODUCT_NOT_FOUND"
-  | "OUT_OF_STOCK"
-  | "CHECKOUT_FAILED"
-  | "SERVER_ERROR";
-  message: string;
-};
+export type CheckoutResult =
+    | {
+        success: true;
+        order: Order;
+        event: DomainEvent;
+    }
+    | {
+        success: false;
+        removedItems: RemovedCartItem[];
+    };
 
 export type CheckoutResponse =
-  | CheckoutSuccessResponse
-  | CheckoutFailureResponse;
+    | {
+        order: Order;
+    }
+    | {
+        removedItems: RemovedCartItem[];
+    };

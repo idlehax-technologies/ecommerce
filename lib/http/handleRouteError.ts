@@ -6,7 +6,14 @@ import { ProductDomainError } from "@/lib/products/errors";
 import { MembershipDomainError } from "@/lib/memberships/errors";
 import { CheckoutDomainError } from "@/lib/checkout/errors";
 import { CartDomainError } from "@/lib/cart/errors";
+import { OrderDomainError } from "../orders/errors";
+import { PaymentDomainError } from "../payments/errors";
+import { TenantInventoryDomainError } from "../tenantInventory/errors";
 import { recordError } from "../metrics";
+import { JobDomainError } from "../jobs/errors";
+import { ReconciliationDomainError } from "../reconciliation/errors";
+import { ExportDomainError } from "../export/errors";
+import { SecurityDomainError } from "../security/errors";
 
 /**
  * Central HTTP error translator.
@@ -21,21 +28,18 @@ export function handleRouteError(err: unknown) {
         err instanceof TenantDomainError ||
         err instanceof ProductDomainError ||
         err instanceof MembershipDomainError ||
-        err instanceof CartDomainError
+        err instanceof CheckoutDomainError ||
+        err instanceof CartDomainError ||
+        err instanceof OrderDomainError ||
+        err instanceof PaymentDomainError ||
+        err instanceof TenantInventoryDomainError ||
+        err instanceof JobDomainError ||
+        err instanceof ReconciliationDomainError ||
+        err instanceof ExportDomainError ||
+        err instanceof SecurityDomainError
     ) {
         return NextResponse.json(
             { error: err.message },
-            { status: err.status }
-        );
-    }
-
-    if (err instanceof CheckoutDomainError) {
-        return NextResponse.json(
-            {
-                success: false,
-                errorCode: err.code,
-                message: err.message,
-            },
             { status: err.status }
         );
     }

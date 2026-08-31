@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireTenant, requireMembershipRole } from "@/lib/auth/guards";
+import { requireMembership, requireMembershipRole } from "@/lib/auth/guards";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
@@ -24,18 +24,18 @@ export async function POST(
             csrf: true,
         });
 
-        requireMembershipRole(user, ["staff"]);
-        const actor = requireTenant(user);
+        await requireMembershipRole(user, ["staff"]);
+        const actor = await requireMembership(user);
         recordUser(actor.userId);
 
-        const result = ordersDomain.refundOrder(actor.tenantId, orderId);
+        const result = await ordersDomain.refundOrder(actor.tenantId, orderId);
 
         await dispatchEvent(result.event, { actorId: actor.userId });
 
         recordLatency(Date.now() - start);
 
         return NextResponse.json({ success: true });
-    } catch (err) {
+    } catch (err: unknown) {
         recordLatency(Date.now() - start);
         return handleRouteError(err);
     }

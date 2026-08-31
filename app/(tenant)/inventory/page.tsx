@@ -1,49 +1,65 @@
-import { notFound } from "next/navigation";
-import { Box, Typography, Paper, Divider } from "@mui/material";
+"use client";
 
-import TenantInventoryTable from "@/components/tenant-provisioning/TenantInventoryTable";
+import { useEffect, useState } from "react";
 
-import { getUserFromRequest } from "@/lib/auth";
-import { requireTenant } from "@/lib/auth/guards";
+import {
+    Box,
+    Stack,
+    Typography,
+    Paper,
+    Divider,
+    CircularProgress,
+} from "@mui/material";
 
-import { getTenantProvisioningView } from "@/lib/tenantInventory/service";
+import TenantInventoryDashboard from "@/components/tenantInventory/TenantInventoryDashboard";
 
-/**
- * TENANT RUNTIME VIEW
- *
- * Tenant is derived from authenticated session.
- * No tenantId routing needed.
- */
+import { getTenantInventoryView } from "@/lib/api/tenantInventory";
 
-export default async function TenantInventoryPage() {
-    const rawUser = await getUserFromRequest();
-    const actor = requireTenant(rawUser);
+import { TenantProvisioningRow } from "@/lib/mappers/tenantProvisioningView";
 
-    const view = await getTenantProvisioningView(actor.tenantId);
+export default function TenantInventoryPage() {
 
-    if (!view) return notFound();
+    const [rows, setRows] = useState<TenantProvisioningRow[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    async function load() {
+        try {
+            setLoading(true);
+            const res = await getTenantInventoryView();
+            setRows(res.rows);
+
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    useEffect(() => {
+        load();
+    }, []);
+
+    if (loading) {
+        return <CircularProgress />;
+    }
 
     return (
-        <Box p={4} display="flex" flexDirection="column" gap={3}>
+        <Stack spacing={3} sx={{ p: 4 }}>
             <Box>
                 <Typography variant="h5" fontWeight={600}>
                     Inventory
                 </Typography>
 
                 <Typography variant="body2" color="text.secondary">
-                    Products available for sale in this tenant.
+                    Products available for sale in this tenant
                 </Typography>
             </Box>
 
             <Divider />
 
-            <Paper elevation={2}>
-                <TenantInventoryTable
-                    tenantId={actor.tenantId}
-                    rows={view.rows}
-                    canEdit={false}
+            <Paper elevation={2} sx={{ p: 2 }}>
+                <TenantInventoryDashboard
+                    rows={rows}
                 />
             </Paper>
-        </Box>
+        </Stack>
     );
 }

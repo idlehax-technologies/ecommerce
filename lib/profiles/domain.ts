@@ -1,33 +1,28 @@
 import { profileStore } from "./storage";
-import { toNewProfile } from "./mappers";
-import type { UpsertProfileInput, UserProfile } from "@/types/profile";
+import { toNewProfile, toUpdatedProfile } from "./mappers";
+import type { ProfileDTO, UserProfile } from "@/types/profile";
 import { assertCompleteProfile } from "./guards";
 
-export function getProfile(userId: string): UserProfile | null {
+export async function getProfile(
+    userId: string
+): Promise<UserProfile | null> {
     return profileStore.get(userId);
 }
 
-export function upsertProfile(
+export async function upsertProfile(
     userId: string,
-    phone: string,
-    input: UpsertProfileInput
-): UserProfile {
-    assertCompleteProfile(input);
-
-    const existing = profileStore.get(userId);
+    dto: ProfileDTO
+): Promise<UserProfile> {
+    assertCompleteProfile(dto);
+    const existing = await getProfile(userId);
 
     if (!existing) {
-        const p = toNewProfile(userId, phone, input);
-        profileStore.save(p);
-        return p;
+        const profile = toNewProfile(userId, dto);
+        await profileStore.save(profile);
+        return profile;
     }
 
-    const updated: UserProfile = {
-        ...existing,
-        ...input,
-        updatedAt: new Date().toISOString(),
-    };
-
-    profileStore.save(updated);
+    const updated = toUpdatedProfile(existing, dto);
+    await profileStore.save(updated);
     return updated;
 }

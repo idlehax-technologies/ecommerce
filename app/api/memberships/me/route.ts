@@ -7,10 +7,10 @@ export async function GET(req: Request) {
     try {
         const user = await guardRequest(req, { requireAuth: true });
 
-        const data = listUserMembershipsEnriched(user.userId);
+        const memberships = await listUserMembershipsEnriched(user.userId);
 
-        return NextResponse.json(data);
-    } catch (err) {
+        return NextResponse.json({ memberships });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

@@ -1,42 +1,44 @@
-import * as paymentsDomain from "@/lib/payments/domain";
 import * as ordersDomain from "@/lib/orders/domain";
-import * as inventoryDomain from "@/lib/tenantInventory/domain";
+import * as paymentsDomain from "@/lib/payments/domain";
+import * as tenantInventoryDomain from "@/lib/tenantInventory/domain";
 
 import type { ResolutionRequest } from "@/types/reconciliationResolution";
 import type { DomainEvent } from "@/types/domainEvent";
 
 import { getResolutionPolicy } from "./policy";
-import { tenantInventoryStore } from "../tenantInventory/storage";
-import { isAlreadyProcessed, markProcessed } from "./idempotency";
+import {
+    ReconciliationActionNotAllowedError,
+    ReconciliationInvalidInputError,
+    ReconciliationInventoryNotFoundError,
+    ReconciliationUnsupportedActionError
+} from "./errors";
+
+import { claimReconciliationIdempotency } from "../redis/idempotency";
 
 /**
  * Controlled reconciliation entrypoint
  *
  * MUST:
- * - NOT execute side-effects
+ * - NOT dispatch infrastructure side-effects
  * - NOT write audit logs
  * - ONLY return DomainEvents
  */
 export async function resolveMismatch(input: {
     tenantId: string;
-    actorId: string;
+    actorId: string;    // Reserved for future audit/event attribution
     request: ResolutionRequest;
 }): Promise<{ events: DomainEvent[] }> {
 
     const { tenantId, request } = input;
 
     if (!request.idempotencyKey) {
-        throw new Error("idempotencyKey required");
-    }
-
-    if (isAlreadyProcessed(request.idempotencyKey)) {
-        return { events: [] }; // idempotent no-op
+        throw new ReconciliationInvalidInputError("idempotencyKey required");
     }
 
     const policy = getResolutionPolicy(request.mismatchType);
 
     if (!policy.allowedActions.includes(request.action)) {
-        throw new Error("Action not allowed for this mismatch");
+        throw new ReconciliationActionNotAllowedError();
     }
 
     const events: DomainEvent[] = [];
@@ -48,17 +50,23 @@ export async function resolveMismatch(input: {
          */
         case "CONFIRM_PAYMENT": {
             if (!request.orderId) {
-                throw new Error("orderId required");
+                throw new ReconciliationInvalidInputError("orderId required");
             }
 
-            const result = paymentsDomain.confirmPayment(
+            const claimed = await claimReconciliationIdempotency(
+                request.idempotencyKey
+            );
+
+            if (!claimed) {
+                return { events: [] };
+            }
+
+            const result = await paymentsDomain.confirmPayment(
                 tenantId,
                 request.orderId
             );
 
             events.push(...result.events);
-
-            markProcessed(request.idempotencyKey);
 
             return { events };
         }
@@ -68,16 +76,22 @@ export async function resolveMismatch(input: {
          */
         case "CREATE_PAYMENT": {
             if (!request.orderId) {
-                throw new Error("orderId required");
+                throw new ReconciliationInvalidInputError("orderId required");
             }
 
-            paymentsDomain.recordPayment(
+            const claimed = await claimReconciliationIdempotency(
+                request.idempotencyKey
+            );
+
+            if (!claimed) {
+                return { events: [] };
+            }
+
+            await paymentsDomain.recordPayment(
                 tenantId,
                 request.orderId,
                 "CASH"
             );
-
-            markProcessed(request.idempotencyKey);
 
             return { events: [] };
         }
@@ -87,17 +101,23 @@ export async function resolveMismatch(input: {
          */
         case "CANCEL_ORDER": {
             if (!request.orderId) {
-                throw new Error("orderId required");
+                throw new ReconciliationInvalidInputError("orderId required");
             }
 
-            const result = ordersDomain.cancelOrder(
+            const claimed = await claimReconciliationIdempotency(
+                request.idempotencyKey
+            );
+
+            if (!claimed) {
+                return { events: [] };
+            }
+
+            const result = await ordersDomain.cancelOrder(
                 tenantId,
                 request.orderId
             );
 
             events.push(result.event);
-
-            markProcessed(request.idempotencyKey);
 
             return { events };
         }
@@ -106,24 +126,24 @@ export async function resolveMismatch(input: {
          * ADJUST INVENTORY
          *
          * NOTE:
-         * This is a controlled override — not going through adjustStock
+         * This is a controlled override — not going through adjustStockBy
          * So we MUST emit DomainEvent manually
          */
-        case "ADJUST_INVENTORY": {
+        case "RECONCILE_RESERVED": {
             if (!request.productId) {
-                throw new Error("productId required");
+                throw new ReconciliationInvalidInputError("productId required");
             }
 
-            const record = inventoryDomain.findTenantProvision(
+            const record = await tenantInventoryDomain.findTenantProvision(
                 tenantId,
                 request.productId
             );
 
             if (!record) {
-                throw new Error("Inventory not found");
+                throw new ReconciliationInventoryNotFoundError();
             }
 
-            const orders = ordersDomain.listTenantOrders(tenantId);
+            const orders = await ordersDomain.listTenantOrders(tenantId);
 
             let expectedReserved = 0;
 
@@ -137,38 +157,36 @@ export async function resolveMismatch(input: {
                 }
             }
 
-            const before = {
-                stock: record.stock,
-                reserved: record.reserved
-            };
+            const before = record.reserved;
 
-            const corrected = {
-                ...record,
-                reserved: expectedReserved,
-                updatedAt: new Date().toISOString(),
-            };
+            const claimed = await claimReconciliationIdempotency(
+                request.idempotencyKey
+            );
 
-            tenantInventoryStore.save(corrected);
+            if (!claimed) {
+                return { events: [] };
+            }
 
-            const after = {
-                stock: corrected.stock,
-                reserved: corrected.reserved
-            };
+            const corrected =
+                await tenantInventoryDomain.reconcileReservedQuantity(
+                    record,
+                    expectedReserved
+                );
+
+            const after = corrected.reserved;
 
             events.push({
-                type: "InventoryAdjusted",
+                type: "InventoryReconciled",
                 tenantId,
                 productId: request.productId,
                 from: before,
                 to: after
             });
 
-            markProcessed(request.idempotencyKey);
-
             return { events };
         }
 
         default:
-            throw new Error("Unsupported resolution action");
+            throw new ReconciliationUnsupportedActionError("Unsupported resolution action");
     }
 }

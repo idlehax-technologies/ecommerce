@@ -1,3 +1,5 @@
+export type PaymentMethod = "CASH" | "UPI";
+
 export type PaymentStatus = "PENDING" | "CONFIRMED" | "FAILED";
 
 export type Payment = {
@@ -6,11 +8,10 @@ export type Payment = {
     orderId: string;
     tenantId: string;
 
-    method: "CASH" | "UPI" | "CARD" | "NET_BANKING";
-
     amount: number;
     currency: "INR";
 
+    method: PaymentMethod;
     status: PaymentStatus;
 
     createdAt: string;

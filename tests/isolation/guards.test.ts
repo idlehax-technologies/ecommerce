@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { requireAccess } from "@/lib/auth/guards";
+import { requireMembershipRole } from "@/lib/auth/guards";
 import type { AuthUser } from "@/types/auth";
 
 describe("Guards — Tenant Enforcement", () => {
@@ -7,11 +7,12 @@ describe("Guards — Tenant Enforcement", () => {
         const user: AuthUser = {
             userId: "u_customer",
             phone: "999",
+            isSuperadmin: false,
             activeMembershipId: "m_u_customer_alpha",
         };
 
         expect(() =>
-            requireAccess(user, ["admin"])
+            requireMembershipRole(user, ["admin"])
         ).toThrow();
     });
 });

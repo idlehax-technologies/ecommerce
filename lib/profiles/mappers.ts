@@ -1,23 +1,36 @@
-import type { UserProfile } from "@/types/profile";
+import type { ProfileDTO, UserProfile } from "@/types/profile";
+
+function now(): string {
+    return new Date().toISOString();
+}
 
 export function toNewProfile(
     userId: string,
-    phone: string,
-    input: {
-        fullName: string;
-        email: string;
-        addressText: string;
-    }
+    dto: ProfileDTO
 ): UserProfile {
-    const now = new Date().toISOString();
+    const timestamp = now();
 
     return {
         userId,
-        phone,
-        fullName: input.fullName,
-        email: input.email,
-        addressText: input.addressText,
-        createdAt: now,
-        updatedAt: now,
+        fullName: dto.fullName.trim(),
+        email: dto.email.trim(),
+        addressText: dto.addressText.trim(),
+        createdAt: timestamp,
+        updatedAt: timestamp,
+    };
+}
+
+export function toUpdatedProfile(
+    existing: UserProfile,
+    dto: ProfileDTO
+): UserProfile {
+    return {
+        ...existing,
+
+        fullName: dto.fullName.trim(),
+        email: dto.email.trim(),
+        addressText: dto.addressText.trim(),
+
+        updatedAt: now(),
     };
 }

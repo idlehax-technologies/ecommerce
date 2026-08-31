@@ -1,31 +1,36 @@
-import { AccessActor } from "@/types/auth";
+import { MembershipActor } from "@/types/auth";
 import type { Membership, MembershipStatus } from "@/types/membership";
+import { MembershipAlreadyExistsError, MembershipInvalidStateError, MembershipNotFoundError } from "./errors";
+import { ForbiddenError } from "../auth/errors";
 
 /* ---------------- INVARIANTS ---------------- */
 
 export function assertExists(
     m: Membership | null
 ): asserts m is Membership {
-    if (!m) throw new Error("Membership not found");
+    if (!m) throw new MembershipNotFoundError();
 }
 
 export function assertDoesNotExist(
     m: Membership | null | undefined
 ): asserts m is null | undefined {
-    if (m) throw new Error("Membership already exists");
+    if (m) throw new MembershipAlreadyExistsError();
 }
 
-export function assertVisible(actor: AccessActor, m: Membership) {
-    if (actor.type === "superadmin") return;
-
-    if (m.tenantId !== actor.membership.tenantId) {
-        throw new Error("Forbidden: cross-tenant access");
+export function assertVisible(
+    actor: MembershipActor,
+    m: Membership
+): void {
+    if (m.tenantId !== actor.tenantId) {
+        throw new ForbiddenError("Cross-tenant access forbidden");
     }
 }
 
-export function assertStatus(m: Membership, expected: MembershipStatus) {
+export function assertStatus(m: Membership, expected: MembershipStatus): void {
     if (m.status !== expected) {
-        throw new Error(`Invalid state transition from ${m.status}`);
+        throw new MembershipInvalidStateError(
+            `Invalid membership state transition from ${m.status}`
+        );
     }
 }
 
@@ -34,8 +39,8 @@ export function assertStatus(m: Membership, expected: MembershipStatus) {
 export function requireOwnership(
     membership: Membership,
     userId: string
-) {
+): void {
     if (membership.userId !== userId) {
-        throw new Error("Forbidden");
+        throw new ForbiddenError();
     }
 }

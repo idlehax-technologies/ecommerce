@@ -1,13 +1,27 @@
+import { authStore } from "@/lib/auth/storage";
+
+import { getProfile } from "@/lib/profiles/domain";
+import { getTenant } from "@/lib/tenants/domain";
+import { getActiveProduct } from "@/lib/products/domain";
+
 import * as cartDomain from "@/lib/cart/domain";
 import * as ordersDomain from "@/lib/orders/domain";
 import * as tenantInventoryDomain from "@/lib/tenantInventory/domain";
 
-import { cartItemToOrderItem } from "@/lib/orders/mappers";
 import { requireCartNotEmpty } from "./guards";
 
-import type { CheckoutInput } from "@/types/checkout";
+import {
+    toCustomerSnapshot,
+    toItemSnapshot,
+    toSellerSnapshot
+} from "../orders/mappers";
+
 import type { Order } from "@/types/order";
+import type { CheckoutResult } from "@/types/checkout";
 import type { DomainEvent } from "@/types/domainEvent";
+
+import { AuthUserNotFoundError } from "../auth/errors";
+import { ProfileNotFoundError } from "../profiles/errors";
 
 /**
  * CHECKOUT APPLICATION SERVICE
@@ -26,43 +40,100 @@ import type { DomainEvent } from "@/types/domainEvent";
  */
 
 export async function executeCheckout(
-    input: CheckoutInput
-): Promise<{ order: Order; event: DomainEvent }> {
-
-    const actor = { tenantId: input.tenantId } as any;
+    tenantId: string,
+    userId: string
+): Promise<CheckoutResult> {
 
     // STEP 1 — Load cart
-    const cart = cartDomain.getCart(actor);
+
+    const cart = await cartDomain.getUserCart(
+        tenantId,
+        userId
+    );
 
     requireCartNotEmpty(cart);
 
-    const orderItems = cart.items.map(cartItemToOrderItem);
+    const removedItems =
+        await cartDomain.removeUnavailableItems(
+            tenantId,
+            userId
+        );
+
+    if (removedItems.length > 0) {
+        return {
+            success: false,
+            removedItems,
+        };
+    }
+
+    const user = await authStore.getById(userId);
+
+    if (!user) {
+        throw new AuthUserNotFoundError();
+    }
+
+    const profile = await getProfile(userId);
+
+    if (!profile) {
+        throw new ProfileNotFoundError();
+    }
+
+    const tenant = await getTenant(tenantId);
+
+    const seller = toSellerSnapshot(tenant);
+
+    const customer = toCustomerSnapshot(
+        user,
+        profile
+    );
+
+    const items =
+        await Promise.all(
+            cart.items.map(
+                async (item) => {
+                    const product = await getActiveProduct(item.productId);
+
+                    return toItemSnapshot(product, item.quantity);
+                }
+            )
+        );
 
     // STEP 2 — Reserve inventory BEFORE order creation
-    for (const item of orderItems) {
-        tenantInventoryDomain.reserveStock(
-            input.tenantId,
+
+    for (const item of items) {
+
+        await tenantInventoryDomain.reserveStock(
+            tenantId,
             item.productId,
             item.quantity
         );
     }
 
-    let result: { order: Order; event: DomainEvent };
+    let result: {
+        order: Order;
+        event: DomainEvent;
+    };
 
     try {
+
         // STEP 3 — Create order AFTER inventory secured
-        result = ordersDomain.createOrder(
-            input.tenantId,
-            input.userId,
-            orderItems
+
+        result = await ordersDomain.createOrder(
+            tenantId,
+            userId,
+            seller,
+            customer,
+            items
         );
 
-    } catch (err) {
+    } catch (err: unknown) {
 
         // STEP 4 — Rollback reservation on failure
-        for (const item of orderItems) {
-            tenantInventoryDomain.releaseStock(
-                input.tenantId,
+
+        for (const item of items) {
+
+            await tenantInventoryDomain.releaseStock(
+                tenantId,
                 item.productId,
                 item.quantity
             );
@@ -72,10 +143,18 @@ export async function executeCheckout(
     }
 
     // STEP 5 — Clear cart AFTER successful order creation
-    cartDomain.clearCart(actor);
+
+    await cartDomain.clearCart(
+        tenantId,
+        userId
+    );
 
     // 🚨 CRITICAL: DO NOT execute event here
     // Event execution must happen in route via dispatchEvent
 
-    return result;
+    return {
+        success: true,
+        order: result.order,
+        event: result.event,
+    };
 }

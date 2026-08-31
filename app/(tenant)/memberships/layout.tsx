@@ -1,6 +1,4 @@
-"use client";
-
-import AccessGuard from "@/components/guards/AccessGuard";
+import TenantGuard from "@/components/guards/TenantGuard";
 
 export default function MembershipsLayout({
     children,
@@ -8,11 +6,8 @@ export default function MembershipsLayout({
     children: React.ReactNode;
 }) {
     return (
-        <AccessGuard
-            allowRoles={["staff"]}
-            allowSuperadmin
-        >
+        <TenantGuard allowRoles={["staff", "admin"]}>
             {children}
-        </AccessGuard>
+        </TenantGuard>
     );
 }

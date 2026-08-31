@@ -1,14 +1,10 @@
-// app/platform/tenants/[tenantId]/inventory/page.tsx
+import { Box, Stack, Typography, Paper, Divider } from "@mui/material";
 
-import { notFound } from "next/navigation";
-import { Box, Typography, Paper, Divider } from "@mui/material";
-
-import TenantInventoryTable from "@/components/tenant-provisioning/TenantInventoryTable";
-
-import { getUserFromRequest } from "@/lib/auth";
+import { getUserFromRequest } from "@/lib/session/session";
 import { requireSuperadmin } from "@/lib/auth/guards";
 
-import { getTenantProvisioningView } from "@/lib/tenantInventory/service";
+import { getTenantInventoryView } from "@/lib/tenantInventory/service";
+import TenantInventoryDashboard from "@/components/admin/tenantInventory/TenantInventoryDashboard";
 
 type PageProps = {
     params: Promise<{ tenantId: string }>;
@@ -22,37 +18,34 @@ type PageProps = {
  */
 
 export default async function TenantInventoryPage({ params }: PageProps) {
-    const { tenantId } = await params;
 
     const rawUser = await getUserFromRequest();
-
     requireSuperadmin(rawUser);
 
-    const view = await getTenantProvisioningView(tenantId);
+    const { tenantId } = await params;
 
-    if (!view) return notFound();
+    const view = await getTenantInventoryView(tenantId);
 
     return (
-        <Box p={4} display="flex" flexDirection="column" gap={3}>
+        <Stack spacing={3} sx={{ p: 4 }}>
             <Box>
                 <Typography variant="h5" fontWeight={600}>
-                    Tenant Product Provisioning — {tenantId}
+                    Tenant Inventory
                 </Typography>
 
                 <Typography variant="body2" color="text.secondary">
-                    Configure which platform products this tenant can sell.
+                    Configure which products this tenant can sell
                 </Typography>
             </Box>
 
             <Divider />
 
-            <Paper elevation={2}>
-                <TenantInventoryTable
+            <Paper elevation={2} sx={{ p: 2 }}>
+                <TenantInventoryDashboard
                     tenantId={tenantId}
-                    rows={view.rows}
-                    canEdit={true}
+                    rows={view}
                 />
             </Paper>
-        </Box>
+        </Stack>
     );
 }

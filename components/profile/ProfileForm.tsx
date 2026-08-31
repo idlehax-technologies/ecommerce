@@ -1,42 +1,44 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import {
     TextField,
     Button,
     Stack,
-    CircularProgress,
 } from "@mui/material";
 
-import { fetchProfile, saveProfile } from "@/lib/api/profiles";
-import { useSnackbar } from "@/components/common/AppSnackbar";
+import { saveProfile } from "@/lib/api/profiles";
+import { useSnackbar } from "@/contexts/SnackbarContext";
+
+import type { ProfileDTO } from "@/types/profile";
 
 export default function ProfileForm({
+    profile,
     onSaved,
 }: {
-    onSaved?: () => void;
+    profile: ProfileDTO | null;
+    onSaved?: (profile: ProfileDTO) => void;
 }) {
-    const [form, setForm] = useState({
+    const [form, setForm] = useState<ProfileDTO>({
         fullName: "",
         email: "",
         addressText: "",
     });
 
-    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
     const { show } = useSnackbar();
 
     useEffect(() => {
-        fetchProfile()
-            .then((p) => {
-                if (p) setForm(p);
-            })
-            .finally(() => setLoading(false));
-    }, []);
+        if (!profile) {
+            return;
+        }
+        setForm(profile);
+    }, [profile]);
 
-    function isComplete() {
-        return (
+    function isComplete(): boolean {
+        return !!(
             form.fullName.trim() &&
             form.email.trim() &&
             form.addressText.trim()
@@ -46,17 +48,19 @@ export default function ProfileForm({
     async function submit() {
         try {
             setSaving(true);
-            await saveProfile(form);
+            const res = await saveProfile(form);
             show("Profile saved");
-            onSaved?.(); // 🔴 trigger refresh
-        } catch {
-            show("Save failed", "error");
+            onSaved?.(res.profile);
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                show(err.message, "error");
+            } else {
+                show("Save failed", "error");
+            }
         } finally {
             setSaving(false);
         }
     }
-
-    if (loading) return <CircularProgress />;
 
     return (
         <Stack spacing={2}>
@@ -78,6 +82,8 @@ export default function ProfileForm({
 
             <TextField
                 label="Address"
+                multiline
+                minRows={3}
                 value={form.addressText}
                 onChange={(e) =>
                     setForm({ ...form, addressText: e.target.value })

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireAccess } from "@/lib/auth/guards";
+import { requireMembershipRole, requireMembership } from "@/lib/auth/guards";
 import { getMembershipEnriched } from "@/lib/memberships/domain";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
@@ -12,12 +12,14 @@ export async function GET(
         const { membershipId } = await params;
 
         const user = await guardRequest(req, { requireAuth: true });
-        const actor = requireAccess(user, ["staff"]);
 
-        const data = getMembershipEnriched(actor, membershipId);
+        await requireMembershipRole(user, ["staff", "admin"]);
+        const actor = await requireMembership(user);
 
-        return NextResponse.json(data);
-    } catch (err) {
+        const membership = await getMembershipEnriched(actor, membershipId);
+
+        return NextResponse.json({ membership });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

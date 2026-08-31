@@ -1,37 +1,46 @@
 import { apiFetch } from "./fetch";
-import { toTenantProvisioningRow, TenantProvisioningRow } from "@/lib/mappers/tenantProvisioningView";
-import type { Product } from "@/types/product";
-import type { TenantInventory, ProvisionProductDTO } from "@/types/tenantInventory";
 
-type RawRow = {
-    product: Product;
-    provision?: TenantInventory;
-};
+import type {
+    TenantProvisioningRow,
+} from "@/lib/mappers/tenantProvisioningView";
+import {
+    TenantProductRow
+} from "@/lib/mappers/tenantProductView";
 
-export async function getTenantInventoryView(
-    tenantId: string
-): Promise<{ rows: TenantProvisioningRow[] }> {
+import type {
+    ProvisionProductDTO,
+    TenantInventory,
+} from "@/types/tenantInventory";
 
-    const data = await apiFetch<{ rows: RawRow[] }>(
-        `/api/admin/tenants/${tenantId}/inventory`
+export async function getTenantInventoryView(): Promise<{
+    rows: TenantProvisioningRow[];
+}> {
+    return apiFetch<{ rows: TenantProvisioningRow[] }>(
+        "/api/inventory"
     );
-
-    return {
-        rows: data.rows.map(r =>
-            toTenantProvisioningRow(r.product, r.provision)
-        ),
-    };
 }
 
 export async function provisionProduct(
     tenantId: string,
     dto: ProvisionProductDTO
-): Promise<void> {
-    await apiFetch(
+): Promise<{
+    inventory: TenantInventory;
+}> {
+    return apiFetch<{
+        inventory: TenantInventory;
+    }>(
         `/api/admin/tenants/${tenantId}/inventory`,
         {
             method: "PUT",
             body: JSON.stringify(dto),
         }
+    );
+}
+
+export async function getTenantProductView(): Promise<{
+    rows: TenantProductRow[];
+}> {
+    return apiFetch<{ rows: TenantProductRow[] }>(
+        "/api/inventory/products"
     );
 }

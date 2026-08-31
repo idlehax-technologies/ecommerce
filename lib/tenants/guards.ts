@@ -1,8 +1,6 @@
 import { Tenant } from "@/types/tenant";
 import {
-    TenantAlreadyExistsError,
     TenantNotFoundError,
-    TenantScopeError,
     TenantAlreadyActiveError,
     TenantCannotActivateError,
     TenantCannotSuspendError,
@@ -12,20 +10,14 @@ import {
 /**
  * Existence
  */
-
 export function assertExists(t: Tenant | null): asserts t is Tenant {
     if (!t) throw new TenantNotFoundError();
-}
-
-export function assertDoesNotExist(t: Tenant | null): asserts t is null {
-    if (t) throw new TenantAlreadyExistsError();
 }
 
 /**
  * Lifecycle rules
  */
-
-export function assertCanActivate(t: Tenant) {
+export function assertCanActivate(t: Tenant): void {
     if (t.status === "ACTIVE") {
         throw new TenantAlreadyActiveError();
     }
@@ -37,7 +29,7 @@ export function assertCanActivate(t: Tenant) {
     }
 }
 
-export function assertCanSuspend(t: Tenant) {
+export function assertCanSuspend(t: Tenant): void {
     if (t.status !== "ACTIVE") {
         throw new TenantCannotSuspendError(
             "Only ACTIVE tenants can be suspended"
@@ -45,21 +37,8 @@ export function assertCanSuspend(t: Tenant) {
     }
 }
 
-export function assertCanArchive(t: Tenant) {
+export function assertCanArchive(t: Tenant): void {
     if (t.status === "ARCHIVED") {
         throw new TenantCannotArchiveError();
-    }
-}
-
-/**
- * Scope
- */
-
-export function assertTenantScope(
-    user: { tenantId: string },
-    tenantId: string
-) {
-    if (user.tenantId !== tenantId) {
-        throw new TenantScopeError();
     }
 }

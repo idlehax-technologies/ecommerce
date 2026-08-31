@@ -11,13 +11,13 @@ export async function GET(req: Request) {
             return NextResponse.json({ membership: null });
         }
 
-        const membership = getActiveMembership(
+        const membership = await getActiveMembership(
             user.userId,
             user.activeMembershipId
         );
 
         return NextResponse.json({ membership });
-    } catch (err) {
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

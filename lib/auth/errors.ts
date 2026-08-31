@@ -19,12 +19,6 @@ export class OtpRateLimitError extends AuthDomainError {
     }
 }
 
-export class UserNotFoundError extends AuthDomainError {
-    constructor(message = "User not found") {
-        super(message, 404);
-    }
-}
-
 export class UnauthorizedError extends AuthDomainError {
     constructor(message = "Unauthorized") {
         super(message, 401);
@@ -37,14 +31,20 @@ export class ForbiddenError extends AuthDomainError {
     }
 }
 
-export class TenantNotAssociatedError extends AuthDomainError {
-    constructor(message = "User is not associated with a tenant") {
-        super(message, 403);
-    }
-}
-
 export class NotInAssumedSessionError extends AuthDomainError {
     constructor(message = "Operation requires an assumed session") {
         super(message, 400);
+    }
+}
+
+export class AuthUserNotFoundError extends AuthDomainError {
+    constructor(message = "Auth user not found") {
+        super(message, 404);
+    }
+}
+
+export class OtpDeliveryFailedError extends AuthDomainError {
+    constructor(message = "Failed to deliver OTP") {
+        super(message, 503);
     }
 }

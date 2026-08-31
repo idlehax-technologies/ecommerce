@@ -1,77 +1,75 @@
 "use client";
 
+import Link from "next/link";
+
 import {
     Paper,
     Stack,
     Typography,
     Chip,
-    Divider,
-    Button,
 } from "@mui/material";
 
-import type { OrderStatus, OrderListItem } from "@/types/order";
+import OrderStatusBadge from "./OrderStatusBadge";
+import { formatINR } from "@/lib/format/currency";
+import { formatDateTime } from "@/lib/format/datetime";
+import type { OrderListItem } from "@/types/order";
 
-function getStatusColor(status: OrderStatus) {
-    switch (status) {
-        case "PICKED_UP":
-        case "PAID":
-            return "success";
-
-        case "RESERVED":
-            return "info";
-
-        case "CANCELLED":
-            return "error";
-
-        case "EXPIRED":
-        case "REFUNDED":
-            return "warning";
-
-        default:
-            return "default";
-    }
-}
-
-export default function OrderRow({ order }: { order: OrderListItem }) {
+export default function OrderRow({
+    order,
+}: {
+    order: OrderListItem;
+}) {
     return (
         <Paper
-            component="a"
+            elevation={2}
+            component={Link}
             href={`/orders/${order.orderId}`}
             sx={{
                 p: 2,
                 textDecoration: "none",
-                color: "inherit",
                 display: "block",
             }}
         >
-            <Stack direction="row" spacing={1} alignItems="center">
-                <Typography fontWeight={600}>
-                    Order {order.orderId}
-                </Typography>
+            <Stack
+                direction="row"
+                spacing={1}
+                justifyContent="space-between"
+            >
+                <Stack spacing={0.25}>
+                    <Stack
+                        direction="row"
+                        spacing={1}
+                        alignItems="center"
+                    >
+                        <Typography fontWeight={600}>
+                            {order.orderNumber}
+                        </Typography>
 
-                <Divider orientation="vertical" flexItem />
+                        {order.isStaffOrder && (
+                            <Chip
+                                size="small"
+                                label="Staff"
+                            />
+                        )}
+                    </Stack>
 
-                <Typography variant="body2" color="text.secondary">
-                    {new Date(order.createdAt).toLocaleString()}
-                </Typography>
+                    <Typography
+                        variant="body2"
+                        color="text.secondary"
+                    >
+                        Placed: {formatDateTime(order.createdAt)}
+                    </Typography>
+                </Stack>
 
-                <Typography fontWeight={500}>
-                    ₹ {(order.total / 100).toFixed(2)}
-                </Typography>
+                <Stack spacing={0.25}>
+                    <Typography fontWeight={600} align="right">
+                        {formatINR(order.total)}
+                    </Typography>
 
-                <Chip
-                    label={order.status}
-                    color={getStatusColor(order.status)}
-                    size="small"
-                    sx={{ width: "fit-content" }}
-                />
-
-                <Button
-                    href={`/orders/${order.orderId}/receipt`}
-                    size="small"
-                >
-                    Receipt
-                </Button>
+                    <OrderStatusBadge
+                        status={order.status}
+                    />
+                </Stack>
             </Stack>
         </Paper>
     );

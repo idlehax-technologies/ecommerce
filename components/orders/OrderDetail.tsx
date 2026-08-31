@@ -1,52 +1,107 @@
-import { Stack, Typography, Divider, Button } from "@mui/material";
+"use client";
+
+import {
+    Box,
+    Stack,
+    Paper,
+    Typography,
+    Button,
+    Divider,
+} from "@mui/material";
+
 import type { Order } from "@/types/order";
+import { MembershipRole } from "@/types/membership";
+
+import { getInvoiceUrl } from "@/lib/api/orders";
+import { formatDateTime } from "@/lib/format/datetime";
+
 import OrderItemsList from "./OrderItemsList";
 import OrderSummary from "./OrderSummary";
 import OrderPaymentSection from "./OrderPaymentSection";
-import OrderActions from "./OrderActions";
+import OrderLifecycleActions from "./OrderLifecycleActions";
 
-export default function OrderDetail({ order }: { order: Order }) {
+export default function OrderDetail({
+    order,
+    reload,
+    actorRole,
+    hasGst,
+}: {
+    order: Order;
+    reload: () => Promise<void>;
+    actorRole: MembershipRole;
+    hasGst: boolean;
+}) {
     return (
-        <Stack spacing={3}>
-            <Typography variant="h5" fontWeight={600}>
-                Order {order.orderId}
-            </Typography>
+        <Paper elevation={2} sx={{ p: 2 }}>
+            <Stack spacing={2}>
+                <Box>
+                    <Typography variant="h5" fontWeight={600}>
+                        {order.orderNumber}
+                    </Typography>
 
-            <Typography variant="body2" color="text.secondary">
-                {new Date(order.createdAt).toLocaleString()}
-            </Typography>
+                    {order.invoiceNumber && (
+                        <Typography variant="body2" color="text.secondary">
+                            Invoice: {order.invoiceNumber}
+                        </Typography>
+                    )}
 
-            <Divider />
+                    {order.invoiceIssuedAt && (
+                        <Typography variant="body2" color="text.secondary">
+                            Issued: {formatDateTime(order.invoiceIssuedAt)}
+                        </Typography>
+                    )}
+                </Box>
 
-            <OrderItemsList items={order.items} />
+                <Divider />
 
-            <Divider />
+                <OrderItemsList items={order.items} />
 
-            <OrderSummary order={order} />
+                <Divider />
 
-            {/* 🔥 Step 5 addition */}
-            {order.status === "RESERVED" && (
-                <>
-                    <Divider />
-                    <OrderPaymentSection orderId={order.orderId} />
-                </>
-            )}
+                <OrderSummary
+                    order={order}
+                    hasGst={hasGst}
+                />
 
-            {/* 🔥 Step 7: Staff-only actions */}
-            {order.placedByStaffId && (order.status === "RESERVED" || order.status === "PAID") && (
-                <>
-                    <Divider />
-                    <OrderActions order={order} />
-                </>
-            )}
+                {actorRole === "customer" &&
+                    order.status === "RESERVED" && (
+                        <>
+                            {/* <Divider />
 
-            {/* 🔥 Step 9: Receipt access */}
-            <Button
-                href={`/orders/${order.orderId}/receipt`}
-                variant="outlined"
-            >
-                View Receipt
-            </Button>
-        </Stack>
+                            <OrderPaymentSection
+                                orderId={order.orderId}
+                                reload={reload}
+                            /> */}
+                        </>
+                    )}
+
+                {actorRole === "staff" &&
+                    (order.status === "RESERVED" ||
+                        order.status === "PAID") && (
+                        <>
+                            <Divider />
+
+                            <OrderLifecycleActions
+                                order={order}
+                                reload={reload}
+                            />
+                        </>
+                    )}
+
+                {order.invoiceNumber && (
+                    <>
+                        <Divider />
+
+                        <Button
+                            variant="outlined"
+                            href={getInvoiceUrl(order.orderId)}
+                            target="_blank"
+                        >
+                            View Invoice
+                        </Button>
+                    </>
+                )}
+            </Stack>
+        </Paper>
     );
 }

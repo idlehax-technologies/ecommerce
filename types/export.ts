@@ -1,5 +1,3 @@
-export type ExportFormat = "CSV";
-
 export type ExportType =
     | "ORDERS"
     | "RECONCILIATION";
@@ -7,7 +5,8 @@ export type ExportType =
 export type ExportRequest = {
     type: ExportType;
 
-    cursor?: string; // pagination ready
+    // Reserved for future chunked/paginated export support
+    cursor?: string;
     limit?: number;
 };
 

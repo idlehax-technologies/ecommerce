@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireAccess } from "@/lib/auth/guards";
+import { requireMembershipRole, requireMembership } from "@/lib/auth/guards";
 import { approveMembership } from "@/lib/memberships/domain";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 import { dispatchEvent } from "@/lib/events/dispatcher";
@@ -17,19 +17,15 @@ export async function POST(
             csrf: true,
         });
 
-        const actor = requireAccess(user, ["staff"]);
+        await requireMembershipRole(user, ["staff", "admin"]);
+        const actor = await requireMembership(user);
 
-        const result = approveMembership(actor, membershipId);
+        const result = await approveMembership(actor, membershipId);
 
-        const actorId =
-            actor.type === "superadmin"
-                ? actor.userId
-                : actor.membership.userId;
-
-        await dispatchEvent(result.event, { actorId });
+        await dispatchEvent(result.event, { actorId: actor.userId });
 
         return NextResponse.json({ success: true });
-    } catch (err) {
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

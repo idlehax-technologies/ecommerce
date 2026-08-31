@@ -1,54 +1,56 @@
-export class TenantInventoryError extends Error {
-    constructor(message: string) {
+export abstract class TenantInventoryDomainError extends Error {
+    readonly status: number;
+
+    constructor(message: string, status: number) {
         super(message);
-        this.name = "TenantInventoryError";
+        this.status = status;
     }
 }
 
-export class InvalidInventoryInputError extends TenantInventoryError {
-    constructor(message = "Invalid inventory input") {
-        super(message);
+export class InvalidInventoryInputError extends TenantInventoryDomainError {
+    constructor(message = "Invalid request body") {
+        super(message, 400);
     }
 }
 
-export class InvalidQuantityError extends TenantInventoryError {
+export class InvalidQuantityError extends TenantInventoryDomainError {
     constructor(message = "Invalid quantity") {
-        super(message);
+        super(message, 400);
     }
 }
 
-export class OutOfStockError extends TenantInventoryError {
+export class OutOfStockError extends TenantInventoryDomainError {
     constructor(productId: string) {
-        super(`Product ${productId} is out of stock`);
+        super(`Product ${productId} is out of stock`, 409);
     }
 }
 
-export class ReservationStateError extends TenantInventoryError {
-    constructor(message: string) {
-        super(message);
+export class ReservationStateError extends TenantInventoryDomainError {
+    constructor(message = "Invalid reservation state") {
+        super(message, 409);
     }
 }
 
-export class ProvisionNotFoundError extends TenantInventoryError {
+export class ProvisionNotFoundError extends TenantInventoryDomainError {
     constructor(productId: string) {
-        super(`Product ${productId} is not provisioned for this tenant`);
+        super(
+            `Product ${productId} is not provisioned for this tenant`,
+            404
+        );
     }
 }
 
-export class ProvisionConflictError extends TenantInventoryError {
-    constructor(productId: string) {
-        super(`Product ${productId} is already provisioned for this tenant`);
-    }
-}
-
-export class InventoryInvariantViolationError extends TenantInventoryError {
+export class InventoryInvariantViolationError extends TenantInventoryDomainError {
     constructor(message = "Inventory invariant violated") {
-        super(message);
+        super(message, 500);
     }
 }
 
-export class CannotDisableWithActiveReservationsError extends TenantInventoryError {
+export class CannotDisableWithActiveReservationsError extends TenantInventoryDomainError {
     constructor(productId: string) {
-        super(`Cannot disable product ${productId} while reservations exist`);
+        super(
+            `Cannot disable product ${productId} while reservations exist`,
+            409
+        );
     }
 }

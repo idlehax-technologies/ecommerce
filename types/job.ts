@@ -8,10 +8,10 @@ export type BaseJob = {
     jobId: string;
     status: JobStatus;
     attempts: number;
-    lastError?: string;
     runAt: string;
     createdAt: string;
-    dedupKey?: string; // ✅ NEW
+    lastError?: string;
+    dedupKey?: string;
 };
 
 export type OrderExpiryJob = BaseJob & {

@@ -1,104 +1,109 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import {
-  Typography,
-  Button,
-  Divider,
   Container,
-  Snackbar,
+  Box,
   Paper,
+  Stack,
+  Typography,
+  Divider,
+  CircularProgress,
 } from "@mui/material";
 
-import Link from "next/link";
-import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
-
 import { useCart } from "@/contexts/CartContext";
-import CartList from "@/components/cart/CartList";
-import CartSummary from "@/components/cart/CartSummary";
-import { useState } from "react";
+
+import CartEmptyState from "@/components/cart/CartEmptyState";
+import CartDetail from "@/components/cart/CartDetail";
+
+import { getTenantProductView } from "@/lib/api/tenantInventory";
+import { getTenant } from "@/lib/api/tenants";
+
+import type {
+  TenantProductRow,
+} from "@/lib/mappers/tenantProductView";
+import type { Tenant } from "@/types/tenant";
 
 export default function CartPage() {
-  const { cart, remove, clear } = useCart();
+  const { cart, loading: cartLoading } = useCart();
 
-  const [undoAction, setUndoAction] = useState<(() => void) | null>(null);
-  const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState<TenantProductRow[]>([]);
+  const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    try {
+      setLoading(true);
+
+      const [productRes, tenantRes] = await Promise.all([
+        getTenantProductView(),
+        getTenant(),
+      ]);
+
+      setRows(productRes.rows);
+      setTenant(tenantRes.tenant);
+
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  if (
+    loading ||
+    cartLoading
+  ) {
+    return <CircularProgress />;
+  }
+
+  if (!tenant) {
+    return null;
+  }
 
   if (!cart || cart.items.length === 0) {
     return (
-      <Container maxWidth="sm" sx={{ mt: 8, mb: 8 }}>
-        <Paper elevation={3} sx={{ p: 5, textAlign: "center" }}>
-          <ShoppingCartOutlinedIcon
-            sx={{ fontSize: 64, color: "text.disabled", mb: 2 }}
-          />
-          <Typography variant="h5">Your cart is empty</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Add some products to continue shopping.
-          </Typography>
-          <Button variant="contained" component={Link} href="/products">
-            Browse Products
-          </Button>
-        </Paper>
-      </Container>
+      <CartEmptyState
+        title="Your cart is empty"
+        description="Browse products to add items to your cart"
+      />
     );
   }
 
-  function registerUndo(undo: () => void) {
-    setUndoAction(() => undo);
-    setOpen(true);
-  }
-
-  function handleUndo() {
-    undoAction?.();
-    setOpen(false);
-  }
+  const cartCount = cart.items.reduce(
+    (sum, item) => sum + item.quantity,
+    0
+  );
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 6, mb: 6 }}>
-      <Paper elevation={3} sx={{ p: 3 }}>
-        <Typography variant="h4" fontWeight={600}>
-          My Cart ({cart.items.length})
-        </Typography>
+    <Container maxWidth="md">
+      <Stack
+        spacing={2}
+        sx={{ p: { xs: 0, sm: 6 } }}
+      >
+        <Box>
+          <Typography variant="h5" fontWeight={600}>
+            My Cart ({cartCount})
+          </Typography>
 
-        <Divider sx={{ my: 2 }} />
+          <Typography variant="body2" color="text.secondary">
+            Review the items before placing your order
+          </Typography>
+        </Box>
 
-        <CartList cart={cart} removeItem={remove} registerUndo={registerUndo} />
+        <Divider />
 
-        <Divider sx={{ my: 2 }} />
-
-        <CartSummary items={cart.items} />
-
-        <Button
-          variant="outlined"
-          color="error"
-          fullWidth
-          sx={{ mt: 2 }}
-          onClick={clear}
-        >
-          Clear Cart
-        </Button>
-
-        <Button
-          variant="contained"
-          fullWidth
-          component={Link}
-          href="/checkout"
-          sx={{ mt: 1 }}
-        >
-          Checkout
-        </Button>
-
-        <Snackbar
-          open={open}
-          autoHideDuration={3000}
-          message="Item removed from cart"
-          onClose={() => setOpen(false)}
-          action={
-            <Button size="small" onClick={handleUndo}>
-              UNDO
-            </Button>
-          }
-        />
-      </Paper>
+        <Paper elevation={2} sx={{ p: 2 }}>
+          <CartDetail
+            cart={cart}
+            rows={rows}
+            hasGst={!!tenant.gstin}
+          />
+        </Paper>
+      </Stack>
     </Container>
   );
 }

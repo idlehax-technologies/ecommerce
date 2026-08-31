@@ -1,6 +1,6 @@
 import { membershipStore } from "./storage";
 import { toNewMembership } from "./mappers";
-import type { Membership } from "@/types/membership";
+import type { Membership, MembershipView } from "@/types/membership";
 import type { DomainEvent } from "@/types/domainEvent";
 
 import {
@@ -15,32 +15,33 @@ import { authStore } from "../auth/storage";
 import { profileStore } from "../profiles/storage";
 import { tenantStore } from "../tenants/storage";
 
-import { AccessActor } from "@/types/auth";
+import { MembershipActor } from "@/types/auth";
 import { assertCompleteProfile } from "../profiles/guards";
+import { ProfileRequiredError } from "../profiles/errors";
+import { AuthUserNotFoundError, ForbiddenError } from "../auth/errors";
+import { MembershipInvalidStateError, MembershipNotFoundError } from "./errors";
 
-const EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+const MEMBERSHIP_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 
 /* ---------------- EXPIRY ---------------- */
 
-export function expireMembership(
+export async function expireMembership(
     membershipId: string
-): { membership: Membership; event: DomainEvent } | null {
-
-    const m = membershipStore.get(membershipId);
+): Promise<{ membership: Membership; event: DomainEvent } | null> {
+    const m = await membershipStore.get(membershipId);
 
     if (!m || m.status !== "PENDING") return null;
 
     const now = Date.now();
     const created = new Date(m.createdAt).getTime();
 
-    if (now - created < EXPIRY_MS) return null;
+    if (now - created < MEMBERSHIP_EXPIRY_MS) return null;
 
     const from = m.status;
 
     m.status = "EXPIRED";
     m.updatedAt = new Date().toISOString();
-
-    membershipStore.save(m);
+    await membershipStore.save(m);
 
     return {
         membership: m,
@@ -53,47 +54,48 @@ export function expireMembership(
     };
 }
 
-export function findExpiredMemberships(): string[] {
+export async function findExpiredMemberships(): Promise<string[]> {
     const now = Date.now();
 
-    return membershipStore
-        .getAll()
+    const memberships = await membershipStore.getAll();
+
+    return memberships
         .filter((m) => {
             if (m.status !== "PENDING") return false;
 
             const created = new Date(m.createdAt).getTime();
 
-            return now - created >= EXPIRY_MS;
+            return now - created >= MEMBERSHIP_EXPIRY_MS;
         })
         .map((m) => m.membershipId);
 }
 
 /* ---------------- CORE (MUTATIONS) ---------------- */
 
-export function requestMembership(
+export async function requestMembership(
     userId: string,
     tenantId: string
-): { membership: Membership; event: DomainEvent } {
+): Promise<{ membership: Membership; event: DomainEvent }> {
+    const profile = await profileStore.get(userId);
 
-    const profile = profileStore.get(userId);
     if (!profile) {
-        throw new Error("Profile must be completed before requesting membership");
+        throw new ProfileRequiredError();
     }
 
     assertCompleteProfile(profile);
 
-    const existing = membershipStore
-        .listByUser(userId)
-        .find(
-            (m) =>
-                m.tenantId === tenantId &&
-                (m.status === "PENDING" || m.status === "APPROVED")
-        );
+    const memberships = await membershipStore.listByUser(userId);
+
+    const existing = memberships.find(
+        (m) =>
+            m.tenantId === tenantId &&
+            (m.status === "PENDING" || m.status === "APPROVED")
+    );
 
     assertDoesNotExist(existing);
 
     const m = toNewMembership(userId, tenantId);
-    membershipStore.save(m);
+    await membershipStore.save(m);
 
     return {
         membership: m,
@@ -104,22 +106,34 @@ export function requestMembership(
     };
 }
 
-export function approveMembership(
-    actor: AccessActor,
+export async function approveMembership(
+    actor: MembershipActor,
     membershipId: string
-): { membership: Membership; event: DomainEvent } {
-
-    const m = membershipStore.get(membershipId);
+): Promise<{ membership: Membership; event: DomainEvent }> {
+    const m = await membershipStore.get(membershipId);
     assertExists(m);
 
     assertVisible(actor, m);
     assertStatus(m, "PENDING");
 
+    const user = await authStore.getById(m.userId);
+
+    if (!user) {
+        throw new AuthUserNotFoundError();
+    }
+
     const from = m.status;
 
     m.status = "APPROVED";
     m.updatedAt = new Date().toISOString();
-    membershipStore.save(m);
+    await membershipStore.save(m);
+
+    if (!user.activeMembershipId) {
+        await authStore.save({
+            ...user,
+            activeMembershipId: m.membershipId,
+        });
+    }
 
     return {
         membership: m,
@@ -132,12 +146,11 @@ export function approveMembership(
     };
 }
 
-export function rejectMembership(
-    actor: AccessActor,
+export async function rejectMembership(
+    actor: MembershipActor,
     membershipId: string
-): { membership: Membership; event: DomainEvent } {
-
-    const m = membershipStore.get(membershipId);
+): Promise<{ membership: Membership; event: DomainEvent }> {
+    const m = await membershipStore.get(membershipId);
     assertExists(m);
 
     assertVisible(actor, m);
@@ -147,7 +160,7 @@ export function rejectMembership(
 
     m.status = "REJECTED";
     m.updatedAt = new Date().toISOString();
-    membershipStore.save(m);
+    await membershipStore.save(m);
 
     return {
         membership: m,
@@ -160,22 +173,34 @@ export function rejectMembership(
     };
 }
 
-export function revokeMembership(
-    actor: AccessActor,
+export async function revokeMembership(
+    actor: MembershipActor,
     membershipId: string
-): { membership: Membership; event: DomainEvent } {
-
-    const m = membershipStore.get(membershipId);
+): Promise<{ membership: Membership; event: DomainEvent }> {
+    const m = await membershipStore.get(membershipId);
     assertExists(m);
 
     assertVisible(actor, m);
     assertStatus(m, "APPROVED");
 
+    const user = await authStore.getById(m.userId);
+
+    if (!user) {
+        throw new AuthUserNotFoundError();
+    }
+
     const from = m.status;
+
+    if (user.activeMembershipId === m.membershipId) {
+        await authStore.save({
+            ...user,
+            activeMembershipId: undefined,
+        });
+    }
 
     m.status = "REVOKED";
     m.updatedAt = new Date().toISOString();
-    membershipStore.save(m);
+    await membershipStore.save(m);
 
     return {
         membership: m,
@@ -188,30 +213,31 @@ export function revokeMembership(
     };
 }
 
-export function updateMembershipRole(
+export async function updateMembershipRole(
     actorUserId: string,
     membershipId: string,
     newRole: Membership["role"]
-): { membership: Membership; event: DomainEvent } {
-
-    const m = membershipStore.get(membershipId);
+): Promise<{ membership: Membership; event: DomainEvent }> {
+    const m = await membershipStore.get(membershipId);
     assertExists(m);
 
     if (m.userId === actorUserId) {
-        throw new Error("Cannot modify your own role");
+        throw new ForbiddenError("Cannot modify your own role");
     }
 
     assertStatus(m, "APPROVED");
 
     if (m.role === newRole) {
-        throw new Error("Role already set");
+        throw new MembershipInvalidStateError(
+            "Cannot update membership role to the same value"
+        );
     }
 
     const from = m.role;
 
     m.role = newRole;
     m.updatedAt = new Date().toISOString();
-    membershipStore.save(m);
+    await membershipStore.save(m);
 
     return {
         membership: m,
@@ -226,8 +252,11 @@ export function updateMembershipRole(
 
 /* ---------------- READ METHODS (UNCHANGED) ---------------- */
 
-export function getActiveMembership(userId: string, membershipId: string) {
-    const m = membershipStore.get(membershipId);
+export async function getActiveMembership(
+    userId: string,
+    membershipId: string
+): Promise<Membership> {
+    const m = await membershipStore.get(membershipId);
     assertExists(m);
     requireOwnership(m, userId);
     assertStatus(m, "APPROVED");
@@ -235,103 +264,93 @@ export function getActiveMembership(userId: string, membershipId: string) {
     return m;
 }
 
-export function listUserMemberships(userId: string) {
-    return membershipStore.listByUser(userId);
-}
+export async function listPendingMemberships(
+    tenantId: string
+): Promise<Membership[]> {
+    const memberships = await membershipStore.listByTenant(tenantId);
 
-export function listPendingMemberships(tenantId: string) {
-    return membershipStore
-        .listByTenant(tenantId)
+    return memberships
         .filter((m) => m.status === "PENDING");
 }
 
-export function getMembership(id: string) {
-    const m = membershipStore.get(id);
+export async function getMembership(
+    membershipId: string
+): Promise<Membership> {
+    const m = await membershipStore.get(membershipId);
     assertExists(m);
     return m;
 }
 
-export function selectMembership(userId: string, membershipId: string) {
-    const m = membershipStore.get(membershipId);
+export async function selectMembership(
+    userId: string,
+    membershipId: string
+): Promise<void> {
+    const m = await membershipStore.get(membershipId);
 
     assertExists(m);
     requireOwnership(m, userId);
     assertStatus(m, "APPROVED");
 
-    authStore.save({
-        ...authStore.getById(userId)!,
+    const user = await authStore.getById(userId);
+
+    if (!user) {
+        throw new AuthUserNotFoundError();
+    }
+
+    await authStore.save({
+        ...user,
         activeMembershipId: membershipId,
     });
 }
 
-export function listAllMemberships() {
-    return membershipStore.getAll();
-}
+export async function getAdminMembershipForTenant(
+    tenantId: string
+): Promise<Membership> {
+    const memberships = await membershipStore.listByTenant(tenantId);
 
-export function getAdminMembershipForTenant(tenantId: string) {
-    const m = membershipStore
-        .listByTenant(tenantId)
-        .find(
-            (m) =>
-                m.role === "admin" &&
-                m.status === "APPROVED"
-        );
+    const m = memberships.find(
+        (m) =>
+            m.role === "admin" &&
+            m.status === "APPROVED"
+    );
 
     if (!m) {
-        throw new Error("No admin membership found for tenant");
+        throw new MembershipNotFoundError(
+            "No admin membership found for tenant"
+        );
     }
 
     return m;
 }
 
-/* ---------------- ENRICHED (UNCHANGED) ---------------- */
+export async function getStaffMembershipForTenant(
+    tenantId: string
+): Promise<Membership> {
+    const memberships = await membershipStore.listByTenant(tenantId);
 
-export function listMembershipsEnriched(
-    tenantId: string,
-    limit?: number
-) {
-    const memberships = membershipStore.listByTenant(tenantId);
+    const m = memberships.find(
+        (m) =>
+            m.role === "staff" &&
+            m.status === "APPROVED"
+    );
 
-    const sliced = limit
-        ? memberships.slice(0, limit)
-        : memberships;
+    if (!m) {
+        throw new MembershipNotFoundError(
+            "No staff membership found for tenant"
+        );
+    }
 
-    return sliced.map((m) => {
-        const profile = profileStore.get(m.userId);
-        const tenant = tenantStore.get(m.tenantId);
-
-        return {
-            membershipId: m.membershipId,
-            status: m.status,
-            role: m.role,
-            createdAt: m.createdAt,
-            updatedAt: m.updatedAt,
-            tenant: {
-                tenantId: tenant?.tenantId,
-                name: tenant?.name,
-            },
-            user: {
-                userId: m.userId,
-                fullName: profile?.fullName ?? "",
-                phone: profile?.phone ?? "",
-                email: profile?.email ?? "",
-                addressText: profile?.addressText ?? "",
-            },
-        };
-    });
+    return m;
 }
 
-export function getMembershipEnriched(
-    actor: AccessActor,
-    membershipId: string
-) {
-    const m = membershipStore.get(membershipId);
-    assertExists(m);
+/* ---------------- VIEW MAPPERS ---------------- */
 
-    assertVisible(actor, m);
-
-    const profile = profileStore.get(m.userId);
-    const tenant = tenantStore.get(m.tenantId);
+async function toMembershipView(
+    m: Membership
+): Promise<MembershipView> {
+    const user = await authStore.getById(m.userId);
+    const profile = await profileStore.get(m.userId);
+    const tenant = await tenantStore.get(m.tenantId);
 
     return {
         membershipId: m.membershipId,
@@ -340,75 +359,63 @@ export function getMembershipEnriched(
         createdAt: m.createdAt,
         updatedAt: m.updatedAt,
         tenant: {
-            tenantId: tenant?.tenantId,
-            name: tenant?.name,
+            tenantId: tenant?.tenantId ?? "",
+            name: tenant?.name ?? "",
         },
         user: {
             userId: m.userId,
             fullName: profile?.fullName ?? "",
-            phone: profile?.phone ?? "",
+            phone: user?.phone ?? "",
             email: profile?.email ?? "",
             addressText: profile?.addressText ?? "",
         },
     };
 }
 
-export function listUserMembershipsEnriched(userId: string) {
-    const memberships = membershipStore.listByUser(userId);
+/* ---------------- ENRICHED (UNCHANGED) ---------------- */
 
-    return memberships.map((m) => {
-        const profile = profileStore.get(m.userId);
-        const tenant = tenantStore.get(m.tenantId);
-
-        return {
-            membershipId: m.membershipId,
-            status: m.status,
-            role: m.role,
-            createdAt: m.createdAt,
-            updatedAt: m.updatedAt,
-            tenant: {
-                tenantId: tenant?.tenantId,
-                name: tenant?.name,
-            },
-            user: {
-                userId: m.userId,
-                fullName: profile?.fullName ?? "",
-                phone: profile?.phone ?? "",
-                email: profile?.email ?? "",
-                addressText: profile?.addressText ?? "",
-            },
-        };
-    });
-}
-
-export function listAllMembershipsEnriched(limit?: number) {
-    const memberships = membershipStore.getAll();
+export async function listMembershipsEnriched(
+    tenantId: string,
+    limit?: number
+): Promise<MembershipView[]> {
+    const memberships = await membershipStore.listByTenant(tenantId);
 
     const sliced = limit
         ? memberships.slice(0, limit)
         : memberships;
 
-    return sliced.map((m) => {
-        const profile = profileStore.get(m.userId);
-        const tenant = tenantStore.get(m.tenantId);
+    return Promise.all(sliced.map(toMembershipView));
+}
 
-        return {
-            membershipId: m.membershipId,
-            status: m.status,
-            role: m.role,
-            createdAt: m.createdAt,
-            updatedAt: m.updatedAt,
-            tenant: {
-                tenantId: tenant?.tenantId,
-                name: tenant?.name,
-            },
-            user: {
-                userId: m.userId,
-                fullName: profile?.fullName ?? "",
-                phone: profile?.phone ?? "",
-                email: profile?.email ?? "",
-                addressText: profile?.addressText ?? "",
-            },
-        };
-    });
+export async function getMembershipEnriched(
+    actor: MembershipActor,
+    membershipId: string
+): Promise<MembershipView> {
+    const membership = await membershipStore.get(membershipId);
+
+    assertExists(membership);
+
+    assertVisible(actor, membership);
+
+    return toMembershipView(membership);
+}
+
+export async function listUserMembershipsEnriched(
+    userId: string
+): Promise<MembershipView[]> {
+    const memberships = await membershipStore.listByUser(userId);
+
+    return Promise.all(memberships.map(toMembershipView));
+}
+
+export async function listAllMembershipsEnriched(
+    limit?: number
+): Promise<MembershipView[]> {
+    const memberships = await membershipStore.getAll();
+
+    const sliced = limit
+        ? memberships.slice(0, limit)
+        : memberships;
+
+    return Promise.all(sliced.map(toMembershipView));
 }

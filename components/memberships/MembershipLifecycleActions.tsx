@@ -14,7 +14,7 @@ import {
     rejectMembership,
     revokeMembership,
 } from "@/lib/api/memberships";
-import { useSnackbar } from "@/components/common/AppSnackbar";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import { MembershipView } from "@/types/membership";
 
 type Props = {
@@ -41,7 +41,7 @@ export default function MembershipLifecycleActions({
         setConfirm({ open: false, action: null });
     }
 
-    async function execute() {
+    async function executeAction() {
         try {
             if (confirm.action === "approve") {
                 await approveMembership(membership.membershipId);
@@ -57,8 +57,12 @@ export default function MembershipLifecycleActions({
             }
 
             reload();
-        } catch {
-            show("Action failed", "error");
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                show(err.message, "error");
+            } else {
+                show("Action failed", "error");
+            }
         } finally {
             close();
         }
@@ -69,7 +73,10 @@ export default function MembershipLifecycleActions({
             <Stack direction="row" spacing={2}>
                 {membership.status === "PENDING" && (
                     <>
-                        <Button variant="contained" onClick={() => open("approve")}>
+                        <Button
+                            variant="contained"
+                            color="success"
+                            onClick={() => open("approve")}>
                             Approve
                         </Button>
 
@@ -105,7 +112,7 @@ export default function MembershipLifecycleActions({
 
                 <DialogActions>
                     <Button onClick={close}>Cancel</Button>
-                    <Button color="error" onClick={execute}>
+                    <Button color="error" onClick={executeAction}>
                         Confirm
                     </Button>
                 </DialogActions>

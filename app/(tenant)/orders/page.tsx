@@ -1,44 +1,69 @@
-import { Container, Typography, Box } from "@mui/material";
+"use client";
 
-import { getUserFromRequest } from "@/lib/auth";
-import { requireTenant, requireAuth } from "@/lib/auth/guards";
+import { useEffect, useState } from "react";
 
-import { listTenantOrdersForUser } from "@/lib/orders/domain";
+import {
+    Container,
+    Box,
+    Stack,
+    Typography,
+    Divider,
+    Paper,
+    CircularProgress,
+} from "@mui/material";
 
-import OrdersList from "@/components/orders/OrdersList";
-import type { Order, OrderListItem } from "@/types/order";
+import OrdersDashboard from "@/components/orders/OrdersDashboard";
+import { toOrderListItem } from "@/lib/mappers/orderView";
+import { getOrders } from "@/lib/api/orders";
+import type { OrderListItem } from "@/types/order";
 
-function toOrderListItem(order: Order): OrderListItem {
-    return {
-        orderId: order.orderId,
-        total: order.total,
-        status: order.status,
-        createdAt: order.createdAt,
-    };
-}
+export default function OrdersPage() {
 
-export default async function OrdersPage() {
-    const rawUser = await getUserFromRequest();
+    const [orders, setOrders] = useState<OrderListItem[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const user = requireAuth(rawUser);
-    const actor = requireTenant(user);
+    async function load() {
+        try {
+            setLoading(true);
+            const res = await getOrders();
+            setOrders(res.orders.map(toOrderListItem));
+        } finally {
+            setLoading(false);
+        }
+    }
 
-    const orders = listTenantOrdersForUser(
-        actor.tenantId,
-        user.userId
-    );
+    useEffect(() => {
+        load();
+    }, []);
 
-    const rows = orders.map(toOrderListItem);
+    if (loading) {
+        return <CircularProgress />;
+    }
 
     return (
-        <Container sx={{ mt: 6 }}>
-            <Typography variant="h4" gutterBottom>
-                My Orders
-            </Typography>
+        <Container maxWidth="md">
+            <Stack
+                spacing={2}
+                sx={{ p: { xs: 0, sm: 6 } }}
+            >
+                <Box>
+                    <Typography variant="h5" fontWeight={600}>
+                        Orders
+                    </Typography>
 
-            <Box mt={3}>
-                <OrdersList orders={rows} />
-            </Box>
+                    <Typography variant="body2" color="text.secondary">
+                        View and track orders
+                    </Typography>
+                </Box>
+
+                <Divider />
+
+                <Paper elevation={2} sx={{ p: 2 }}>
+                    <OrdersDashboard
+                        orders={orders}
+                    />
+                </Paper>
+            </Stack>
         </Container>
     );
 }

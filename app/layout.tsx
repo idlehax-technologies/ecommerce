@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
-import ThemeRegistry from "./ThemeRegistry";
-import Footer from "@/components/Footer";
+import ThemeRegistry from "./theme/ThemeRegistry";
+import Footer from "@/components/layout/Footer";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { SnackbarProvider } from "@/components/common/AppSnackbar";
-import { startJobLoop } from "@/lib/jobs/loop";
+import { SnackbarProvider } from "@/contexts/SnackbarContext";
+// import { startJobLoop } from "@/lib/jobs/loop";
 
-startJobLoop();
+// startJobLoop();
 
 export const metadata: Metadata = {
-  title: "SchoolMart",
-  description: "School based ecommerce system",
+  title: "everyShop",
+  description: "Shopping made simple",
 };
 
 export default function RootLayout({

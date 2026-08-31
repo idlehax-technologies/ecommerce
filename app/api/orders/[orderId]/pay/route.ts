@@ -1,13 +1,20 @@
-// app/api/orders/[orderId]/pay/route.ts
-
 import { NextResponse } from "next/server";
 
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireTenant } from "@/lib/auth/guards";
+import { requireMembershipRole, requireMembership } from "@/lib/auth/guards";
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import * as paymentsDomain from "@/lib/payments/domain";
-import { recordLatency, recordRequest, recordUser } from "@/lib/metrics";
+import * as ordersDomain from "@/lib/orders/domain";
+
+import { assertOrderVisible } from "@/lib/orders/guards";
+import { assertPayOrderDTO } from "@/lib/orders/validators";
+
+import {
+    recordLatency,
+    recordRequest,
+    recordUser,
+} from "@/lib/metrics";
 
 export async function POST(
     req: Request,
@@ -24,12 +31,41 @@ export async function POST(
             csrf: true,
         });
 
-        const actor = requireTenant(user);
+        await requireMembershipRole(user, ["customer", "staff"]);
+
+        const actor = await requireMembership(user);
         recordUser(actor.userId);
 
-        const body = await req.json();
+        const targetOrder = await ordersDomain.getTenantOrder(
+            actor.tenantId,
+            orderId
+        );
 
-        const result = paymentsDomain.recordPayment(
+        assertOrderVisible(actor, targetOrder);
+
+        const body: unknown = await req.json();
+
+        assertPayOrderDTO(body);
+
+        if (
+            actor.role === "customer" &&
+            body.method !== "UPI"
+        ) {
+            throw new Error(
+                "Customers can only pay using UPI"
+            );
+        }
+
+        if (
+            actor.role === "staff" &&
+            body.method !== "CASH"
+        ) {
+            throw new Error(
+                "Staff can only confirm cash payments"
+            );
+        }
+
+        const result = await paymentsDomain.recordPayment(
             actor.tenantId,
             orderId,
             body.method
@@ -38,11 +74,10 @@ export async function POST(
         recordLatency(Date.now() - start);
 
         return NextResponse.json({
-            success: true,
-            orderId: result.order.orderId,
+            payment: result.payment
         });
 
-    } catch (err) {
+    } catch (err: unknown) {
         recordLatency(Date.now() - start);
         return handleRouteError(err);
     }

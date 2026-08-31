@@ -1,8 +1,8 @@
 import type { Cart } from "@/types/cart";
-import { CheckoutInvalidInputError } from "./errors";
+import { CheckoutCartEmptyError } from "./errors";
 
 export function requireCartNotEmpty(cart: Cart) {
     if (!cart.items.length) {
-        throw new CheckoutInvalidInputError("Cart is empty");
+        throw new CheckoutCartEmptyError();
     }
 }

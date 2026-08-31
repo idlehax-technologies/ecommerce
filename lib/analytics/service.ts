@@ -2,11 +2,11 @@ import { listTenantOrders } from "@/lib/orders/domain";
 import { computeAnalytics } from "./domain";
 import type { TenantAnalytics } from "@/types/analytics";
 
-export function getTenantAnalytics(
+export async function getTenantAnalytics(
     tenantId: string
-): TenantAnalytics {
+): Promise<TenantAnalytics> {
 
-    const orders = listTenantOrders(tenantId);
+    const orders = await listTenantOrders(tenantId);
 
     return computeAnalytics(tenantId, orders);
 }

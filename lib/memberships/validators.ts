@@ -1,16 +1,17 @@
 import { Membership } from "@/types/membership";
+import { MembershipInvalidInputError } from "./errors";
 
 export function assertRequestMembership(
     body: unknown
 ): asserts body is { tenantId: string } {
     if (!body || typeof body !== "object") {
-        throw new Error("Invalid body");
+        throw new MembershipInvalidInputError("Invalid request body");
     }
 
     const obj = body as Record<string, unknown>;
 
     if (typeof obj.tenantId !== "string") {
-        throw new Error("tenantId required");
+        throw new MembershipInvalidInputError("tenantId is required");
     }
 }
 
@@ -18,13 +19,13 @@ export function assertSelectMembership(
     body: unknown
 ): asserts body is { membershipId: string } {
     if (!body || typeof body !== "object") {
-        throw new Error("Invalid body");
+        throw new MembershipInvalidInputError("Invalid request body");
     }
 
     const obj = body as Record<string, unknown>;
 
     if (typeof obj.membershipId !== "string") {
-        throw new Error("membershipId required");
+        throw new MembershipInvalidInputError("membershipId is required");
     }
 }
 
@@ -32,7 +33,7 @@ export function assertUpdateMembershipRole(
     body: unknown
 ): asserts body is { role: Membership["role"] } {
     if (!body || typeof body !== "object") {
-        throw new Error("Invalid body");
+        throw new MembershipInvalidInputError("Invalid request body");
     }
 
     const obj = body as Record<string, unknown>;
@@ -42,6 +43,6 @@ export function assertUpdateMembershipRole(
         obj.role !== "staff" &&
         obj.role !== "admin"
     ) {
-        throw new Error("Invalid role");
+        throw new MembershipInvalidInputError("Invalid role");
     }
 }

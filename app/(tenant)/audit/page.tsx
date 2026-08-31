@@ -1,24 +1,65 @@
-import { Container, Typography, Box } from "@mui/material";
-import { getUserFromRequest } from "@/lib/auth";
-import { requireTenant, requireMembershipRole } from "@/lib/auth/guards";
-import { listAuditByTenant } from "@/lib/audit/storage";
-import AuditTimeline from "@/components/audit/AuditTimeline";
+"use client";
 
-export default async function AuditPage() {
+import { useEffect, useState } from "react";
 
-    const rawUser = await getUserFromRequest();
-    requireMembershipRole(rawUser, ["admin", "staff"]);
-    const actor = requireTenant(rawUser);
+import {
+    Container,
+    Box,
+    Stack,
+    Typography,
+    Divider,
+    Paper,
+    CircularProgress,
+} from "@mui/material";
 
-    const logs = listAuditByTenant(actor.tenantId);
+import AuditDashboard from "@/components/audit/AuditDashboard";
+import { getAuditLogs } from "@/lib/api/audit";
+import type { AuditLog } from "@/types/audit";
+
+export default function AuditPage() {
+
+    const [logs, setLogs] = useState<AuditLog[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    async function load() {
+        try {
+            setLoading(true);
+            const res = await getAuditLogs();
+            setLogs(res.logs);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    useEffect(() => {
+        load();
+    }, []);
+
+    if (loading) {
+        return <CircularProgress />;
+    }
 
     return (
-        <Container sx={{ mt: 6 }}>
-            <Typography variant="h4">Audit Logs</Typography>
+        <Container maxWidth="md">
+            <Stack spacing={3} sx={{ p: 6 }}>
+                <Box>
+                    <Typography variant="h5" fontWeight={600}>
+                        Audit Logs
+                    </Typography>
 
-            <Box mt={3}>
-                <AuditTimeline logs={logs} />
-            </Box>
+                    <Typography variant="body2" color="text.secondary">
+                        Browse system activity and event history
+                    </Typography>
+                </Box>
+
+                <Divider />
+
+                <Paper elevation={2} sx={{ p: 2 }}>
+                    <AuditDashboard
+                        logs={logs}
+                    />
+                </Paper>
+            </Stack>
         </Container>
     );
 }

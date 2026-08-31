@@ -1,19 +1,30 @@
 import { randomUUID } from "crypto";
 import type { Payment } from "@/types/payment";
+import type { Order } from "@/types/order";
 import type { DomainEvent } from "@/types/domainEvent";
 
-import {
-    savePayment,
-    getPaymentByOrder,
-    updatePayment
-} from "./storage";
+import { paymentStore } from "./storage";
 
 import {
     PaymentAlreadyExistsError,
-    PaymentInvalidAmountError
+    PaymentInvalidAmountError,
+    PaymentNotFoundError,
 } from "./errors";
 
+import {
+    InvalidOrderTransitionError,
+} from "@/lib/orders/errors";
+
 import * as ordersDomain from "@/lib/orders/domain";
+
+export async function listTenantPayments(
+    tenantId: string
+): Promise<Payment[]> {
+
+    return paymentStore.listByTenant(
+        tenantId
+    );
+}
 
 /**
  * RECORD PAYMENT (PENDING)
@@ -21,18 +32,33 @@ import * as ordersDomain from "@/lib/orders/domain";
  * - creates payment record
  * - does NOT emit event (no state change in order)
  */
-export function recordPayment(
+export async function recordPayment(
     tenantId: string,
     orderId: string,
     method: Payment["method"]
-): {
+): Promise<{
     payment: Payment;
-    order: ReturnType<typeof ordersDomain.getTenantOrder>;
-} {
+    order: Order;
+}> {
 
-    const order = ordersDomain.getTenantOrder(tenantId, orderId);
+    const order =
+        await ordersDomain.getTenantOrder(
+            tenantId,
+            orderId
+        );
 
-    const existing = getPaymentByOrder(orderId);
+    if (order.status !== "RESERVED") {
+        throw new InvalidOrderTransitionError(
+            order.status,
+            "PAID"
+        );
+    }
+
+    const existing =
+        await paymentStore.getByOrder(
+            orderId
+        );
+
     if (existing) {
         throw new PaymentAlreadyExistsError();
     }
@@ -45,19 +71,19 @@ export function recordPayment(
         paymentId: randomUUID(),
         orderId,
         tenantId,
-        method,
         amount: order.total,
         currency: order.currency,
+        method,
         status: "PENDING",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
     };
 
-    savePayment(payment);
+    await paymentStore.save(payment);
 
     return {
         payment,
-        order
+        order,
     };
 }
 
@@ -70,71 +96,77 @@ export function recordPayment(
  * - emit DomainEvent (PaymentConfirmed)
  *
  * MUST:
- * - always return event (no undefined)
+ * - return empty events for idempotent calls
+ * - emit PaymentConfirmed only on actual transition
  * - never emit OrderPaid manually
  */
-export function confirmPayment(
+export async function confirmPayment(
     tenantId: string,
     orderId: string
-): {
+): Promise<{
     payment: Payment;
-    order: ReturnType<typeof ordersDomain.getTenantOrder>;
+    order: Order;
     events: DomainEvent[];
-} {
+}> {
 
-    const payment = getPaymentByOrder(orderId);
+    const payment =
+        await paymentStore.getByOrder(
+            orderId
+        );
 
-    if (!payment) {
-        throw new Error("Payment not found");
+    if (!payment || payment.tenantId !== tenantId) {
+        throw new PaymentNotFoundError();
     }
 
     // idempotent case
     if (payment.status === "CONFIRMED") {
-        const order = ordersDomain.getTenantOrder(tenantId, orderId);
+
+        const order =
+            await ordersDomain.getTenantOrder(
+                tenantId,
+                orderId
+            );
 
         return {
             payment,
             order,
-            events: [
-                {
-                    type: "PaymentConfirmed",
-                    order,
-                    payment
-                }
-            ]
+            events: [],
         };
     }
 
-    // STEP 1 — confirm payment
+    const previousStatus = payment.status;
+
     payment.status = "CONFIRMED";
-    payment.updatedAt = new Date().toISOString();
 
-    updatePayment(payment);
+    payment.updatedAt =
+        new Date().toISOString();
 
-    // STEP 2 — transition order (capture event!)
-    const orderResult = ordersDomain.markOrderPaid(
-        tenantId,
-        orderId,
-        payment.method,
-        payment
-    );
+    await paymentStore.update(payment);
+
+    const orderResult =
+        await ordersDomain.markOrderPaid(
+            tenantId,
+            orderId,
+            payment.method
+        );
 
     const order = orderResult.order;
 
-    // 🔴 CRITICAL FIX: capture OrderPaid event
+    const paymentConfirmedEvent: DomainEvent = {
+        type: "PaymentConfirmed",
+        payment,
+        from: previousStatus,
+        to: payment.status,
+    };
+
     const orderPaidEvent = orderResult.event;
 
-    // STEP 3 — emit BOTH events
     return {
         payment,
         order,
         events: [
-            {
-                type: "PaymentConfirmed",
-                order,
-                payment
-            },
-            orderPaidEvent
-        ]
+            paymentConfirmedEvent,
+            orderPaidEvent,
+        ],
     };
 }

@@ -1,46 +1,45 @@
-"use client";
+import {
+  Container,
+  Box,
+  Stack,
+  Typography,
+  Divider,
+  Paper,
+} from "@mui/material";
 
-import { Container, Typography, Paper, Alert, CircularProgress } from "@mui/material";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { getUserFromRequest } from "@/lib/session/session";
+import { requireSuperadmin } from "@/lib/auth/guards";
 
-import type { CreateProductDTO } from "@/types/product";
-import { createProduct } from "@/lib/api/productManagement";
 import ProductForm from "@/components/admin/products/ProductForm";
 
-export default function NewProductPage() {
-  const router = useRouter();
+export default async function CreateProductPage() {
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleCreate(values: CreateProductDTO) {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const product = await createProduct(values);
-
-      router.push(`/platform/products/${product.productId}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create product");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const rawUser = await getUserFromRequest();
+  requireSuperadmin(rawUser);
 
   return (
-    <Container sx={{ py: 4 }}>
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" mb={2}>
-          Create Product
-        </Typography>
+    <Container maxWidth="md">
+      <Stack spacing={3} sx={{ p: 6 }}>
+        <Box>
+          <Typography variant="h5" fontWeight={600}>
+            Create Product
+          </Typography>
 
-        {loading && <CircularProgress />}
-        {error && <Alert severity="error">{error}</Alert>}
+          <Typography variant="body2" color="text.secondary">
+            Register a new platform product
+          </Typography>
+        </Box>
 
-        <ProductForm mode="create" onSubmit={handleCreate} />
-      </Paper>
+        <Divider />
+
+        <Paper elevation={2} sx={{ p: 2 }}>
+          <Paper elevation={2} sx={{ p: 2 }}>
+            <ProductForm
+              mode="create"
+            />
+          </Paper>
+        </Paper>
+      </Stack>
     </Container>
   );
 }

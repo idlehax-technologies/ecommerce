@@ -1,35 +1,47 @@
-import { MembershipRole } from "./membership";
+import { IndianState } from "@/lib/tenants/states";
 
-type TenantStatus = "PENDING" | "ACTIVE" | "SUSPENDED" | "ARCHIVED";
+export type TenantStatus =
+    | "PENDING"
+    | "ACTIVE"
+    | "SUSPENDED"
+    | "ARCHIVED";
 
 export type Tenant = {
     tenantId: string;
+
     name: string;
+
+    address: string;
+    state: IndianState;
+
+    gstin?: string;
+
     status: TenantStatus;
+
     createdAt: string;
     updatedAt: string;
 };
 
 export type PublicTenant = {
     tenantId: string;
+
     name: string;
+
+    address: string;
+    state: IndianState;
+
+    gstin?: string;
+
     status: TenantStatus;
 };
 
 export type CreateTenantDTO = {
     name: string;
+
+    address: string;
+    state: IndianState;
+
+    gstin?: string;
 };
 
-export type UpdateTenantDTO = {
-    name: string;
-};
-
-/**
- * This is NOT transport data.
- * This is runtime execution identity produced by requireTenant().
- */
-export type TenantScopedActor = {
-    userId: string;
-    role: MembershipRole;
-    tenantId: string;
-};
+export type UpdateTenantDTO = Partial<CreateTenantDTO>;

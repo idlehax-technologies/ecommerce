@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getUserFromRequest } from "@/lib/auth";
 import { requireSuperadmin } from "@/lib/auth/guards";
 import { updateMembershipRole } from "@/lib/memberships/domain";
 import { assertUpdateMembershipRole } from "@/lib/memberships/validators";
@@ -23,7 +22,7 @@ export async function PATCH(
         const body: unknown = await req.json();
         assertUpdateMembershipRole(body);
 
-        const result = updateMembershipRole(
+        const result = await updateMembershipRole(
             user.userId,
             membershipId,
             body.role
@@ -32,7 +31,7 @@ export async function PATCH(
         await dispatchEvent(result.event, { actorId: user.userId });
 
         return NextResponse.json({ success: true });
-    } catch (err) {
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

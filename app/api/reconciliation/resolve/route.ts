@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { guardRequest } from "@/lib/security/requestGuard";
-import { requireTenant, requireMembershipRole } from "@/lib/auth/guards";
+import { requireMembership, requireMembershipRole } from "@/lib/auth/guards";
 
 import { handleRouteError } from "@/lib/http/handleRouteError";
 
 import { resolveMismatch } from "@/lib/reconciliation/resolution";
 import { dispatchEvent } from "@/lib/events/dispatcher";
+import { assertResolutionRequest } from "@/lib/reconciliation/validators";
 
 export async function POST(req: Request) {
     try {
@@ -15,10 +16,12 @@ export async function POST(req: Request) {
             csrf: true,
         });
 
-        requireMembershipRole(user, ["staff"]);
-        const actor = requireTenant(user);
+        await requireMembershipRole(user, ["admin"]);
+        const actor = await requireMembership(user);
 
-        const body = await req.json();
+        const body: unknown = await req.json();
+
+        assertResolutionRequest(body);
 
         const result = await resolveMismatch({
             tenantId: actor.tenantId,
@@ -32,7 +35,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ success: true });
 
-    } catch (err) {
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

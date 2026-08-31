@@ -1,81 +1,68 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import {
-    Stack,
-    Typography,
-    Button,
-    ToggleButton,
-    ToggleButtonGroup,
-    Alert,
-} from "@mui/material";
+import { useState } from "react";
+
+import { Button, Alert } from "@mui/material";
 
 import { payOrder } from "@/lib/api/orders";
+import { confirmPayment } from "@/lib/api/payments";
 
-type PaymentMethod = "CASH" | "UPI" | "CARD" | "NET_BANKING";
+import type { PaymentMethod } from "@/types/payment";
 
 export default function OrderPaymentSection({
     orderId,
+    reload,
 }: {
     orderId: string;
+    reload: () => Promise<void>;
 }) {
-    const [method, setMethod] = useState<PaymentMethod | null>(null);
+    const method: PaymentMethod = "UPI";
+
+    const [loading, setLoading] = useState(false);
+
     const [error, setError] = useState<string | null>(null);
-    const [isPending, startTransition] = useTransition();
 
-    const handlePay = () => {
-        if (!method) return;
+    async function handlePayment() {
 
-        setError(null);
+        try {
+            setLoading(true);
+            setError(null);
 
-        startTransition(async () => {
-            try {
-                await payOrder(orderId, method);
+            await payOrder(orderId, method);
+            await confirmPayment(orderId);
 
-                // 🔥 simulate async confirmation
-                setTimeout(async () => {
-                    await fetch(`/api/payments/${orderId}/confirm`, {
-                        method: "POST",
-                    });
+            await reload();
 
-                    window.location.reload();
-                }, 1500);
+        } catch (err: unknown) {
 
-            } catch (err: any) {
-                setError(err.message || "Payment failed");
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError("Payment failed");
             }
-        });
-    };
+
+        } finally {
+            setLoading(false);
+        }
+    }
 
     return (
-        <Stack spacing={2}>
-            <Typography fontWeight={600}>
-                Complete Payment
-            </Typography>
-
-            <ToggleButtonGroup
-                exclusive
-                value={method}
-                onChange={(_, val) => setMethod(val)}
-                size="small"
-            >
-                <ToggleButton value="CASH">Cash</ToggleButton>
-                <ToggleButton value="UPI">UPI</ToggleButton>
-                <ToggleButton value="CARD">Card</ToggleButton>
-                <ToggleButton value="NET_BANKING">
-                    Net Banking
-                </ToggleButton>
-            </ToggleButtonGroup>
-
-            {error && <Alert severity="error">{error}</Alert>}
+        <>
+            {error && (
+                <Alert severity="error">
+                    {error}
+                </Alert>
+            )}
 
             <Button
                 variant="contained"
-                disabled={!method || isPending}
-                onClick={handlePay}
+                disabled={loading}
+                onClick={handlePayment}
             >
-                {isPending ? "Processing..." : "Pay Now"}
+                {loading
+                    ? "Processing..."
+                    : "Pay with UPI"}
             </Button>
-        </Stack>
+        </>
     );
 }

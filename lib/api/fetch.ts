@@ -1,4 +1,16 @@
-import { getCsrfToken } from "@/contexts/AuthContext";
+import { CSRF_HEADER } from "../auth/cookies";
+import { getCsrfToken } from "../security/csrfClient";
+
+function isErrorResponse(
+    data: unknown
+): data is { error: string } {
+    return (
+        typeof data === "object" &&
+        data !== null &&
+        "error" in data &&
+        typeof data.error === "string"
+    );
+}
 
 export async function apiFetch<T>(
     url: string,
@@ -8,24 +20,22 @@ export async function apiFetch<T>(
         credentials: "include",
         headers: {
             "Content-Type": "application/json",
-            "x-csrf-token": getCsrfToken() ?? "",
+            [CSRF_HEADER]: getCsrfToken() ?? "",
             ...(options.headers || {}),
         },
         ...options,
     });
 
-    const data = await res.json().catch(() => ({}));
+    const data: unknown = await res
+        .json()
+        .catch(() => ({}));
 
     if (!res.ok) {
-        const message =
-            typeof data === "object" &&
-                data &&
-                "error" in data &&
-                typeof (data as any).error === "string"
-                ? (data as any).error
-                : "Request failed";
-
-        throw new Error(message);
+        throw new Error(
+            isErrorResponse(data)
+                ? data.error
+                : "Request failed"
+        );
     }
 
     return data as T;

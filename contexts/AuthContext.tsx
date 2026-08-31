@@ -2,30 +2,21 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import type { AuthState, AuthUser } from "@/types/auth";
-import * as api from "@/lib/api/auth";
+import * as authApi from "@/lib/api/auth";
 
-export function getCsrfToken(): string | null {
-  return document.cookie
-    .split("; ")
-    .find(c => c.startsWith("csrf_token="))
-    ?.split("=")[1] ?? null;
-}
-
-interface Ctx extends AuthState {
+type AuthContextValue = AuthState & {
   requestOtp: (p: string) => Promise<void>;
   verifyOtp: (p: string, c: string) => Promise<void>;
   logout: () => Promise<void>;
-}
-
-const AuthContext = createContext<Ctx | null>(null);
-
-export const useAuth = () => {
-  const c = useContext(AuthContext);
-  if (!c) throw new Error("Auth outside provider");
-  return c;
 };
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async function hydrate() {
       setLoading(true);
       try {
-        const d = await api.me();
+        const d = await authApi.me();
         setUser(d.user);
       } catch {
         // Not an error condition for UI — just means no session.
@@ -46,30 +37,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     hydrate();
   }, []);
 
-  const requestOtp = async (p: string) => {
-    await api.requestOtp(p);
+  const requestOtp = async (phone: string) => {
+    await authApi.requestOtp(phone);
   };
 
-  const verifyOtp = async (p: string, c: string) => {
-    setLoading(true);
-    try {
-      const d = await api.verifyOtp(p, c);
-      setUser(d.user);
-    } finally {
-      setLoading(false);
-    }
+  const verifyOtp = async (phone: string, code: string) => {
+    const res = await authApi.verifyOtp(phone, code);
+    setUser(res.user);
   };
 
   const logout = async () => {
-    await api.logout();
+    await authApi.logout();
     setUser(null);
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, requestOtp, verifyOtp, logout }}
+      value={{
+        user,
+        loading,
+        requestOtp,
+        verifyOtp,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>
   );
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+
+  if (!ctx) {
+    throw new Error(
+      "useAuth must be used within AuthProvider"
+    );
+  }
+
+  return ctx;
 }

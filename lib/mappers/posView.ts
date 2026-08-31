@@ -1,23 +1,27 @@
-import type { TenantProvisioningRow } from "./tenantProvisioningView";
+import type { TenantProductRow } from "./tenantProductView";
 
-export type POSRow = TenantProvisioningRow & {
-    reserved: number;
+export type POSRow = TenantProductRow & {
+    inCart: number;
     available: number;
 };
 
+export type POSRowWithAction = POSRow & {
+    onSelect: () => void;
+};
+
 export function mapToPOSRows(
-    rows: TenantProvisioningRow[],
+    rows: TenantProductRow[],
     cart: Record<string, number>
 ): POSRow[] {
+
     return rows.map((row) => {
         const productId = row.product.productId;
-
-        const reserved = cart[productId] || 0;
-        const available = row.stock - reserved;
+        const inCart = cart[productId] || 0;
+        const available = row.available - inCart;
 
         return {
             ...row,
-            reserved,
+            inCart,
             available,
         };
     });

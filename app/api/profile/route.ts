@@ -3,26 +3,28 @@ import { guardRequest } from "@/lib/security/requestGuard";
 import { assertProfileInput } from "@/lib/profiles/validators";
 import { upsertProfile, getProfile } from "@/lib/profiles/domain";
 import { handleRouteError } from "@/lib/http/handleRouteError";
-import { ProfileDTO } from "@/types/profile";
+import type { ProfileDTO } from "@/types/profile";
 
 export async function GET(req: Request) {
     try {
         const user = await guardRequest(req, { requireAuth: true });
 
-        const profile = getProfile(user.userId);
+        const userProfile = await getProfile(user.userId);
 
-        if (!profile) {
-            return NextResponse.json(null);
+        if (!userProfile) {
+            return NextResponse.json({
+                profile: null
+            });
         }
 
-        const dto: ProfileDTO = {
-            fullName: profile.fullName,
-            email: profile.email,
-            addressText: profile.addressText,
+        const profile: ProfileDTO = {
+            fullName: userProfile.fullName,
+            email: userProfile.email,
+            addressText: userProfile.addressText,
         };
 
-        return NextResponse.json(dto);
-    } catch (err) {
+        return NextResponse.json({ profile });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }
@@ -37,16 +39,16 @@ export async function POST(req: Request) {
         const body: unknown = await req.json();
         assertProfileInput(body);
 
-        const profile = upsertProfile(user.userId, user.phone, body);
+        const userProfile = await upsertProfile(user.userId, body);
 
-        const dto: ProfileDTO = {
-            fullName: profile.fullName,
-            email: profile.email,
-            addressText: profile.addressText,
+        const profile: ProfileDTO = {
+            fullName: userProfile.fullName,
+            email: userProfile.email,
+            addressText: userProfile.addressText,
         };
 
-        return NextResponse.json(dto);
-    } catch (err) {
+        return NextResponse.json({ profile });
+    } catch (err: unknown) {
         return handleRouteError(err);
     }
 }

@@ -1,4 +1,4 @@
-// lib/metrics.ts
+import { MetricsSnapshot } from "@/types/metrics";
 
 type Metric =
     | { type: "latency"; value: number }
@@ -64,22 +64,25 @@ function percentile(arr: number[], p: number) {
     if (arr.length === 0) return 0;
 
     const sorted = [...arr].sort((a, b) => a - b);
-    const idx = Math.floor((p / 100) * sorted.length);
+    const idx = Math.min(
+        sorted.length - 1,
+        Math.floor((p / 100) * sorted.length)
+    );
 
     return sorted[idx];
 }
 
-export function getUserCount() {
+function getUserCount() {
     return users.size;
 }
 
-export function getUptime() {
+function getUptime() {
     return Date.now() - startTime;
 }
 
 /* ---------------- STATS ---------------- */
 
-export function getStats() {
+export function getStats(): MetricsSnapshot {
     const latencies = metrics
         .filter(
             (m): m is { type: "latency"; value: number } =>
