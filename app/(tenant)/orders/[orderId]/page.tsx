@@ -65,7 +65,7 @@ export default function OrderDetailPage() {
 
     useEffect(() => {
         load();
-    }, [orderId]);
+    }, [orderId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (
         loading ||

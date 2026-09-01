@@ -96,6 +96,7 @@ export default function POSClient() {
 
         if (quantity <= 0) {
             setCart((current) => {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { [productId]: _, ...rest } = current;
                 return rest;
             });

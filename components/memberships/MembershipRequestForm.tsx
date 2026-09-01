@@ -64,7 +64,7 @@ export default function MembershipRequestForm({
 
     useEffect(() => {
         load();
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
         <Stack spacing={2}>

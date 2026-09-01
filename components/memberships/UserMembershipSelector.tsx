@@ -42,8 +42,8 @@ export default function UserMembershipSelector({
             setSwitchingId(membershipId);
             await selectMembership(membershipId);
             show("Switched tenant");
-            window.location.href =
-                getMembershipLandingPage(role);
+            // eslint-disable-next-line react-hooks/immutability
+            window.location.href = getMembershipLandingPage(role);
 
         } catch (err: unknown) {
             if (err instanceof Error) {

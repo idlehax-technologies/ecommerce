@@ -24,6 +24,7 @@ export type OrderExpiryJob = BaseJob & {
 
 export type MembershipExpiryJob = BaseJob & {
     type: "MEMBERSHIP_EXPIRY";
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     payload: {};
 };
 

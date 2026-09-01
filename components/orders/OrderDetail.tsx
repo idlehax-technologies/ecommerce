@@ -17,7 +17,7 @@ import { formatDateTime } from "@/lib/format/datetime";
 
 import OrderItemsList from "./OrderItemsList";
 import OrderSummary from "./OrderSummary";
-import OrderPaymentSection from "./OrderPaymentSection";
+// import OrderPaymentSection from "./OrderPaymentSection";
 import OrderLifecycleActions from "./OrderLifecycleActions";
 
 export default function OrderDetail({

@@ -73,7 +73,7 @@ export default function OtpResend({
                 component="span"
                 sx={{ fontWeight: 600 }}
             >
-                Didn't receive the code?
+                Didn&apos;t receive the code?
             </Box>{" "}
 
             {secondsLeft > 0 ? (

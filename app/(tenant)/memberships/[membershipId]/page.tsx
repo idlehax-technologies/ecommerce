@@ -36,7 +36,7 @@ export default function MembershipDetailPage() {
 
     useEffect(() => {
         load();
-    }, [membershipId]);
+    }, [membershipId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (loading) {
         return <CircularProgress />;

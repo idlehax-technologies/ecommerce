@@ -6,18 +6,22 @@ type Metric =
     | { type: "error" }
     | { type: "event"; name: string };
 
-const globalStore = globalThis as any;
+declare global {
+    var __metrics: Metric[] | undefined;
+    var __users: Set<string> | undefined;
+    var __startTime: number | undefined;
+}
 
 /* ---------------- CORE STORES ---------------- */
 
-const metrics: Metric[] = globalStore.__metrics ?? [];
-globalStore.__metrics = metrics;
+const metrics: Metric[] = globalThis.__metrics ?? [];
+globalThis.__metrics = metrics;
 
-const users: Set<string> = globalStore.__users ?? new Set<string>();
-globalStore.__users = users;
+const users: Set<string> = globalThis.__users ?? new Set<string>();
+globalThis.__users = users;
 
-const startTime: number = globalStore.__startTime ?? Date.now();
-globalStore.__startTime = startTime;
+const startTime: number = globalThis.__startTime ?? Date.now();
+globalThis.__startTime = startTime;
 
 /* ---------------- LIMITS ---------------- */
 

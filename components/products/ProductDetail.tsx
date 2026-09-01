@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 
 import type { TenantProvisioningRow } from "@/lib/mappers/tenantProvisioningView";
-import QuantityControl from "@/components/cart/QuantityControl";
+// import QuantityControl from "@/components/cart/QuantityControl";
 
 type Props = {
     row: TenantProvisioningRow;

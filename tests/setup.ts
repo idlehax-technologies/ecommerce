@@ -1,23 +1,34 @@
 import { beforeEach } from "vitest";
 
+declare global {
+    var __ordersById: Map<string, unknown>;
+    var __ordersByTenant: Map<string, unknown>;
+    var __paymentsById: Map<string, unknown>;
+    var __paymentsByOrder: Map<string, unknown>;
+    var __membershipStore: unknown | undefined;
+    var __tenantInventoryStore: Map<string, unknown>;
+    var __jobStore: Map<string, unknown>;
+    var __productStore: Map<string, unknown>;
+}
+
 beforeEach(() => {
     // orders
-    (globalThis as any).__ordersById = new Map();
-    (globalThis as any).__ordersByTenant = new Map();
+    globalThis.__ordersById = new Map();
+    globalThis.__ordersByTenant = new Map();
 
     // payments
-    (globalThis as any).__paymentsById = new Map();
-    (globalThis as any).__paymentsByOrder = new Map();
+    globalThis.__paymentsById = new Map();
+    globalThis.__paymentsByOrder = new Map();
 
     // memberships
-    (globalThis as any).__membershipStore = undefined;
+    globalThis.__membershipStore = undefined;
 
     // inventory
-    (globalThis as any).__tenantInventoryStore = new Map();
+    globalThis.__tenantInventoryStore = new Map();
 
     // jobs
-    (globalThis as any).__jobStore = new Map();
+    globalThis.__jobStore = new Map();
 
-    // ✅ FIX: products (missing earlier)
-    (globalThis as any).__productStore = new Map();
+    // products
+    globalThis.__productStore = new Map();
 });
